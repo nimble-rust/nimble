@@ -8,7 +8,6 @@ repository = "https://github.com/nimble-rust/nimble"
 
 [dependencies]
 nimble-protocol = { path = "../protocol" }
-flood-rs = "0.0.10"
 log = "0.4.22"
 
 [dev-dependencies]

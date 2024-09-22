@@ -13,6 +13,5 @@ nimble-seer = { path = "../seer" }
 nimble-rectify = { path = "../rectify" }
 flood-rs = "0.0.10"
 nimble-steps = { path = "../steps" }
-tick-id = "0.0.7"
 nimble-protocol = { path = "../protocol" }
 log = "0.4.22"

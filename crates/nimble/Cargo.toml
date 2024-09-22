@@ -24,3 +24,9 @@ log = "0.4.22"
 
 [dev-dependencies]
 test-log = "0.2.16"
+
+
+[package.metadata.cargo-machete]
+ignored = ["nimble_client"]
+[package.metadata.cargo-shear]
+ignored = ["nimble-client"]

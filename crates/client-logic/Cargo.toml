@@ -14,7 +14,6 @@ flood-rs = "0.0.10"
 log = "0.4.22"
 nimble-steps = { path = "../steps" }
 nimble-protocol = { path = "../protocol" }
-nimble-participant-steps = { path = "../participant-steps" }
 nimble-participant = { path = "../participant" }
 nimble-rectify = { path = "../rectify" }
 nimble-assent = { path = "../assent" }
@@ -23,6 +22,5 @@ blob-stream = { path = "../blob-stream" }
 err-rs = { path = "../err-rs" }
 
 [dev-dependencies]
-datagram = { path = "../datagram" }
 test-log = "0.2.16"
 nimble-sample-step = { path = "../sample-step" }
