@@ -2,10 +2,12 @@
 name = "nimble-sample-step"
 version = "0.0.1"
 edition = "2021"
+license = "MIT"
+description = "Nimble Sample Types"
+repository = "https://github.com/nimble-rust/nimble"
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-nimble-client = { path = "../client-stream" }
-nimble-host = { path = "../host" }
 nimble-assent = { path = "../assent" }
 nimble-seer = { path = "../seer" }
 nimble-rectify = { path = "../rectify" }

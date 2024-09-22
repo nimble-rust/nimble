@@ -2,11 +2,11 @@
  * Copyright (c) Peter Bjorklund. All rights reserved. https://github.com/nimble-rust/nimble
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
-use datagram_pinger::{ClientTime};
+use datagram_pinger::ClientTime;
 use flood_rs::prelude::InOctetStream;
+use flood_rs::Deserialize;
 use ordered_datagram::OrderedIn;
 use std::io;
-use flood_rs::Deserialize;
 
 pub struct NimbleDatagramParser {
     ordered_in: OrderedIn,

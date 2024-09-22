@@ -4,6 +4,7 @@
  */
 use flood_rs::{Deserialize, Serialize};
 use log::trace;
+use nimble_client_logic::logic::ClientLogic;
 use nimble_host::logic::{ConnectionId, HostLogic};
 use nimble_host::state::State;
 use nimble_protocol::client_to_host::{AuthoritativeStep, JoinGameType};
@@ -15,7 +16,6 @@ use nimble_steps::Step;
 use std::fmt::Debug;
 use std::time::Instant;
 use tick_id::TickId;
-use nimble_client_logic::logic::ClientLogic;
 
 mod types;
 

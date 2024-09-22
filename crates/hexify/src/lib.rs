@@ -27,7 +27,6 @@
 //! println!("{}", output); // Outputs: 42 A4 AE 09 AF 00 01 00 00 04 03 00 00
 //! ```
 
-
 /// Formats a octet slice into an uppercase, space-separated hexadecimal string.
 ///
 /// This is a convenience function that formats the input octets into an uppercase

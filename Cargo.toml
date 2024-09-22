@@ -16,7 +16,7 @@ members = [
     "crates/datagram-pinger",
     "crates/sample-step",
     "crates/datagram-builder",
-    "crates/client-stream",
+    "crates/client",
     "crates/client-connecting",
     "crates/err-rs",
     "crates/nimble",

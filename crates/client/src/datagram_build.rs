@@ -3,7 +3,7 @@
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
 use datagram::{DatagramBuilder, DatagramError};
-use datagram_pinger::{ ClientTime};
+use datagram_pinger::ClientTime;
 use flood_rs::prelude::OutOctetStream;
 use flood_rs::{Serialize, WriteOctetStream};
 use hexify::format_hex;
