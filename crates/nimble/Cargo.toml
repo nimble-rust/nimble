@@ -1,0 +1,26 @@
+[package]
+name = "nimble-rust"
+version = "0.0.1"
+edition = "2021"
+license = "MIT"
+description = "Nimble"
+repository = "https://github.com/nimble-rust/nimble"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+nimble-client = { path = "../client-stream" }
+nimble-host = { path = "../host" }
+nimble-assent = { path = "../assent" }
+nimble-seer = { path = "../seer" }
+nimble-rectify = { path = "../rectify" }
+flood-rs = "0.0.10"
+nimble-steps = { path = "../steps" }
+tick-id = "0.0.7"
+nimble-protocol = { path = "../protocol" }
+nimble-sample-step = { path = "../sample-step" }
+nimble-client-logic = { path = "../client-logic" }
+log = "0.4.22"
+
+[dev-dependencies]
+test-log = "0.2.16"

@@ -1,0 +1,18 @@
+[package]
+name = "blob-stream"
+version = "0.0.2"
+edition = "2021"
+license = "MIT"
+description = "Blob transfer over chunks (datagrams)"
+repository = "https://github.com/piot/blob-stream-rs"
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+bit-array-rs = "0.0.3"
+flood-rs = "0.0.10"
+log = "0.4.22"
+test-log = "0.2.16"
+err-rs = { path = "../err-rs" }
+
+[dev-dependencies]
+rand = "0.8.5"

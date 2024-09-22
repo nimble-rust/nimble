@@ -1,0 +1,18 @@
+[package]
+name = "nimble-seer"
+version = "0.0.3"
+edition = "2021"
+license = "MIT"
+description = "Nimble Prediction"
+repository = "https://github.com/nimble-rust/seer"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+nimble-steps = { path = "../steps" }
+tick-id = "0.0.7"
+log = "0.4.22"
+flood-rs = "0.0.10"
+
+[dev-dependencies]
+test-log = "0.2.16"

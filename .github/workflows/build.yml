@@ -1,0 +1,20 @@
+on: [push]
+
+name: Rust Build
+
+jobs:
+  build_and_test:
+    name: Build and run tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: rustup install stable
+      - run: RUSTFLAGS="-D warnings" cargo clippy --color=always # -- -Wclippy::pedantic
+      - run: RUSTFLAGS="-D warnings" cargo build --color=always --all-features
+      - name: run tests with color
+        env:
+          RUST_LOG: trace
+          RUST_LOG_STYLE: always
+          TERM: xterm-256color
+        run:
+          RUST_LOG=trace cargo test --color=always -- --nocapture --color=always

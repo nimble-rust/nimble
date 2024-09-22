@@ -1,0 +1,19 @@
+[package]
+name = "nimble-protocol"
+version = "0.0.1"
+edition = "2021"
+license = "MIT"
+description = "Nimble Protocol"
+repository = "https://github.com/nimble-rust/protocol"
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+flood-rs = "0.0.10"
+blob-stream = { path = "../blob-stream" }
+nimble-participant = { path = "../participant" }
+tick-id = "0.0.7"
+log = "0.4.22"
+
+[dev-dependencies]
+nimble-sample-step = { path = "../sample-step" }
+test-log = "0.2.16"

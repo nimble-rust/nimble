@@ -1,0 +1,24 @@
+[package]
+name = "nimble-host"
+version = "0.0.1"
+edition = "2021"
+license = "MIT"
+description = "Nimble network host"
+repository = "https://github.com/nimble-rust/host"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+nimble-steps = { path = "../steps" }
+nimble-participant-steps = { path = "../participant-steps" }
+nimble-participant = { path = "../participant" }
+blob-stream = { path = "../blob-stream" }
+tick-id = "0.0.7"
+nimble-protocol = { path = "../protocol" }
+freelist = { path = "../freelist" }
+log = "0.4.22"
+flood-rs = "0.0.10"
+
+[dev-dependencies]
+test-log = "0.2.16"
+nimble-sample-step = { path = "../sample-step" }

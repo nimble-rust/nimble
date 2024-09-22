@@ -1,0 +1,12 @@
+[package]
+name = "hexify"
+version = "0.0.1"
+edition = "2021"
+
+[dependencies]
+log = "0.4.22"
+
+
+[features]
+default = []
+log_equal = []

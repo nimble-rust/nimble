@@ -1,0 +1,16 @@
+[package]
+name = "nimble-sample-step"
+version = "0.0.1"
+edition = "2021"
+
+[dependencies]
+nimble-client = { path = "../client-stream" }
+nimble-host = { path = "../host" }
+nimble-assent = { path = "../assent" }
+nimble-seer = { path = "../seer" }
+nimble-rectify = { path = "../rectify" }
+flood-rs = "0.0.10"
+nimble-steps = { path = "../steps" }
+tick-id = "0.0.7"
+nimble-protocol = { path = "../protocol" }
+log = "0.4.22"

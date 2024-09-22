@@ -1,0 +1,10 @@
+[package]
+name = "ordered-datagram"
+version = "0.0.1"
+edition = "2021"
+
+[dependencies]
+flood-rs = "0.0.10"
+
+[dev-dependencies]
+test-log = "0.2.16"

@@ -1,0 +1,15 @@
+[package]
+name = "datagram-builder"
+version = "0.0.1"
+edition = "2021"
+license = "MIT"
+description = "Nimble Datagram Builder"
+repository = "https://github.com/nimble-rust/nimble"
+
+[dependencies]
+flood-rs = "0.0.10"
+datagram = { path = "../datagram" }
+log = "0.4.22"
+
+[dev-dependencies]
+test-log = "0.2.16"
