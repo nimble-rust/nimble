@@ -1,6 +1,6 @@
 [package]
 name = "nimble-client-logic"
-version = "0.0.11-dev"
+version = "0.0.12-dev"
 edition = "2021"
 license = "MIT"
 description = "Nimble Client Logic"
@@ -12,13 +12,13 @@ repository = "https://github.com/nimble-rust/client"
 tick-id = "^0.0.7"
 flood-rs = "^0.0.10"
 log = "^0.4.22"
-nimble-steps = { path = "../steps", version = "0.0.11-dev" }
-nimble-protocol = { path = "../protocol", version = "0.0.11-dev" }
-nimble-blob-stream = { path = "../blob-stream", version = "0.0.11-dev" }
+nimble-steps = { path = "../steps", version = "0.0.12-dev" }
+nimble-protocol = { path = "../protocol", version = "0.0.12-dev" }
+nimble-blob-stream = { path = "../blob-stream", version = "0.0.12-dev" }
 err-rs = "0.0.2"
-nimble-step-types = { path = "../step-types", version = "0.0.11-dev" }
+nimble-step-types = { path = "../step-types", version = "0.0.12-dev" }
 
 [dev-dependencies]
 test-log = "^0.2.16"
-nimble-sample-step = { path = "../sample-step", version = "0.0.11-dev" }
-nimble-participant = { path = "../participant", version = "0.0.11-dev" }
+nimble-sample-step = { path = "../sample-step", version = "0.0.12-dev" }
+nimble-participant = { path = "../participant", version = "0.0.12-dev" }
