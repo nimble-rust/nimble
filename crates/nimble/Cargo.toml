@@ -21,7 +21,7 @@ nimble-protocol = { path = "../protocol", version = "0.0.10-dev" }
 nimble-sample-step = { path = "../sample-step", version = "0.0.10-dev" }
 nimble-client-logic = { path = "../client-logic", version = "0.0.10-dev" }
 log = "^0.4.22"
-nimble-step-types = { path = "../nimble-step-types", version = "0.0.10-dev" }
+nimble-step-types = { path = "../step-types", version = "0.0.10-dev" }
 
 [dev-dependencies]
 test-log = "^0.2.16"

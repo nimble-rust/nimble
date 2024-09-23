@@ -8,7 +8,7 @@ use flood_rs::prelude::OutOctetStream;
 use flood_rs::{Serialize, WriteOctetStream};
 use hexify::format_hex;
 use log::trace;
-use ordered_datagram::OrderedOut;
+use nimble_ordered_datagram::OrderedOut;
 use std::io;
 
 pub struct NimbleDatagramBuilder {

@@ -2,8 +2,8 @@
  * Copyright (c) Peter Bjorklund. All rights reserved. https://github.com/nimble-rust/nimble
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
-use blob_stream::in_logic_front::FrontLogicError;
 use err_rs::{ErrorLevel, ErrorLevelProvider};
+use nimble_blob_stream::in_logic_front::FrontLogicError;
 use nimble_protocol::ClientRequestId;
 use std::{fmt, io};
 

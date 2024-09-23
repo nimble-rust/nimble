@@ -4,10 +4,10 @@
  */
 use crate::combinator::Combinator;
 use crate::state::State;
-use blob_stream::prelude::*;
 use flood_rs::{Deserialize, Serialize};
 use freelist_rs::FreeList;
 use log::{debug, info, trace};
+use nimble_blob_stream::prelude::*;
 use nimble_participant::ParticipantId;
 use nimble_protocol::client_to_host::{
     ClientToHostCommands, DownloadGameStateRequest, StepsRequest,

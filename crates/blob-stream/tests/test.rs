@@ -2,7 +2,7 @@
  * Copyright (c) Peter Bjorklund. All rights reserved. https://github.com/nimble-rust/nimble
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
-use blob_stream::in_stream::BlobStreamIn;
+use nimble_blob_stream::in_stream::BlobStreamIn;
 pub mod helper;
 
 #[test_log::test]

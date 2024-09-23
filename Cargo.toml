@@ -9,17 +9,13 @@ members = [
     "crates/steps",
     "crates/seer",
     "crates/rectify",
-    "crates/freelist",
     "crates/protocol",
-    "crates/datagram",
     "crates/ordered-datagram",
     "crates/datagram-pinger",
     "crates/sample-step",
-    "crates/datagram-builder",
     "crates/client",
     "crates/client-connecting",
-    "crates/err-rs",
     "crates/nimble",
-    "crates/hexify", "crates/nimble-step-types",
+    "crates/step-types",
 ]
 resolver = "2"

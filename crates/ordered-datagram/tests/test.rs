@@ -2,7 +2,7 @@
  * Copyright (c) Peter Bjorklund. All rights reserved. https://github.com/nimble-rust/nimble
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
-use ordered_datagram::{DatagramId, OrderedOut};
+use nimble_ordered_datagram::{DatagramId, OrderedOut};
 
 #[test_log::test]
 fn ordered_out() {

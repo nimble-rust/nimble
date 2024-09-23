@@ -2,10 +2,10 @@
  * Copyright (c) Peter Bjorklund. All rights reserved. https://github.com/nimble-rust/nimble
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
-use blob_stream::out_logic::Logic;
-use blob_stream::prelude::TransferId;
-use blob_stream::protocol::AckChunkData;
 use log::info;
+use nimble_blob_stream::out_logic::Logic;
+use nimble_blob_stream::prelude::TransferId;
+use nimble_blob_stream::protocol::AckChunkData;
 
 use crate::helper::generate_deterministic_blob_array;
 use std::time::{Duration, Instant};
@@ -21,7 +21,7 @@ fn test_blob_stream() {
     const ITERATION_COUNT: usize = 9;
     const MAX_CHUNK_COUNT_EACH_SEND: usize = 10;
 
-    let mut in_logic = blob_stream::in_logic::Logic::new(blob_to_transfer.len(), CHUNK_SIZE);
+    let mut in_logic = nimble_blob_stream::in_logic::Logic::new(blob_to_transfer.len(), CHUNK_SIZE);
     let mut out_logic = Logic::new(
         TransferId(0),
         CHUNK_SIZE,

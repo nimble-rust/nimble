@@ -39,7 +39,7 @@ impl Logic {
     /// # Example
     ///
     /// ```
-    /// use blob_stream::in_logic::Logic;
+    /// use nimble_blob_stream::in_logic::Logic;
     /// let in_logic = Logic::new(1024, 64);
     /// ```
     #[must_use]
@@ -80,8 +80,8 @@ impl Logic {
     /// # Example
     ///
     /// ```
-    /// use blob_stream::in_logic::Logic;
-    /// use blob_stream::protocol::{SetChunkData};
+    /// use nimble_blob_stream::in_logic::Logic;
+    /// use nimble_blob_stream::protocol::{SetChunkData};
     ///
     /// let mut in_logic = Logic::new(1024, 5);
     /// let chunk_data = SetChunkData {
@@ -124,7 +124,7 @@ impl Logic {
     /// # Example
     ///
     /// ```
-    /// use blob_stream::in_logic::Logic;
+    /// use nimble_blob_stream::in_logic::Logic;
     /// let mut in_logic = Logic::new(1024, 64);
     /// if let Some(blob) = in_logic.blob() {
     ///     // Use the blob data

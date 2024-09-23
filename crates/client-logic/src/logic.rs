@@ -3,11 +3,11 @@
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
 use crate::err::{ClientError, ClientErrorKind};
-use blob_stream::prelude::{FrontLogic, SenderToReceiverFrontCommands};
 use err_rs::{ErrorLevel, ErrorLevelProvider};
 use flood_rs::{Deserialize, Serialize};
 use log::{debug, trace};
 use nimble_assent::prelude::*;
+use nimble_blob_stream::prelude::{FrontLogic, SenderToReceiverFrontCommands};
 use nimble_participant::ParticipantId;
 use nimble_protocol::client_to_host::{CombinedPredictedSteps, DownloadGameStateRequest};
 use nimble_protocol::host_to_client::DownloadGameStateResponse;

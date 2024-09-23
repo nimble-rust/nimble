@@ -1,9 +1,0 @@
-[package]
-name = "err-rs"
-version = "0.0.2"
-edition = "2021"
-license = "MIT"
-description = "Error utilities"
-repository = "https://github.com/nimble-rust/nimble"
-
-[dependencies]

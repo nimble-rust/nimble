@@ -7,10 +7,10 @@ use crate::client_to_host::{
     SerializeAuthoritativeStepVectorForOneParticipants,
 };
 use crate::{ClientRequestId, SessionConnectionSecret};
-use blob_stream::prelude::SenderToReceiverFrontCommands;
 use flood_rs::{Deserialize, ReadOctetStream, Serialize, WriteOctetStream};
 use io::ErrorKind;
 use log::trace;
+use nimble_blob_stream::prelude::SenderToReceiverFrontCommands;
 use nimble_participant::ParticipantId;
 use nimble_step_types::AuthoritativeStep;
 use std::collections::{HashMap, HashSet};

@@ -2,8 +2,8 @@
  * Copyright (c) Peter Bjorklund. All rights reserved. https://github.com/nimble-rust/nimble
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
-use blob_stream::in_logic::Logic;
-use blob_stream::prelude::*;
+use nimble_blob_stream::in_logic::Logic;
+use nimble_blob_stream::prelude::*;
 
 #[test_log::test]
 fn check_receive() {

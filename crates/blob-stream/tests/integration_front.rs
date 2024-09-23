@@ -3,9 +3,9 @@
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
 use crate::helper::generate_deterministic_blob_array;
-use blob_stream::out_logic_front::OutLogicFront;
-use blob_stream::prelude::TransferId;
 use log::trace;
+use nimble_blob_stream::out_logic_front::OutLogicFront;
+use nimble_blob_stream::prelude::TransferId;
 use rand::prelude::StdRng;
 use rand::Rng;
 use rand::SeedableRng;
@@ -22,7 +22,7 @@ fn test_blob_stream_front() {
     const OCTET_COUNT: usize = (CHUNK_SIZE * (CHUNK_COUNT - 1)) + 1;
     const ITERATION_COUNT: usize = 5;
 
-    let mut in_logic = blob_stream::in_logic_front::FrontLogic::new();
+    let mut in_logic = nimble_blob_stream::in_logic_front::FrontLogic::new();
     let mut out_logic = OutLogicFront::new(
         TransferId(42),
         CHUNK_SIZE,

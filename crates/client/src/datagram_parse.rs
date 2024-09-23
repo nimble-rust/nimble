@@ -5,7 +5,7 @@
 use datagram_pinger::ClientTime;
 use flood_rs::prelude::InOctetStream;
 use flood_rs::Deserialize;
-use ordered_datagram::OrderedIn;
+use nimble_ordered_datagram::OrderedIn;
 use std::io;
 
 pub struct NimbleDatagramParser {

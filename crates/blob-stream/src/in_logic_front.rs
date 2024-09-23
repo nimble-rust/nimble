@@ -107,9 +107,9 @@ impl FrontLogic {
     /// # Example
     ///
     /// ```
-    /// use blob_stream::in_logic_front::FrontLogic;
-    /// use blob_stream::protocol::StartTransferData;
-    /// use blob_stream::protocol_front::SenderToReceiverFrontCommands;
+    /// use nimble_blob_stream::in_logic_front::FrontLogic;
+    /// use nimble_blob_stream::protocol::StartTransferData;
+    /// use nimble_blob_stream::protocol_front::SenderToReceiverFrontCommands;
     ///
     /// let mut logic_front = FrontLogic::new();
     ///
