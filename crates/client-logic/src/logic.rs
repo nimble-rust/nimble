@@ -165,7 +165,7 @@ impl<StepT: Clone + Deserialize + Serialize + Debug> ClientLogic<StepT> {
                 {
                     self.incoming_authoritative_steps
                         .push_with_check(current_authoritative_tick_id, combined_auth_step.clone())
-                        .map_err(|err| Unexpected(err))?;
+                        .map_err(Unexpected)?;
                 }
                 current_authoritative_tick_id += 1;
             }
