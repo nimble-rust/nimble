@@ -14,6 +14,7 @@ use nimble_protocol::host_to_client::{
     SerializeAuthoritativeStepRanges,
 };
 use nimble_protocol::{ClientRequestId, Version};
+
 use nimble_sample_step::SampleStep;
 use nimble_step_types::AuthoritativeStep;
 use std::collections::HashMap;

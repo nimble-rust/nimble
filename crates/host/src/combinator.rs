@@ -21,12 +21,12 @@ pub enum CombinatorError {
 }
 
 #[derive(Default)]
-pub struct Combinator<T> {
+pub struct Combinator<T: Clone> {
     pub in_buffers: HashMap<ParticipantId, Steps<T>>,
     pub tick_id_to_produce: TickId,
 }
 
-impl<T> Combinator<T> {
+impl<T: std::clone::Clone> Combinator<T> {
     pub fn new(tick_id_to_produce: TickId) -> Self {
         Combinator {
             in_buffers: HashMap::new(),

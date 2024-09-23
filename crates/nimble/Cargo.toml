@@ -1,6 +1,6 @@
 [package]
 name = "nimble-rust"
-version = "0.0.11-dev"
+version = "0.0.12-dev"
 edition = "2021"
 license = "MIT"
 description = "Nimble"
@@ -18,14 +18,13 @@ flood-rs = "^0.0.10"
 nimble-steps = { path = "../steps", version = "0.0.11-dev" }
 tick-id = "^0.0.7"
 nimble-protocol = { path = "../protocol", version = "0.0.11-dev" }
-nimble-sample-step = { path = "../sample-step", version = "0.0.11-dev" }
 nimble-client-logic = { path = "../client-logic", version = "0.0.11-dev" }
 log = "^0.4.22"
 nimble-step-types = { path = "../step-types", version = "0.0.11-dev" }
+nimble-sample-game = { path = "../sample-game-type", version = "0.0.11-dev" }
 
 [dev-dependencies]
 test-log = "^0.2.16"
-
 
 [package.metadata.cargo-machete]
 ignored = ["nimble_client"]

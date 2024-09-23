@@ -19,7 +19,7 @@ pub trait SeerCallback<CombinedStepT> {
 }
 
 // Define the Assent struct
-impl<Callback, CombinedStepT> Default for Seer<Callback, CombinedStepT>
+impl<Callback, CombinedStepT: Clone> Default for Seer<Callback, CombinedStepT>
 where
     Callback: SeerCallback<CombinedStepT>,
 {
@@ -41,6 +41,7 @@ where
 impl<Callback, CombinedStepT> Seer<Callback, CombinedStepT>
 where
     Callback: SeerCallback<CombinedStepT>,
+    CombinedStepT: std::clone::Clone,
 {
     pub fn new() -> Self {
         Seer {

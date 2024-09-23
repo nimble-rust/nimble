@@ -154,7 +154,7 @@ impl<StepType: Clone> Iterator for FromIndexIterator<'_, StepType> {
 
 pub const TICK_ID_MAX: u32 = u32::MAX;
 
-impl<StepType> Steps<StepType> {
+impl<StepType: Clone> Steps<StepType> {
     pub fn new() -> Self {
         Self {
             steps: VecDeque::new(),
@@ -175,6 +175,19 @@ impl<StepType> Steps<StepType> {
             expected_read_id: initial_tick_id,
             expected_write_id: initial_tick_id,
         }
+    }
+
+    pub fn push_with_check(&mut self, tick_id: TickId, step: StepType) -> Result<(), String> {
+        if self.expected_write_id != tick_id {
+            Err(format!(
+                "expected {}, but encountered {}",
+                self.expected_write_id, tick_id
+            ))?;
+        }
+
+        self.push(step);
+
+        Ok(())
     }
 
     pub fn push(&mut self, step: StepType) {
@@ -221,6 +234,10 @@ impl<StepType> Steps<StepType> {
         self.steps.front().map(|step_info| step_info.tick_id)
     }
 
+    pub fn expected_write_tick_id(&self) -> TickId {
+        self.expected_write_id
+    }
+
     pub fn back_tick_id(&self) -> Option<TickId> {
         self.steps.back().map(|step_info| step_info.tick_id)
     }
@@ -231,6 +248,15 @@ impl<StepType> Steps<StepType> {
 
     pub fn is_empty(&self) -> bool {
         self.steps.is_empty()
+    }
+
+    pub fn to_vec(&self) -> Vec<StepType> {
+        let (front_slice, back_slice) = self.steps.as_slices();
+        front_slice
+            .iter()
+            .chain(back_slice.iter())
+            .map(|step_info| step_info.step.clone())
+            .collect()
     }
 
     pub fn iter_index(&self, start_index: usize) -> FromIndexIterator<StepType> {

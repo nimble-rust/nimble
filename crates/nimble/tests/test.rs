@@ -11,8 +11,7 @@ use nimble_protocol::client_to_host::JoinGameType;
 use nimble_protocol::client_to_host::{JoinPlayerRequest, JoinPlayerRequests};
 use nimble_protocol::prelude::*;
 use nimble_protocol::ClientRequestId;
-use nimble_sample_step::{SampleGame, SampleStep};
-use nimble_step_types::AuthoritativeStep;
+use nimble_sample_game::{SampleGame, SampleStep};
 use nimble_steps::Step;
 use std::fmt::Debug;
 use std::time::Instant;
@@ -20,18 +19,10 @@ use tick_id::TickId;
 
 mod types;
 
-fn communicate<
-    SampleGame: nimble_seer::SeerCallback<AuthoritativeStep<Step<SampleStep>>>
-        + nimble_assent::AssentCallback<AuthoritativeStep<Step<SampleStep>>>
-        + nimble_rectify::RectifyCallback
-        + Clone
-        + Deserialize
-        + Serialize,
-    SampleStep: Clone + Deserialize + Debug + Eq + PartialEq,
->(
+fn communicate<SampleStep: Clone + Deserialize + Debug + Eq + PartialEq>(
     host: &mut HostLogic<Step<SampleStep>>,
     connection_id: ConnectionId,
-    client: &mut ClientLogic<SampleGame, Step<SampleStep>>,
+    client: &mut ClientLogic<Step<SampleStep>>,
 ) where
     SampleStep: Serialize,
 {
@@ -68,7 +59,7 @@ fn client_host_integration() {
     let mut host = HostLogic::<Step<SampleStep>>::new(state);
     let connection = host.create_connection().expect("should create connection");
 
-    let mut client = ClientLogic::<SampleGame, Step<SampleStep>>::new();
+    let mut client = ClientLogic::<Step<SampleStep>>::new();
     let joining_player = JoinPlayerRequest { local_index: 0 };
 
     let join_game_request = JoinGameRequest {

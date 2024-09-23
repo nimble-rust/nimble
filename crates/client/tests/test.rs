@@ -6,7 +6,7 @@ use hexify::assert_eq_slices;
 use log::info;
 use nimble_client::client::{ClientPhase, ClientStream};
 use nimble_protocol::Version;
-use nimble_sample_step::{SampleGame, SampleStep};
+use nimble_sample_step::SampleStep;
 use nimble_steps::Step;
 use std::io;
 
@@ -19,7 +19,7 @@ fn connect_stream() -> io::Result<()> {
         patch: 2,
     };
 
-    let mut stream: ClientStream<SampleGame, Step<SampleStep>> =
+    let mut stream: ClientStream<Step<SampleStep>> =
         ClientStream::new(&application_version);
 
     let octet_vector = stream.send()?;

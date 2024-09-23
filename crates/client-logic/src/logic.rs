@@ -2,20 +2,17 @@
  * Copyright (c) Peter Bjorklund. All rights reserved. https://github.com/nimble-rust/nimble
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
+use crate::err::ClientErrorKind::Unexpected;
 use crate::err::{ClientError, ClientErrorKind};
 use err_rs::{ErrorLevel, ErrorLevelProvider};
 use flood_rs::{Deserialize, Serialize};
 use log::{debug, trace};
-use nimble_assent::prelude::*;
 use nimble_blob_stream::prelude::{FrontLogic, SenderToReceiverFrontCommands};
-use nimble_participant::ParticipantId;
 use nimble_protocol::client_to_host::{CombinedPredictedSteps, DownloadGameStateRequest};
 use nimble_protocol::host_to_client::DownloadGameStateResponse;
 use nimble_protocol::prelude::*;
-use nimble_rectify::prelude::*;
-use nimble_seer::prelude::*;
 use nimble_step_types::{AuthoritativeStep, PredictedStep};
-use std::collections::HashMap;
+use nimble_steps::Steps;
 use std::fmt::Debug;
 use tick_id::TickId;
 
@@ -27,62 +24,45 @@ pub enum ClientLogicPhase {
 }
 
 #[derive(Debug)]
-pub struct ClientLogic<
-    Game: SeerCallback<AuthoritativeStep<StepT>>
-        + AssentCallback<AuthoritativeStep<StepT>>
-        + RectifyCallback,
-    StepT: Clone + Deserialize + Serialize + Debug,
-> {
+pub struct ClientLogic<StepT: Clone + Deserialize + Serialize + Debug> {
     joining_player: Option<JoinGameRequest>,
 
     tick_id: u32,
     debug_tick_id_to_send: u32,
-    rectify: Rectify<Game, AuthoritativeStep<StepT>>,
     blob_stream_client: FrontLogic,
     commands_to_send: Vec<ClientToHostCommands<StepT>>,
-    outgoing_predicted_steps: Vec<PredictedStep<StepT>>,
+    outgoing_predicted_steps: Steps<PredictedStep<StepT>>,
+    incoming_authoritative_steps: Steps<AuthoritativeStep<StepT>>,
     #[allow(unused)]
     phase: ClientLogicPhase,
     last_download_state_request_id: u8,
 }
 
-impl<
-        Game: SeerCallback<AuthoritativeStep<StepT>>
-            + AssentCallback<AuthoritativeStep<StepT>>
-            + RectifyCallback,
-        StepT: Clone + Deserialize + Serialize + Debug,
-    > Default for ClientLogic<Game, StepT>
-{
+impl<StepT: Clone + Deserialize + Serialize + Debug> Default for ClientLogic<StepT> {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl<
-        Game: SeerCallback<AuthoritativeStep<StepT>>
-            + AssentCallback<AuthoritativeStep<StepT>>
-            + RectifyCallback,
-        StepT: Clone + Deserialize + Serialize + Debug,
-    > ClientLogic<Game, StepT>
-{
-    pub fn new() -> ClientLogic<Game, StepT> {
+impl<StepT: Clone + Deserialize + Serialize + Debug> ClientLogic<StepT> {
+    pub fn new() -> ClientLogic<StepT> {
         Self {
             joining_player: None,
             tick_id: 0,
             debug_tick_id_to_send: 0,
-            rectify: Rectify::new(),
             blob_stream_client: FrontLogic::new(),
             commands_to_send: Vec::new(),
             last_download_state_request_id: 0x99,
-            outgoing_predicted_steps: Vec::new(),
+            outgoing_predicted_steps: Steps::new(),
+            incoming_authoritative_steps: Steps::new(),
             phase: ClientLogicPhase::RequestDownloadState {
                 download_state_request_id: 0x99,
             },
         }
     }
 
-    pub fn debug_rectify(&self) -> &Rectify<Game, AuthoritativeStep<StepT>> {
-        &self.rectify
+    pub fn debug_authoritative_steps(&self) -> &Steps<AuthoritativeStep<StepT>> {
+        &self.incoming_authoritative_steps
     }
 
     pub fn set_joining_player(&mut self, join_game_request: JoinGameRequest) {
@@ -126,8 +106,8 @@ impl<
                 lost_steps_mask_after_last_received: 0,
             },
             combined_predicted_steps: CombinedPredictedSteps {
-                first_tick: Default::default(),
-                steps: self.outgoing_predicted_steps.clone(),
+                first_tick: self.outgoing_predicted_steps.front_tick_id().unwrap(),
+                steps: self.outgoing_predicted_steps.to_vec(),
             },
         };
 
@@ -162,20 +142,7 @@ impl<
         commands
     }
 
-    pub fn update(&mut self, game: &mut Game) {
-        self.rectify.update(game)
-    }
-
     pub fn add_predicted_step(&mut self, step: PredictedStep<StepT>) {
-        let predicted_authenticated_combined_step: HashMap<_, _> = step
-            .predicted_players
-            .iter()
-            .map(|(local_index, predict_step)| (ParticipantId(*local_index), predict_step.clone()))
-            .collect();
-        self.rectify.push_predicted(AuthoritativeStep {
-            authoritative_participants: predicted_authenticated_combined_step,
-        });
-
         self.outgoing_predicted_steps.push(step);
     }
 
@@ -193,12 +160,13 @@ impl<
         for range in &cmd.authoritative_steps.ranges {
             let mut current_authoritative_tick_id = range.tick_id;
             for combined_auth_step in &range.authoritative_steps {
-                self.rectify
-                    .push_authoritative_with_check(
-                        current_authoritative_tick_id,
-                        combined_auth_step.clone(),
-                    )
-                    .map_err(ClientErrorKind::Unexpected)?;
+                if current_authoritative_tick_id
+                    == self.incoming_authoritative_steps.expected_write_tick_id()
+                {
+                    self.incoming_authoritative_steps
+                        .push_with_check(current_authoritative_tick_id, combined_auth_step.clone())
+                        .map_err(|err| Unexpected(err))?;
+                }
                 current_authoritative_tick_id += 1;
             }
 

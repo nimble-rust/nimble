@@ -116,7 +116,7 @@ pub enum HostLogicError {
     BlobStreamErr(OutStreamError),
 }
 
-pub struct HostLogic<StepT> {
+pub struct HostLogic<StepT: std::clone::Clone> {
     #[allow(unused)]
     combinator: Combinator<StepT>,
     connections: HashMap<u8, Connection>,

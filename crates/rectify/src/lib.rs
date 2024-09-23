@@ -16,12 +16,15 @@ pub trait RectifyCallback {
 /// The `Rectify` struct coordinates between the [`Assent`] and [`Seer`] components, managing
 /// authoritative and predicted game states.
 #[derive(Debug)]
-pub struct Rectify<Game: AssentCallback<StepT> + SeerCallback<StepT> + RectifyCallback, StepT> {
+pub struct Rectify<
+    Game: AssentCallback<StepT> + SeerCallback<StepT> + RectifyCallback,
+    StepT: Clone,
+> {
     assent: Assent<Game, StepT>,
     seer: Seer<Game, StepT>,
 }
 
-impl<Game: AssentCallback<StepT> + SeerCallback<StepT> + RectifyCallback, StepT> Default
+impl<Game: AssentCallback<StepT> + SeerCallback<StepT> + RectifyCallback, StepT: Clone> Default
     for Rectify<Game, StepT>
 {
     fn default() -> Self {
@@ -29,8 +32,10 @@ impl<Game: AssentCallback<StepT> + SeerCallback<StepT> + RectifyCallback, StepT>
     }
 }
 
-impl<Game: AssentCallback<StepT> + SeerCallback<StepT> + RectifyCallback, StepT>
-    Rectify<Game, StepT>
+impl<
+        Game: AssentCallback<StepT> + SeerCallback<StepT> + RectifyCallback,
+        StepT: std::clone::Clone,
+    > Rectify<Game, StepT>
 {
     /// Creates a new `Rectify` instance, initializing both [`Assent`] and [`Seer`] components.
     ///

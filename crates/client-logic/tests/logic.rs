@@ -3,7 +3,6 @@
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
 use flood_rs::{Deserialize, Serialize};
-use nimble_assent::AssentCallback;
 use nimble_client_logic::err::ClientError;
 use nimble_client_logic::logic::ClientLogic;
 use nimble_participant::ParticipantId;
@@ -12,9 +11,7 @@ use nimble_protocol::host_to_client::{
     AuthoritativeStepRange, AuthoritativeStepRanges, GameStepResponse, GameStepResponseHeader,
 };
 use nimble_protocol::prelude::{ClientToHostCommands, HostToClientCommands};
-use nimble_rectify::RectifyCallback;
-use nimble_sample_step::{SampleGame, SampleStep};
-use nimble_seer::SeerCallback;
+use nimble_sample_step::SampleStep;
 use nimble_step_types::{AuthoritativeStep, PredictedStep};
 use nimble_steps::Step::{Custom, Forced};
 use nimble_steps::{Step, StepInfo};
@@ -24,8 +21,7 @@ use tick_id::TickId;
 
 #[test_log::test]
 fn basic_logic() {
-    let mut game = SampleGame::default();
-    let mut client_logic = ClientLogic::<SampleGame, Step<SampleStep>>::new();
+    let mut client_logic = ClientLogic::<Step<SampleStep>>::new();
 
     {
         let commands = client_logic.send();
@@ -37,27 +33,16 @@ fn basic_logic() {
         } else {
             panic!("Command did not match expected structure or pattern");
         }
-
-        client_logic.update(&mut game);
-
-        assert_eq!(game.predicted.x, 0);
     }
 }
 
-fn setup_logic<
-    GameT: SeerCallback<AuthoritativeStep<StepT>>
-        + AssentCallback<AuthoritativeStep<StepT>>
-        + RectifyCallback,
-    StepT: Clone + Deserialize + Serialize + Debug,
->() -> ClientLogic<GameT, StepT> {
-    ClientLogic::<GameT, StepT>::new()
+fn setup_logic<StepT: Clone + Deserialize + Serialize + Debug>() -> ClientLogic<StepT> {
+    ClientLogic::<StepT>::new()
 }
 
 #[test_log::test]
 fn send_steps() {
-    let mut game = SampleGame::default();
-
-    let mut client_logic = setup_logic::<SampleGame, Step<SampleStep>>();
+    let mut client_logic = setup_logic::<Step<SampleStep>>();
 
     client_logic.add_predicted_step(PredictedStep {
         predicted_players: [(0, Custom(SampleStep::MoveRight(3)))].into(),
@@ -73,11 +58,6 @@ fn send_steps() {
         } else {
             panic!("Command did not match expected structure or pattern");
         }
-
-        client_logic.update(&mut game);
-
-        assert_eq!(game.predicted.x, 3);
-        assert_eq!(game.predicted.y, 0);
     }
 }
 
@@ -120,7 +100,7 @@ fn setup_sample_steps() -> AuthoritativeStepRanges<Step<SampleStep>> {
 }
 #[test_log::test]
 fn receive_authoritative_steps() -> Result<(), ClientError> {
-    let mut client_logic = setup_logic::<SampleGame, Step<SampleStep>>();
+    let mut client_logic = setup_logic::<Step<SampleStep>>();
 
     // Create a GameStep command
     let response = GameStepResponse::<Step<SampleStep>> {
@@ -138,16 +118,13 @@ fn receive_authoritative_steps() -> Result<(), ClientError> {
     client_logic.receive(&[command])?;
 
     // Verify
-    let assent = &client_logic.debug_rectify().assent();
+    let authoritative_steps = client_logic.debug_authoritative_steps();
     assert_eq!(
-        assent
-            .end_tick_id()
+        authoritative_steps
+            .back_tick_id()
             .expect("should have end_tick_id by now"),
         TickId(2)
     ); // Should have received TickId 0, 1, and 2.
-
-    let auth_steps = assent.debug_steps();
-    assert_eq!(auth_steps.len(), 3);
 
     let first_participant_id = ParticipantId(255);
     let second_participant_id = ParticipantId(1);
@@ -165,22 +142,12 @@ fn receive_authoritative_steps() -> Result<(), ClientError> {
         tick_id: TickId(1),
     };
 
-    assert_eq!(
-        *auth_steps
-            .debug_get(1)
-            .expect("should be able to get index 1"),
-        expected_step_with_step_info
-    );
+    let auth_steps = authoritative_steps
+        .debug_get(1)
+        .expect("index 1 should exist");
+    assert_eq!(authoritative_steps.len(), 3);
 
-    let mut game = SampleGame::default();
-
-    assert_eq!(game.authoritative.x, 0);
-    assert_eq!(game.authoritative.y, 0);
-
-    client_logic.update(&mut game);
-
-    assert_eq!(game.authoritative.x, 32000 - 42 + 10); // Right(32000) + Left(42) + Left(-10)
-    assert_eq!(game.authoritative.y, 1 + 1 + 1); // Two jumps and a forced
+    assert_eq!(*auth_steps, expected_step_with_step_info);
 
     Ok(())
 }

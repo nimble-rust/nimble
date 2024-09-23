@@ -36,6 +36,7 @@ where
 impl<C, CombinedStepT> Default for Assent<C, CombinedStepT>
 where
     C: AssentCallback<CombinedStepT>,
+    CombinedStepT: std::clone::Clone,
 {
     fn default() -> Self {
         Assent::new()
@@ -45,6 +46,7 @@ where
 impl<C, CombinedStepT> Assent<C, CombinedStepT>
 where
     C: AssentCallback<CombinedStepT>,
+    CombinedStepT: std::clone::Clone,
 {
     pub fn new() -> Self {
         Assent {

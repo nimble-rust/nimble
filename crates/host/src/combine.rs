@@ -9,13 +9,13 @@ use nimble_steps::Steps;
 use tick_id::TickId;
 
 #[allow(unused)]
-pub struct HostCombinator<T> {
+pub struct HostCombinator<T: std::clone::Clone> {
     combinator: Combinator<T>,
     authoritative_steps: Steps<ParticipantSteps<T>>,
 }
 
 #[allow(unused)]
-impl<T> HostCombinator<T> {
+impl<T: std::clone::Clone> HostCombinator<T> {
     pub fn new() -> Self {
         Self {
             combinator: Combinator::<T>::new(TickId(0)),
