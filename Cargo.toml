@@ -16,6 +16,6 @@ members = [
     "crates/client",
     "crates/client-connecting",
     "crates/nimble",
-    "crates/step-types",
+    "crates/step-types", "crates/sample-game-type",
 ]
 resolver = "2"
