@@ -20,6 +20,6 @@ members = [
     "crates/client-connecting",
     "crates/err-rs",
     "crates/nimble",
-    "crates/hexify",
+    "crates/hexify", "crates/nimble-step-types",
 ]
 resolver = "2"
