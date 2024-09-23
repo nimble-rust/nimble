@@ -1,6 +1,6 @@
 [package]
 name = "nimble-host"
-version = "0.0.10-dev"
+version = "0.0.11-dev"
 edition = "2021"
 license = "MIT"
 description = "Nimble network host"
@@ -9,16 +9,16 @@ repository = "https://github.com/nimble-rust/host"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-nimble-steps = { path = "../steps", version = "0.0.10-dev" }
-nimble-participant-steps = { path = "../participant-steps", version = "0.0.10-dev" }
-nimble-participant = { path = "../participant", version = "0.0.10-dev" }
-nimble-blob-stream = { path = "../blob-stream", version = "0.0.10-dev" }
+nimble-steps = { path = "../steps", version = "0.0.11-dev" }
+nimble-participant-steps = { path = "../participant-steps", version = "0.0.11-dev" }
+nimble-participant = { path = "../participant", version = "0.0.11-dev" }
+nimble-blob-stream = { path = "../blob-stream", version = "0.0.11-dev" }
 tick-id = "^0.0.7"
-nimble-protocol = { path = "../protocol", version = "0.0.10-dev" }
+nimble-protocol = { path = "../protocol", version = "0.0.11-dev" }
 freelist-rs = "0.0.2"
 log = "^0.4.22"
 flood-rs = "^0.0.10"
 
 [dev-dependencies]
 test-log = "^0.2.16"
-nimble-sample-step = { path = "../sample-step", version = "0.0.10-dev" }
+nimble-sample-step = { path = "../sample-step", version = "0.0.11-dev" }

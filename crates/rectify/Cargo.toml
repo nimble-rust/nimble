@@ -1,6 +1,6 @@
 [package]
 name = "nimble-rectify"
-version = "0.0.10-dev"
+version = "0.0.11-dev"
 edition = "2021"
 license = "MIT"
 description = "Update for assent and seer"
@@ -8,11 +8,11 @@ repository = "https://github.com/nimble-rust/rectify"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-nimble-assent = { path = "../assent", version = "0.0.10-dev" }
-nimble-seer = { path = "../seer", version = "0.0.10-dev" }
-nimble-steps = { path = "../steps", version = "0.0.10-dev" }
-nimble-participant-steps = { path = "../participant-steps" , version = "0.0.10-dev"}
-nimble-participant = { path = "../participant", version = "0.0.10-dev" }
+nimble-assent = { path = "../assent", version = "0.0.11-dev" }
+nimble-seer = { path = "../seer", version = "0.0.11-dev" }
+nimble-steps = { path = "../steps", version = "0.0.11-dev" }
+nimble-participant-steps = { path = "../participant-steps" , version = "0.0.11-dev" }
+nimble-participant = { path = "../participant", version = "0.0.11-dev" }
 
 log = "^0.4.22"
 flood-rs = "^0.0.10"
