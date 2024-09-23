@@ -5,7 +5,7 @@
 use flood_rs::prelude::*;
 use nimble_participant::ParticipantId;
 use nimble_protocol::client_to_host::{
-    AuthoritativeStep, SerializeAuthoritativeStepRangeForAllParticipants,
+    SerializeAuthoritativeStepRangeForAllParticipants,
     SerializeAuthoritativeStepVectorForOneParticipants,
 };
 use nimble_protocol::client_to_host_oob::ConnectRequest;
@@ -15,6 +15,7 @@ use nimble_protocol::host_to_client::{
 };
 use nimble_protocol::{ClientRequestId, Version};
 use nimble_sample_step::SampleStep;
+use nimble_step_types::AuthoritativeStep;
 use std::collections::HashMap;
 use std::io;
 use tick_id::TickId;

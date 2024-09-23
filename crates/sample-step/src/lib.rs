@@ -5,9 +5,9 @@
 use flood_rs::prelude::*;
 use log::info;
 use nimble_assent::AssentCallback;
-use nimble_protocol::client_to_host::AuthoritativeStep;
 use nimble_rectify::RectifyCallback;
 use nimble_seer::SeerCallback;
+use nimble_step_types::AuthoritativeStep;
 use nimble_steps::Step;
 use std::io;
 

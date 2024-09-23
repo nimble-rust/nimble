@@ -1,27 +1,28 @@
 [package]
 name = "nimble-client"
-version = "0.0.2"
+version = "0.0.10-dev"
 edition = "2021"
 license = "MIT"
 description = "Nimble Client"
 repository = "https://github.com/nimble-rust/client"
 
 [dependencies]
-log = "0.4.22"
-flood-rs = "0.0.10"
-nimble-client-logic = { path = "../client-logic" }
-nimble-client-connecting = { path = "../client-connecting" }
-ordered-datagram = { path = "../ordered-datagram" }
-datagram-pinger = { path = "../datagram-pinger" }
+log = "^0.4.22"
+flood-rs = "^0.0.10"
+nimble-client-logic = { path = "../client-logic", version = "0.0.10-dev" }
+nimble-client-connecting = { path = "../client-connecting", version = "0.0.10-dev" }
+ordered-datagram = { path = "../ordered-datagram", version = "0.0.2" }
+datagram-pinger = { path = "../datagram-pinger", version = "0.0.2" }
 datagram = { path = "../datagram" }
-nimble-protocol = { path = "../protocol" }
-nimble-rectify = { path = "../rectify" }
-nimble-assent = { path = "../assent" }
-nimble-seer = { path = "../seer" }
+nimble-protocol = { path = "../protocol", version = "0.0.10-dev" }
+nimble-rectify = { path = "../rectify", version = "0.0.10-dev" }
+nimble-assent = { path = "../assent", version = "0.0.10-dev" }
+nimble-seer = { path = "../seer", version = "0.0.10-dev" }
+nimble-step-types = { path = "../nimble-step-types", version = "0.0.10-dev" }
 datagram-builder = { path = "../datagram-builder" }
 hexify = { path = "../hexify", features = ["log_equal"] }
 
 [dev-dependencies]
-nimble-sample-step = { path = "../sample-step" }
-nimble-steps = { path = "../steps" }
+nimble-sample-step = { path = "../sample-step", version = "0.0.10-dev" }
+nimble-steps = { path = "../steps", version = "0.0.10-dev" }
 test-log = "0.2.16"

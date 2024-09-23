@@ -1,6 +1,6 @@
 [package]
 name = "nimble-steps"
-version = "0.0.7"
+version = "0.0.10-dev"
 edition = "2021"
 license = "MIT"
 description = "Nimble Steps Collections"
@@ -9,9 +9,9 @@ repository = "https://github.com/piot/nimble-steps-rs"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-discoid = "0.0.3"
-tick-id = "0.0.7"
-flood-rs = "0.0.10"
+discoid = "^0.0.3"
+tick-id = "^0.0.7"
+flood-rs = "^0.0.10"
 
 [dev-dependencies]
-test-log = "0.2.16"
+test-log = "^0.2.16"

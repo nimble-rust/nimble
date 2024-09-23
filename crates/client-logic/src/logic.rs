@@ -9,13 +9,12 @@ use flood_rs::{Deserialize, Serialize};
 use log::{debug, trace};
 use nimble_assent::prelude::*;
 use nimble_participant::ParticipantId;
-use nimble_protocol::client_to_host::{
-    AuthoritativeStep, CombinedPredictedSteps, DownloadGameStateRequest, PredictedStep,
-};
+use nimble_protocol::client_to_host::{CombinedPredictedSteps, DownloadGameStateRequest};
 use nimble_protocol::host_to_client::DownloadGameStateResponse;
 use nimble_protocol::prelude::*;
 use nimble_rectify::prelude::*;
 use nimble_seer::prelude::*;
+use nimble_step_types::{AuthoritativeStep, PredictedStep};
 use std::collections::HashMap;
 use std::fmt::Debug;
 use tick_id::TickId;

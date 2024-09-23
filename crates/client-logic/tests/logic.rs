@@ -7,7 +7,7 @@ use nimble_assent::AssentCallback;
 use nimble_client_logic::err::ClientError;
 use nimble_client_logic::logic::ClientLogic;
 use nimble_participant::ParticipantId;
-use nimble_protocol::client_to_host::{AuthoritativeStep, DownloadGameStateRequest, PredictedStep};
+use nimble_protocol::client_to_host::DownloadGameStateRequest;
 use nimble_protocol::host_to_client::{
     AuthoritativeStepRange, AuthoritativeStepRanges, GameStepResponse, GameStepResponseHeader,
 };
@@ -15,6 +15,7 @@ use nimble_protocol::prelude::{ClientToHostCommands, HostToClientCommands};
 use nimble_rectify::RectifyCallback;
 use nimble_sample_step::{SampleGame, SampleStep};
 use nimble_seer::SeerCallback;
+use nimble_step_types::{AuthoritativeStep, PredictedStep};
 use nimble_steps::Step::{Custom, Forced};
 use nimble_steps::{Step, StepInfo};
 use std::collections::HashMap;

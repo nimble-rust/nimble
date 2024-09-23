@@ -1,6 +1,6 @@
 [package]
 name = "nimble-participant-steps"
-version = "0.0.2"
+version = "0.0.10-dev"
 edition = "2021"
 license = "MIT"
 description = "Nimble Participant Steps"
@@ -8,6 +8,6 @@ repository = "https://github.com/nimble-rust/participant-steps"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-nimble-steps = { path = "../steps"}
-nimble-participant = { path = "../participant" }
+nimble-steps = { path = "../steps", version = "0.0.10-dev"}
+nimble-participant = { path = "../participant", version = "0.0.10-dev" }
 flood-rs = "0.0.10"

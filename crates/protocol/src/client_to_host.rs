@@ -9,6 +9,7 @@ use flood_rs::{Deserialize, ReadOctetStream, Serialize, WriteOctetStream};
 use io::ErrorKind;
 use log::trace;
 use nimble_participant::ParticipantId;
+use nimble_step_types::{LocalIndex, PredictedStep};
 use std::collections::{HashMap, HashSet};
 use std::fmt::Debug;
 use std::{fmt, io};
@@ -318,11 +319,6 @@ impl StepsAck {
     }
 }
 
-#[derive(Debug, Eq, PartialEq, Clone)]
-pub struct AuthoritativeStep<StepT: Serialize + Deserialize> {
-    pub authoritative_participants: HashMap<ParticipantId, StepT>,
-}
-
 #[derive(Debug, PartialEq, Clone)]
 pub struct SerializeAuthoritativeStepVectorForOneParticipants<StepT: Serialize + Deserialize> {
     pub delta_tick_id_from_range: u8,
@@ -396,11 +392,6 @@ impl<StepT: Serialize + Deserialize + std::fmt::Debug>
     }
 }
 
-#[derive(Debug, PartialEq, Clone)]
-pub struct PredictedStep<StepT> {
-    pub predicted_players: HashMap<LocalIndex, StepT>,
-}
-
 #[derive(Clone, Debug)]
 pub struct CombinedPredictedSteps<StepT> {
     pub first_tick: TickId,
@@ -463,8 +454,6 @@ impl<StepT: Serialize + Deserialize + Clone> Serialize for CombinedPredictedStep
         Ok(())
     }
 }
-
-type LocalIndex = u8;
 
 #[derive(Debug, Clone)]
 pub struct SerializePredictedStepsForAllPlayers<StepT: Serialize + Deserialize> {

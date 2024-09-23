@@ -3,7 +3,7 @@
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
 use crate::client_to_host::{
-    AuthoritativeStep, SerializeAuthoritativeStepRangeForAllParticipants,
+    SerializeAuthoritativeStepRangeForAllParticipants,
     SerializeAuthoritativeStepVectorForOneParticipants,
 };
 use crate::{ClientRequestId, SessionConnectionSecret};
@@ -12,6 +12,7 @@ use flood_rs::{Deserialize, ReadOctetStream, Serialize, WriteOctetStream};
 use io::ErrorKind;
 use log::trace;
 use nimble_participant::ParticipantId;
+use nimble_step_types::AuthoritativeStep;
 use std::collections::{HashMap, HashSet};
 use std::fmt::Debug;
 use std::io;

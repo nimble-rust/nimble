@@ -13,14 +13,15 @@ use nimble_client_connecting::{ConnectedInfo, ConnectingClient};
 use nimble_client_logic::logic::ClientLogic;
 use nimble_protocol::prelude::{HostToClientCommands, HostToClientOobCommands};
 use nimble_protocol::{ClientRequestId, Version};
+use nimble_step_types::AuthoritativeStep;
 use std::io;
 use std::io::{Error, ErrorKind};
 
 #[allow(clippy::large_enum_variant)]
 #[derive(Debug)]
 pub enum ClientPhase<
-    GameT: nimble_seer::SeerCallback<nimble_protocol::client_to_host::AuthoritativeStep<StepT>>
-        + nimble_assent::AssentCallback<nimble_protocol::client_to_host::AuthoritativeStep<StepT>>
+    GameT: nimble_seer::SeerCallback<AuthoritativeStep<StepT>>
+        + nimble_assent::AssentCallback<AuthoritativeStep<StepT>>
         + nimble_rectify::RectifyCallback,
     StepT: Clone + flood_rs::Deserialize + flood_rs::Serialize + std::fmt::Debug,
 > {
@@ -28,8 +29,8 @@ pub enum ClientPhase<
     Connected(ClientLogic<GameT, StepT>),
 }
 pub struct ClientStream<
-    GameT: nimble_seer::SeerCallback<nimble_protocol::client_to_host::AuthoritativeStep<StepT>>
-        + nimble_assent::AssentCallback<nimble_protocol::client_to_host::AuthoritativeStep<StepT>>
+    GameT: nimble_seer::SeerCallback<AuthoritativeStep<StepT>>
+        + nimble_assent::AssentCallback<AuthoritativeStep<StepT>>
         + nimble_rectify::RectifyCallback,
     StepT: Clone + flood_rs::Deserialize + flood_rs::Serialize + std::fmt::Debug,
 > {
@@ -40,8 +41,8 @@ pub struct ClientStream<
 }
 
 impl<
-        GameT: nimble_seer::SeerCallback<nimble_protocol::client_to_host::AuthoritativeStep<StepT>>
-            + nimble_assent::AssentCallback<nimble_protocol::client_to_host::AuthoritativeStep<StepT>>
+        GameT: nimble_seer::SeerCallback<AuthoritativeStep<StepT>>
+            + nimble_assent::AssentCallback<AuthoritativeStep<StepT>>
             + nimble_rectify::RectifyCallback,
         StepT: Clone + flood_rs::Deserialize + flood_rs::Serialize + std::fmt::Debug,
     > ClientStream<GameT, StepT>

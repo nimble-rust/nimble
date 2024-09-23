@@ -1,6 +1,6 @@
 [package]
 name = "nimble-client-logic"
-version = "0.0.2"
+version = "0.0.10-dev"
 edition = "2021"
 license = "MIT"
 description = "Nimble Client Logic"
@@ -9,18 +9,19 @@ repository = "https://github.com/nimble-rust/client"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-tick-id = "0.0.7"
-flood-rs = "0.0.10"
-log = "0.4.22"
-nimble-steps = { path = "../steps" }
-nimble-protocol = { path = "../protocol" }
-nimble-participant = { path = "../participant" }
-nimble-rectify = { path = "../rectify" }
-nimble-assent = { path = "../assent" }
-nimble-seer = { path = "../seer" }
-blob-stream = { path = "../blob-stream" }
-err-rs = { path = "../err-rs" }
+tick-id = "^0.0.7"
+flood-rs = "^0.0.10"
+log = "^0.4.22"
+nimble-steps = { path = "../steps", version = "0.0.10-dev" }
+nimble-protocol = { path = "../protocol", version = "0.0.10-dev" }
+nimble-participant = { path = "../participant", version = "0.0.10-dev" }
+nimble-rectify = { path = "../rectify", version = "0.0.10-dev" }
+nimble-assent = { path = "../assent", version = "0.0.10-dev" }
+nimble-seer = { path = "../seer", version = "0.0.10-dev" }
+blob-stream = "0.0.3"
+err-rs = "0.0.2"
+nimble-step-types = { path = "../nimble-step-types", version = "0.0.10-dev" }
 
 [dev-dependencies]
-test-log = "0.2.16"
-nimble-sample-step = { path = "../sample-step" }
+test-log = "^0.2.16"
+nimble-sample-step = { path = "../sample-step", version = "0.0.10-dev" }

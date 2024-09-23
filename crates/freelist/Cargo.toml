@@ -11,4 +11,4 @@ repository = "https://github.com/nimble-rust/nimble"
 [dependencies]
 
 [dev-dependencies]
-test-log = "0.2.16"
+test-log = "^0.2.16"

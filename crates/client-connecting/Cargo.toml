@@ -1,14 +1,14 @@
 [package]
 name = "nimble-client-connecting"
-version = "0.0.2"
+version = "0.0.10-dev"
 edition = "2021"
 license = "MIT"
 description = "Nimble Connecting Logic"
 repository = "https://github.com/nimble-rust/nimble"
 
 [dependencies]
-nimble-protocol = { path = "../protocol" }
-log = "0.4.22"
+nimble-protocol = { path = "../protocol", version = "0.0.10-dev" }
+log = "^0.4.22"
 
 [dev-dependencies]
-test-log = "0.2.16"
+test-log = "^0.2.16"
