@@ -115,7 +115,7 @@ impl<StateT: BufferDeserializer, StepT: Clone + Deserialize + Serialize + Debug>
                 first_tick: self
                     .outgoing_predicted_steps
                     .front_tick_id()
-                    .unwrap_or(TickId::default()),
+                    .unwrap_or_default(),
                 steps: self.outgoing_predicted_steps.to_vec(),
             },
         };
