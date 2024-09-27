@@ -5,6 +5,7 @@
 use crate::err::ClientErrorKind::Unexpected;
 use crate::err::{ClientError, ClientErrorKind};
 use err_rs::{ErrorLevel, ErrorLevelProvider};
+use flood_rs::BufferDeserializer;
 use flood_rs::{Deserialize, Serialize};
 use log::{debug, trace};
 use nimble_blob_stream::prelude::{FrontLogic, SenderToReceiverFrontCommands};
@@ -24,9 +25,9 @@ pub enum ClientLogicPhase {
 }
 
 #[derive(Debug)]
-pub struct ClientLogic<StepT: Clone + Deserialize + Serialize + Debug> {
+pub struct ClientLogic<StateT: BufferDeserializer, StepT: Clone + Deserialize + Serialize + Debug> {
     joining_player: Option<JoinGameRequest>,
-
+    state: Option<StateT>,
     tick_id: u32,
     debug_tick_id_to_send: u32,
     blob_stream_client: FrontLogic,
@@ -38,14 +39,18 @@ pub struct ClientLogic<StepT: Clone + Deserialize + Serialize + Debug> {
     last_download_state_request_id: u8,
 }
 
-impl<StepT: Clone + Deserialize + Serialize + Debug> Default for ClientLogic<StepT> {
+impl<StateT: BufferDeserializer, StepT: Clone + Deserialize + Serialize + Debug> Default
+    for ClientLogic<StateT, StepT>
+{
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl<StepT: Clone + Deserialize + Serialize + Debug> ClientLogic<StepT> {
-    pub fn new() -> ClientLogic<StepT> {
+impl<StateT: BufferDeserializer, StepT: Clone + Deserialize + Serialize + Debug>
+    ClientLogic<StateT, StepT>
+{
+    pub fn new() -> ClientLogic<StateT, StepT> {
         Self {
             joining_player: None,
             tick_id: 0,
@@ -55,6 +60,7 @@ impl<StepT: Clone + Deserialize + Serialize + Debug> ClientLogic<StepT> {
             last_download_state_request_id: 0x99,
             outgoing_predicted_steps: Steps::new(),
             incoming_authoritative_steps: Steps::new(),
+            state: None,
             phase: ClientLogicPhase::RequestDownloadState {
                 download_state_request_id: 0x99,
             },
@@ -106,7 +112,10 @@ impl<StepT: Clone + Deserialize + Serialize + Debug> ClientLogic<StepT> {
                 lost_steps_mask_after_last_received: 0,
             },
             combined_predicted_steps: CombinedPredictedSteps {
-                first_tick: self.outgoing_predicted_steps.front_tick_id().unwrap(),
+                first_tick: self
+                    .outgoing_predicted_steps
+                    .front_tick_id()
+                    .unwrap_or(TickId::default()),
                 steps: self.outgoing_predicted_steps.to_vec(),
             },
         };
@@ -149,6 +158,10 @@ impl<StepT: Clone + Deserialize + Serialize + Debug> ClientLogic<StepT> {
     fn on_join_game(&mut self, cmd: &JoinGameAccepted) -> Result<(), ClientErrorKind> {
         debug!("join game accepted: {:?}", cmd);
         Ok(())
+    }
+
+    pub fn state(&self) -> Option<&StateT> {
+        self.state.as_ref()
     }
 
     fn on_game_step(&mut self, cmd: &GameStepResponse<StepT>) -> Result<(), ClientErrorKind> {
@@ -205,6 +218,13 @@ impl<StepT: Clone + Deserialize + Serialize + Debug> ClientLogic<StepT> {
                 self.blob_stream_client
                     .receive(blob_stream_command)
                     .map_err(ClientErrorKind::FrontLogicErr)?;
+                if let Some(blob_ready) = self.blob_stream_client.blob() {
+                    debug!("blob stream received, phase is set to SendPredictedSteps");
+                    self.phase = ClientLogicPhase::SendPredictedSteps;
+                    let (deserialized, _) =
+                        StateT::deserialize(blob_ready).map_err(ClientErrorKind::IoErr)?;
+                    self.state = Some(deserialized);
+                }
             }
             _ => Err(ClientErrorKind::UnexpectedBlobChannelCommand)?,
         }

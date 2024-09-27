@@ -15,7 +15,7 @@ nimble-participant-steps = { path = "../participant-steps" , version = "0.0.12-d
 nimble-participant = { path = "../participant", version = "0.0.12-dev" }
 
 log = "^0.4.22"
-flood-rs = "^0.0.10"
+flood-rs = "^0.0.11"
 tick-id = "^0.0.7"
 
 [dev-dependencies]

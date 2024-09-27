@@ -3,7 +3,22 @@
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
 use flood_rs::prelude::*;
+use flood_rs::BufferDeserializer;
 use std::io;
+
+#[derive(Debug)]
+pub struct SampleState {
+    pub buf: Vec<u8>,
+}
+
+impl BufferDeserializer for SampleState {
+    fn deserialize(buf: &[u8]) -> std::io::Result<(Self, usize)>
+    where
+        Self: Sized,
+    {
+        Ok((Self { buf: buf.into() }, buf.len()))
+    }
+}
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum SampleStep {

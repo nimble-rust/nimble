@@ -2,11 +2,8 @@
 
 ## Release example
 ```console
-cargo release "" -v --workspace --no-publish --no-tag --no-confirm --no-push
+cargo release "0.0.0-dev" -v --workspace --no-publish --no-tag --no-push --execute
 ```
-
-use `--execute` to perform it.
-
 
 Publish order:
 

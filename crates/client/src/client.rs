@@ -7,7 +7,7 @@ use crate::datagram_parse::NimbleDatagramParser;
 use datagram::DatagramBuilder;
 use datagram_builder::serialize::serialize_datagrams;
 use flood_rs::prelude::{InOctetStream, OutOctetStream};
-use flood_rs::ReadOctetStream;
+use flood_rs::{BufferDeserializer, ReadOctetStream};
 use log::{debug, trace};
 use nimble_client_connecting::{ConnectedInfo, ConnectingClient};
 use nimble_client_logic::logic::ClientLogic;
@@ -18,21 +18,27 @@ use std::io::{Error, ErrorKind};
 
 #[allow(clippy::large_enum_variant)]
 #[derive(Debug)]
-pub enum ClientPhase<StepT: Clone + flood_rs::Deserialize + flood_rs::Serialize + std::fmt::Debug> {
+pub enum ClientPhase<
+    StateT: BufferDeserializer,
+    StepT: Clone + flood_rs::Deserialize + flood_rs::Serialize + std::fmt::Debug,
+> {
     Connecting(ConnectingClient),
-    Connected(ClientLogic<StepT>),
+    Connected(ClientLogic<StateT, StepT>),
 }
 pub struct ClientStream<
+    StateT: BufferDeserializer,
     StepT: Clone + flood_rs::Deserialize + flood_rs::Serialize + std::fmt::Debug,
 > {
     datagram_parser: NimbleDatagramParser,
     datagram_builder: NimbleDatagramBuilder,
-    phase: ClientPhase<StepT>,
+    phase: ClientPhase<StateT, StepT>,
     connected_info: Option<ConnectedInfo>,
 }
 
-impl<StepT: Clone + flood_rs::Deserialize + flood_rs::Serialize + std::fmt::Debug>
-    ClientStream<StepT>
+impl<
+        StateT: BufferDeserializer,
+        StepT: Clone + flood_rs::Deserialize + flood_rs::Serialize + std::fmt::Debug,
+    > ClientStream<StateT, StepT>
 {
     pub fn new(application_version: &Version) -> Self {
         let nimble_protocol_version = Version {
@@ -140,7 +146,14 @@ impl<StepT: Clone + flood_rs::Deserialize + flood_rs::Serialize + std::fmt::Debu
         }
     }
 
-    pub fn debug_phase(&self) -> &ClientPhase<StepT> {
+    pub fn state(&self) -> Option<&StateT> {
+        match &self.phase {
+            ClientPhase::Connected(ref client) => client.state(),
+            _ => None,
+        }
+    }
+
+    pub fn debug_phase(&self) -> &ClientPhase<StateT, StepT> {
         &self.phase
     }
 

@@ -8,7 +8,7 @@ repository = "https://github.com/nimble-rust/client"
 
 [dependencies]
 log = "^0.4.22"
-flood-rs = "^0.0.10"
+flood-rs = "^0.0.11"
 nimble-client-logic = { path = "../client-logic", version = "0.0.12-dev" }
 nimble-client-connecting = { path = "../client-connecting", version = "0.0.12-dev" }
 nimble-ordered-datagram = { path = "../ordered-datagram", version = "0.0.12-dev" }
@@ -16,7 +16,7 @@ datagram-pinger = { path = "../datagram-pinger", version = "0.0.12-dev" }
 datagram = "^0.0.2"
 nimble-protocol = { path = "../protocol", version = "0.0.12-dev" }
 nimble-step-types = { path = "../step-types", version = "0.0.12-dev" }
-datagram-builder = "^0.0.2"
+datagram-builder = "^0.0.3"
 hexify = "^0.0.1"
 
 [dev-dependencies]

@@ -412,7 +412,7 @@ impl<StepT: Serialize + Deserialize + Clone> Deserialize for CombinedPredictedSt
 }
 
 impl<StepT: Serialize + Deserialize + Clone> Serialize for CombinedPredictedSteps<StepT> {
-    fn serialize(&self, _: &mut impl WriteOctetStream) -> io::Result<()>
+    fn serialize(&self, stream: &mut impl WriteOctetStream) -> io::Result<()>
     where
         Self: Sized,
     {
@@ -451,7 +451,11 @@ impl<StepT: Serialize + Deserialize + Clone> Serialize for CombinedPredictedStep
             current_tick_id += 1;
         }
 
-        Ok(())
+        let all = SerializePredictedStepsForAllPlayers {
+            predicted_players: root_hash_map,
+        };
+
+        all.to_stream(stream)
     }
 }
 

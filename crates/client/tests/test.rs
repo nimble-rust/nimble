@@ -6,7 +6,7 @@ use hexify::assert_eq_slices;
 use log::info;
 use nimble_client::client::{ClientPhase, ClientStream};
 use nimble_protocol::Version;
-use nimble_sample_step::SampleStep;
+use nimble_sample_step::{SampleState, SampleStep};
 use nimble_steps::Step;
 use std::io;
 
@@ -19,7 +19,7 @@ fn connect_stream() -> io::Result<()> {
         patch: 2,
     };
 
-    let mut stream: ClientStream<Step<SampleStep>> =
+    let mut stream: ClientStream<SampleState, Step<SampleStep>> =
         ClientStream::new(&application_version);
 
     let octet_vector = stream.send()?;
@@ -153,17 +153,23 @@ fn connect_stream() -> io::Result<()> {
     
     let hopefully_ack_blob = stream.send()?;
 
+    /*
+        stream.write_u32(self.waiting_for_tick_id)?;
+        stream.write_u64(self.lost_steps_mask_after_last_received)?;
+
+        self.combined_predicted_steps.serialize(stream)?;
+     */
+    
     let expected_ack_blob_stream = &[
         // Header
         0x00, 0x03, // Sequence
         0x00, 0x00, // Client Time
         
         // Commands
-        0x04, // BlobStream client to host
-        0x02, // AckChunk
-        0x00, 0x00, // Transfer ID
-        0x00, 0x00, 0x00, 0x01, // Waiting for this chunk index
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Receive Mask
+        0x02, // Send Predicted steps
+        0x00, 0x00, 0x00, 0x00, // Waiting for Tick ID
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Receive Mask for steps
+        0x00, // number of player streams following 
     ];
     
     assert_eq_slices(&hopefully_ack_blob[0], expected_ack_blob_stream);

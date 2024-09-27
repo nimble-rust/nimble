@@ -2,7 +2,7 @@
  * Copyright (c) Peter Bjorklund. All rights reserved. https://github.com/nimble-rust/nimble
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
-use flood_rs::{Deserialize, Serialize};
+use flood_rs::{BufferDeserializer, Deserialize, Serialize};
 use log::trace;
 use nimble_client_logic::logic::ClientLogic;
 use nimble_host::logic::{ConnectionId, HostLogic};
@@ -11,7 +11,7 @@ use nimble_protocol::client_to_host::JoinGameType;
 use nimble_protocol::client_to_host::{JoinPlayerRequest, JoinPlayerRequests};
 use nimble_protocol::prelude::*;
 use nimble_protocol::ClientRequestId;
-use nimble_sample_game::{SampleGame, SampleStep};
+use nimble_sample_game::{SampleGame, SampleGameState, SampleStep};
 use nimble_steps::Step;
 use std::fmt::Debug;
 use std::time::Instant;
@@ -19,10 +19,10 @@ use tick_id::TickId;
 
 mod types;
 
-fn communicate<SampleStep: Clone + Deserialize + Debug + Eq + PartialEq>(
+fn communicate<SampleState: BufferDeserializer, SampleStep: Clone + Deserialize + Debug + Eq + PartialEq>(
     host: &mut HostLogic<Step<SampleStep>>,
     connection_id: ConnectionId,
-    client: &mut ClientLogic<Step<SampleStep>>,
+    client: &mut ClientLogic<SampleState, Step<SampleStep>>,
 ) where
     SampleStep: Serialize,
 {
@@ -59,7 +59,7 @@ fn client_host_integration() {
     let mut host = HostLogic::<Step<SampleStep>>::new(state);
     let connection = host.create_connection().expect("should create connection");
 
-    let mut client = ClientLogic::<Step<SampleStep>>::new();
+    let mut client = ClientLogic::<SampleGameState, Step<SampleStep>>::new();
     let joining_player = JoinPlayerRequest { local_index: 0 };
 
     let join_game_request = JoinGameRequest {

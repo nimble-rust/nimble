@@ -9,7 +9,7 @@ repository = "https://github.com/nimble-rust/nimble"
 
 [dependencies]
 bit-array-rs = "^0.0.3"
-flood-rs = "^0.0.10"
+flood-rs = "^0.0.11"
 log = "^0.4.22"
 err-rs = "^0.0.2"
 

@@ -1,5 +1,5 @@
 use flood_rs::prelude::{InOctetStream, OutOctetStream};
-use flood_rs::{Deserialize, ReadOctetStream, Serialize, WriteOctetStream};
+use flood_rs::{BufferDeserializer, Deserialize, ReadOctetStream, Serialize, WriteOctetStream};
 use log::info;
 use nimble_assent::AssentCallback;
 use nimble_rectify::RectifyCallback;
@@ -11,12 +11,12 @@ use std::io;
 pub use nimble_sample_step::SampleStep;
 
 #[derive(Default, Clone, Debug, Eq, PartialEq)]
-pub struct SampleState {
+pub struct SampleGameState {
     pub x: i32,
     pub y: i32,
 }
 
-impl SampleState {
+impl SampleGameState {
     pub fn update(&mut self, step: &AuthoritativeStep<Step<SampleStep>>) {
         for (participant_id, step) in &step.authoritative_participants {
             match &step {
@@ -54,14 +54,22 @@ impl SampleState {
     }
 }
 
-impl Serialize for SampleState {
+impl BufferDeserializer for SampleGameState {
+    fn deserialize(buf: &[u8]) -> io::Result<(Self, usize)> {
+        let mut in_stream = InOctetStream::new(buf);
+        let s = <SampleGameState as Deserialize>::deserialize(&mut in_stream)?;
+        Ok((s, in_stream.cursor.position() as usize))
+    }
+}
+
+impl Serialize for SampleGameState {
     fn serialize(&self, stream: &mut impl WriteOctetStream) -> io::Result<()> {
         stream.write_i32(self.x)?;
         stream.write_i32(self.y)
     }
 }
 
-impl Deserialize for SampleState {
+impl Deserialize for SampleGameState {
     fn deserialize(stream: &mut impl ReadOctetStream) -> io::Result<Self> {
         Ok(Self {
             x: stream.read_i32()?,
@@ -72,8 +80,8 @@ impl Deserialize for SampleState {
 
 #[derive(Default, Clone, Debug, Eq, PartialEq)]
 pub struct SampleGame {
-    pub predicted: SampleState,
-    pub authoritative: SampleState,
+    pub predicted: SampleGameState,
+    pub authoritative: SampleGameState,
 }
 
 impl SampleGame {
@@ -91,8 +99,8 @@ impl Serialize for SampleGame {
 impl Deserialize for SampleGame {
     fn deserialize(stream: &mut impl ReadOctetStream) -> io::Result<Self> {
         Ok(Self {
-            authoritative: SampleState::deserialize(stream)?,
-            predicted: SampleState::default(),
+            authoritative:  <SampleGameState as Deserialize>::deserialize(stream)?,
+            predicted: SampleGameState::default(),
         })
     }
 }

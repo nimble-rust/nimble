@@ -2,7 +2,7 @@
  * Copyright (c) Peter Bjorklund. All rights reserved. https://github.com/nimble-rust/nimble
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
-use flood_rs::{Deserialize, Serialize};
+use flood_rs::{BufferDeserializer, Deserialize, Serialize};
 use nimble_client_logic::err::ClientError;
 use nimble_client_logic::logic::ClientLogic;
 use nimble_participant::ParticipantId;
@@ -11,7 +11,7 @@ use nimble_protocol::host_to_client::{
     AuthoritativeStepRange, AuthoritativeStepRanges, GameStepResponse, GameStepResponseHeader,
 };
 use nimble_protocol::prelude::{ClientToHostCommands, HostToClientCommands};
-use nimble_sample_step::SampleStep;
+use nimble_sample_step::{SampleState, SampleStep};
 use nimble_step_types::{AuthoritativeStep, PredictedStep};
 use nimble_steps::Step::{Custom, Forced};
 use nimble_steps::{Step, StepInfo};
@@ -21,7 +21,7 @@ use tick_id::TickId;
 
 #[test_log::test]
 fn basic_logic() {
-    let mut client_logic = ClientLogic::<Step<SampleStep>>::new();
+    let mut client_logic = ClientLogic::<SampleState, Step<SampleStep>>::new();
 
     {
         let commands = client_logic.send();
@@ -36,13 +36,14 @@ fn basic_logic() {
     }
 }
 
-fn setup_logic<StepT: Clone + Deserialize + Serialize + Debug>() -> ClientLogic<StepT> {
-    ClientLogic::<StepT>::new()
+fn setup_logic<StateT: BufferDeserializer, StepT: Clone + Deserialize + Serialize + Debug>(
+) -> ClientLogic<StateT, StepT> {
+    ClientLogic::<StateT, StepT>::new()
 }
 
 #[test_log::test]
 fn send_steps() {
-    let mut client_logic = setup_logic::<Step<SampleStep>>();
+    let mut client_logic = setup_logic::<SampleState, Step<SampleStep>>();
 
     client_logic.add_predicted_step(PredictedStep {
         predicted_players: [(0, Custom(SampleStep::MoveRight(3)))].into(),
@@ -100,7 +101,7 @@ fn setup_sample_steps() -> AuthoritativeStepRanges<Step<SampleStep>> {
 }
 #[test_log::test]
 fn receive_authoritative_steps() -> Result<(), ClientError> {
-    let mut client_logic = setup_logic::<Step<SampleStep>>();
+    let mut client_logic = setup_logic::<SampleState, Step<SampleStep>>();
 
     // Create a GameStep command
     let response = GameStepResponse::<Step<SampleStep>> {
