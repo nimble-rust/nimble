@@ -6,7 +6,7 @@ use crate::client_to_host::{
     SerializeAuthoritativeStepRangeForAllParticipants,
     SerializeAuthoritativeStepVectorForOneParticipants,
 };
-use crate::{ClientRequestId, SessionConnectionSecret};
+use crate::{ClientRequestId, ServerConnectionId, SessionConnectionSecret};
 use flood_rs::{Deserialize, ReadOctetStream, Serialize, WriteOctetStream};
 use io::ErrorKind;
 use log::trace;
@@ -43,7 +43,7 @@ impl TryFrom<u8> for HostToClientCommand {
             0x0C => Ok(HostToClientCommand::BlobStreamChannel),
             _ => Err(io::Error::new(
                 ErrorKind::InvalidData,
-                format!("Unknown host to client command {}", value),
+                format!("Unknown host to client command {:X}", value),
             )),
         }
     }
@@ -88,6 +88,30 @@ impl DownloadGameStateResponse {
 #[derive(Debug, PartialEq)]
 pub struct GameStatePart {
     pub blob_stream_command: SenderToReceiverFrontCommands,
+}
+
+#[derive(Debug)]
+pub struct ConnectResponse {
+    pub flags: u8,
+    pub client_request_id: ClientRequestId,
+    pub server_connection_id: ServerConnectionId,
+}
+
+impl ConnectResponse {
+    pub fn to_stream(&self, stream: &mut impl WriteOctetStream) -> io::Result<()> {
+        stream.write_u8(self.flags)?;
+        stream.write_u8(self.client_request_id.0)?;
+        stream.write_u8(self.server_connection_id.0)?;
+        Ok(())
+    }
+
+    pub fn from_stream(stream: &mut impl ReadOctetStream) -> io::Result<Self> {
+        Ok(Self {
+            flags: stream.read_u8()?,
+            client_request_id: ClientRequestId(stream.read_u8()?),
+            server_connection_id: ServerConnectionId(stream.read_u8()?),
+        })
+    }
 }
 
 #[derive(Debug)]

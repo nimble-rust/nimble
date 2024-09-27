@@ -10,7 +10,7 @@ use err_rs::{ErrorLevel, ErrorLevelProvider};
 use flood_rs::prelude::{InOctetStream, OutOctetStream};
 use flood_rs::{BufferDeserializer, ReadOctetStream};
 use log::{debug, trace};
-use nimble_client_connecting::{ConnectedInfo, ConnectingClient};
+use nimble_client_connecting::ConnectingClient;
 use nimble_client_logic::err::ClientError;
 use nimble_client_logic::logic::ClientLogic;
 use nimble_ordered_datagram::DatagramOrderInError;
@@ -58,7 +58,6 @@ pub struct ClientStream<
     datagram_parser: NimbleDatagramParser,
     datagram_builder: NimbleDatagramBuilder,
     phase: ClientPhase<StateT, StepT>,
-    connected_info: Option<ConnectedInfo>,
 }
 
 impl<
@@ -77,7 +76,6 @@ impl<
         Self {
             datagram_parser: NimbleDatagramParser::new(),
             datagram_builder: NimbleDatagramBuilder::new(DATAGRAM_MAX_SIZE),
-            connected_info: None,
             phase: ClientPhase::Connecting(ConnectingClient::new(
                 client_request_id,
                 *application_version,
@@ -100,10 +98,8 @@ impl<
         connecting_client
             .receive(&command)
             .map_err(ClientStreamError::ClientConnectingErr)?;
-        if let Some(connected_info) = connecting_client.connected_info() {
-            debug!("connected! {connected_info:?}");
-            self.connected_info = Some(*connected_info);
-
+        if connecting_client.is_connected() {
+            debug!("connected!");
             self.phase = ClientPhase::Connected(ClientLogic::new());
         }
         Ok(())
@@ -203,9 +199,5 @@ impl<
 
     pub fn debug_phase(&self) -> &ClientPhase<StateT, StepT> {
         &self.phase
-    }
-
-    pub fn debug_connect_info(&self) -> Option<ConnectedInfo> {
-        self.connected_info
     }
 }

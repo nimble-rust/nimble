@@ -20,18 +20,13 @@ impl fmt::Display for ClientError {
     }
 }
 
-#[derive(Debug, Copy, Clone, Eq, PartialEq)]
-pub struct ConnectedInfo {
-    pub session_connection_secret: SessionConnectionSecret,
-}
-
 #[derive(Debug, PartialEq)]
 pub struct ConnectingClient {
     client_request_id: ClientRequestId,
     application_version: Version,
     nimble_version: Version,
-    connected_info: Option<ConnectedInfo>,
     sent_at_least_once: bool,
+    is_connected: bool,
 }
 
 impl ConnectingClient {
@@ -45,7 +40,7 @@ impl ConnectingClient {
             application_version,
             nimble_version,
             client_request_id,
-            connected_info: None,
+            is_connected: false,
             sent_at_least_once: false,
         }
     }
@@ -74,13 +69,8 @@ impl ConnectingClient {
                 cmd.response_to_request,
             ))?
         }
-        self.connected_info = Some(ConnectedInfo {
-            session_connection_secret: cmd.host_assigned_connection_secret,
-        });
-        info!(
-            "connected: session_secret: {:?}",
-            self.connected_info.unwrap()
-        );
+        self.is_connected = true;
+        info!("connected!");
         Ok(())
     }
 
@@ -96,7 +86,7 @@ impl ConnectingClient {
         self.client_request_id
     }
 
-    pub fn connected_info(&self) -> &Option<ConnectedInfo> {
-        &self.connected_info
+    pub fn is_connected(&self) -> bool {
+        self.is_connected
     }
 }

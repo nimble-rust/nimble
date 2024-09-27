@@ -239,13 +239,13 @@ impl<StateT: BufferDeserializer, StepT: Clone + Deserialize + Serialize + Debug>
             HostToClientCommands::JoinGame(ref join_game_response) => {
                 self.on_join_game(join_game_response)?
             }
-            HostToClientCommands::GameStep(game_step_response) => {
+            HostToClientCommands::GameStep(ref game_step_response) => {
                 self.on_game_step(game_step_response)?
             }
-            HostToClientCommands::DownloadGameState(download_response) => {
+            HostToClientCommands::DownloadGameState(ref download_response) => {
                 self.on_download_state_response(download_response)?
             }
-            HostToClientCommands::BlobStreamChannel(blob_stream_command) => {
+            HostToClientCommands::BlobStreamChannel(ref blob_stream_command) => {
                 self.on_blob_stream(blob_stream_command)?
             }
         }

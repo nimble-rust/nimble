@@ -107,8 +107,8 @@ impl SenderToReceiverFrontCommands {
 
 #[repr(u8)]
 enum ReceiverToSenderFrontCommand {
-    AckChunk = 0x02,
     AckStart = 0x03,
+    AckChunk = 0x04,
 }
 
 impl TryFrom<u8> for ReceiverToSenderFrontCommand {
@@ -116,8 +116,8 @@ impl TryFrom<u8> for ReceiverToSenderFrontCommand {
 
     fn try_from(value: u8) -> io::Result<Self> {
         match value {
-            0x02 => Ok(Self::AckChunk),
             0x03 => Ok(Self::AckStart),
+            0x04 => Ok(Self::AckChunk),
             _ => Err(io::Error::new(
                 ErrorKind::InvalidData,
                 format!("Unknown command {value}"),

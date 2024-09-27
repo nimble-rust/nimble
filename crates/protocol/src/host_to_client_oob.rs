@@ -2,7 +2,7 @@
  * Copyright (c) Peter Bjorklund. All rights reserved. https://github.com/nimble-rust/nimble
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
-use crate::{ClientRequestId, SessionConnectionSecret};
+use crate::ClientRequestId;
 use flood_rs::{Deserialize, ReadOctetStream, Serialize, WriteOctetStream};
 use std::io;
 use std::io::ErrorKind;
@@ -29,7 +29,6 @@ impl TryFrom<u8> for HostToClientOobCommand {
 pub struct ConnectionAccepted {
     pub flags: u8,
     pub response_to_request: ClientRequestId,
-    pub host_assigned_connection_secret: SessionConnectionSecret,
 }
 
 #[derive(Debug)]
@@ -41,7 +40,6 @@ impl ConnectionAccepted {
     pub fn to_stream(&self, stream: &mut impl WriteOctetStream) -> io::Result<()> {
         stream.write_u8(self.flags)?;
         self.response_to_request.serialize(stream)?;
-        self.host_assigned_connection_secret.to_stream(stream)?;
         Ok(())
     }
 
@@ -49,7 +47,6 @@ impl ConnectionAccepted {
         Ok(Self {
             flags: stream.read_u8()?,
             response_to_request: ClientRequestId::deserialize(stream)?,
-            host_assigned_connection_secret: SessionConnectionSecret::from_stream(stream)?,
         })
     }
 }

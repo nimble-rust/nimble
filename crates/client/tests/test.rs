@@ -57,8 +57,6 @@ fn connect_stream() -> Result<(), ClientStreamError> {
         0x00, // Flags
         // Client Request ID.
         0x00,
-        // Connection Secret
-        0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
     ];
 
     stream.receive(&connect_response_from_host)?;
@@ -69,15 +67,6 @@ fn connect_stream() -> Result<(), ClientStreamError> {
     info!("phase {phase:?}");
 
     assert!(matches!(phase, &ClientPhase::Connected(_)));
-
-    let connected_info = stream
-        .debug_connect_info()
-        .expect("connect info should be available when connected");
-
-    assert_eq!(
-        connected_info.session_connection_secret.value,
-        0x0001020304050607
-    );
 
     let datagrams_request_download_state = stream.send()?;
     assert_eq!(datagrams_request_download_state.len(), 1);
