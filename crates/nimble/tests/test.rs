@@ -19,7 +19,10 @@ use tick_id::TickId;
 
 mod types;
 
-fn communicate<SampleState: BufferDeserializer, SampleStep: Clone + Deserialize + Debug + Eq + PartialEq>(
+fn communicate<
+    SampleState: BufferDeserializer,
+    SampleStep: Clone + Deserialize + Debug + Eq + PartialEq,
+>(
     host: &mut HostLogic<Step<SampleStep>>,
     connection_id: ConnectionId,
     client: &mut ClientLogic<SampleState, Step<SampleStep>>,

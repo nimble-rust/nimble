@@ -99,7 +99,7 @@ impl Serialize for SampleGame {
 impl Deserialize for SampleGame {
     fn deserialize(stream: &mut impl ReadOctetStream) -> io::Result<Self> {
         Ok(Self {
-            authoritative:  <SampleGameState as Deserialize>::deserialize(stream)?,
+            authoritative: <SampleGameState as Deserialize>::deserialize(stream)?,
             predicted: SampleGameState::default(),
         })
     }
