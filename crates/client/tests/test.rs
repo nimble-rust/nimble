@@ -4,15 +4,13 @@
  */
 use hexify::assert_eq_slices;
 use log::info;
-use nimble_client::client::{ClientPhase, ClientStream};
+use nimble_client::client::{ClientPhase, ClientStream, ClientStreamError};
 use nimble_protocol::Version;
 use nimble_sample_step::{SampleState, SampleStep};
 use nimble_steps::Step;
-use std::io;
 
 #[test_log::test]
-#[rustfmt::skip]
-fn connect_stream() -> io::Result<()> {
+fn connect_stream() -> Result<(), ClientStreamError> {
     let application_version = Version {
         major: 0,
         minor: 1,
@@ -25,6 +23,7 @@ fn connect_stream() -> io::Result<()> {
     let octet_vector = stream.send()?;
     assert_eq!(octet_vector.len(), 1);
 
+    #[rustfmt::skip]
     assert_eq!(
         octet_vector[0],
         &[
@@ -45,6 +44,8 @@ fn connect_stream() -> io::Result<()> {
     info!("phase {phase:?}");
 
     assert!(matches!(phase, &ClientPhase::Connecting(_)));
+
+    #[rustfmt::skip]
 
     let connect_response_from_host = [
         // Header
@@ -82,17 +83,21 @@ fn connect_stream() -> io::Result<()> {
     assert_eq!(datagrams_request_download_state.len(), 1);
     let datagram_request_download_state = &datagrams_request_download_state[0];
 
+    #[rustfmt::skip]
+
     let expected_request_download_state_octets = &[
         0x00, 0x01, // Ordered datagram Sequence number
         0x00, 0x00,  // Client Time
         0x03, // Download Game State
         0x99, // Download Request id, //TODO: Hardcoded, but should not be
     ];
+
     assert_eq_slices(
         datagram_request_download_state,
-        expected_request_download_state_octets
+        expected_request_download_state_octets,
     );
 
+    #[rustfmt::skip]
 
     let feed_request_download_response = &[
         // Header
@@ -123,6 +128,8 @@ fn connect_stream() -> io::Result<()> {
 
     let start_transfer_octets = &datagrams_request_step[0];
 
+    #[rustfmt::skip]
+
     let expected_start_transfer = &[
         // Header
         0x00, 0x02, // Datagram sequence number
@@ -135,6 +142,7 @@ fn connect_stream() -> io::Result<()> {
     ];
     assert_eq_slices(start_transfer_octets, expected_start_transfer);
 
+    #[rustfmt::skip]
     let feed_complete_download = &[
         // Header
         0x00, 0x02, // Sequence
@@ -150,16 +158,18 @@ fn connect_stream() -> io::Result<()> {
     ];
 
     stream.receive(feed_complete_download)?;
-    
+
     let hopefully_ack_blob = stream.send()?;
 
     /*
-        stream.write_u32(self.waiting_for_tick_id)?;
-        stream.write_u64(self.lost_steps_mask_after_last_received)?;
+       stream.write_u32(self.waiting_for_tick_id)?;
+       stream.write_u64(self.lost_steps_mask_after_last_received)?;
 
-        self.combined_predicted_steps.serialize(stream)?;
-     */
-    
+       self.combined_predicted_steps.serialize(stream)?;
+    */
+
+    #[rustfmt::skip]
+
     let expected_ack_blob_stream = &[
         // Header
         0x00, 0x03, // Sequence
@@ -169,15 +179,15 @@ fn connect_stream() -> io::Result<()> {
         0x02, // Send Predicted steps
         0x00, 0x00, 0x00, 0x00, // Waiting for Tick ID
         0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Receive Mask for steps
-        0x00, // number of player streams following 
+        0x00, // number of player streams following
     ];
-    
+
     assert_eq_slices(&hopefully_ack_blob[0], expected_ack_blob_stream);
-    
-        /*
-                self.transfer_id.to_stream(stream)?;
-        self.data.to_stream(stream)?;
-         */
+
+    /*
+            self.transfer_id.to_stream(stream)?;
+    self.data.to_stream(stream)?;
+     */
 
     /* TODO
     let expected_steps_request_octets = &[

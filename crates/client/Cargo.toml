@@ -18,6 +18,7 @@ nimble-protocol = { path = "../protocol", version = "0.0.12-dev" }
 nimble-step-types = { path = "../step-types", version = "0.0.12-dev" }
 datagram-builder = "^0.0.3"
 hexify = "^0.0.1"
+err-rs = "^0.0.2"
 
 [dev-dependencies]
 nimble-sample-step = { path = "../sample-step", version = "0.0.12-dev" }

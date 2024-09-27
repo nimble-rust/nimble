@@ -3,7 +3,6 @@
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
 use flood_rs::{ReadOctetStream, WriteOctetStream};
-use std::io::ErrorKind;
 use std::{fmt, io};
 
 #[derive(Debug, Default, Copy, Clone)]
@@ -75,14 +74,27 @@ impl OrderedOut {
     }
 }
 
+#[derive(Debug)]
+pub enum DatagramOrderInError {
+    IoError(io::Error),
+    WrongOrder {
+        expected: DatagramId,
+        received: DatagramId,
+    },
+}
+
 #[derive(Debug, Default, Clone, Copy)]
 pub struct OrderedIn {
     expected_sequence: DatagramId,
 }
 
 impl OrderedIn {
-    pub fn read_and_verify(&mut self, stream: &mut impl ReadOctetStream) -> io::Result<()> {
-        let potential_expected_or_successor = DatagramId::from_stream(stream)?;
+    pub fn read_and_verify(
+        &mut self,
+        stream: &mut impl ReadOctetStream,
+    ) -> Result<(), DatagramOrderInError> {
+        let potential_expected_or_successor =
+            DatagramId::from_stream(stream).map_err(DatagramOrderInError::IoError)?;
 
         if self
             .expected_sequence
@@ -91,13 +103,10 @@ impl OrderedIn {
             self.expected_sequence = potential_expected_or_successor.next();
             Ok(())
         } else {
-            Err(io::Error::new(
-                ErrorKind::InvalidData,
-                format!(
-                    "wrong datagram order. expected {} but received {}",
-                    self.expected_sequence, potential_expected_or_successor
-                ),
-            ))
+            Err(DatagramOrderInError::WrongOrder {
+                received: potential_expected_or_successor,
+                expected: self.expected_sequence,
+            })
         }
     }
 }

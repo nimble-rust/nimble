@@ -5,8 +5,7 @@
 use datagram_pinger::ClientTime;
 use flood_rs::prelude::InOctetStream;
 use flood_rs::Deserialize;
-use nimble_ordered_datagram::OrderedIn;
-use std::io;
+use nimble_ordered_datagram::{DatagramOrderInError, OrderedIn};
 
 pub struct NimbleDatagramParser {
     ordered_in: OrderedIn,
@@ -25,10 +24,14 @@ impl NimbleDatagramParser {
         }
     }
 
-    pub fn parse(&mut self, datagram: &[u8]) -> io::Result<(DatagramHeader, InOctetStream)> {
+    pub fn parse(
+        &mut self,
+        datagram: &[u8],
+    ) -> Result<(DatagramHeader, InOctetStream), DatagramOrderInError> {
         let mut in_stream = InOctetStream::new(datagram);
         self.ordered_in.read_and_verify(&mut in_stream)?;
-        let client_time = ClientTime::deserialize(&mut in_stream)?;
+        let client_time =
+            ClientTime::deserialize(&mut in_stream).map_err(DatagramOrderInError::IoError)?;
 
         let datagram_type = DatagramHeader {
             client_time,

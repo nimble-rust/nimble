@@ -4,17 +4,43 @@
  */
 use crate::datagram_build::NimbleDatagramBuilder;
 use crate::datagram_parse::NimbleDatagramParser;
-use datagram::DatagramBuilder;
+use datagram::{DatagramBuilder, DatagramError};
 use datagram_builder::serialize::serialize_datagrams;
+use err_rs::{ErrorLevel, ErrorLevelProvider};
 use flood_rs::prelude::{InOctetStream, OutOctetStream};
 use flood_rs::{BufferDeserializer, ReadOctetStream};
 use log::{debug, trace};
 use nimble_client_connecting::{ConnectedInfo, ConnectingClient};
+use nimble_client_logic::err::ClientError;
 use nimble_client_logic::logic::ClientLogic;
+use nimble_ordered_datagram::DatagramOrderInError;
 use nimble_protocol::prelude::{HostToClientCommands, HostToClientOobCommands};
 use nimble_protocol::{ClientRequestId, Version};
-use std::io;
-use std::io::{Error, ErrorKind};
+
+#[derive(Debug)]
+pub enum ClientStreamError {
+    Unexpected(String),
+    IoErr(std::io::Error),
+    ClientErr(ClientError),
+    ClientConnectingErr(nimble_client_connecting::ClientError),
+    DatagramError(DatagramError),
+    DatagramOrderError(DatagramOrderInError),
+    WrongPhase,
+}
+
+impl ErrorLevelProvider for ClientStreamError {
+    fn error_level(&self) -> ErrorLevel {
+        match self {
+            ClientStreamError::Unexpected(_) => ErrorLevel::Info,
+            ClientStreamError::IoErr(_) => ErrorLevel::Info,
+            ClientStreamError::ClientErr(_) => ErrorLevel::Info,
+            ClientStreamError::ClientConnectingErr(_) => ErrorLevel::Info,
+            ClientStreamError::DatagramError(_) => ErrorLevel::Info,
+            ClientStreamError::DatagramOrderError(_) => ErrorLevel::Info,
+            ClientStreamError::WrongPhase => ErrorLevel::Info,
+        }
+    }
+}
 
 #[allow(clippy::large_enum_variant)]
 #[derive(Debug)]
@@ -60,16 +86,20 @@ impl<
         }
     }
 
-    fn connecting_receive(&mut self, mut in_octet_stream: InOctetStream) -> io::Result<()> {
+    fn connecting_receive(
+        &mut self,
+        mut in_octet_stream: InOctetStream,
+    ) -> Result<(), ClientStreamError> {
         let connecting_client = match self.phase {
             ClientPhase::Connecting(ref mut connecting_client) => connecting_client,
-            _ => Err(Error::new(ErrorKind::InvalidData, "bad phase"))?,
+            _ => Err(ClientStreamError::WrongPhase)?,
         };
 
-        let command = HostToClientOobCommands::from_stream(&mut in_octet_stream)?;
+        let command = HostToClientOobCommands::from_stream(&mut in_octet_stream)
+            .map_err(ClientStreamError::IoErr)?;
         connecting_client
             .receive(&command)
-            .map_err(|err| Error::new(ErrorKind::InvalidData, err.to_string()))?;
+            .map_err(ClientStreamError::ClientConnectingErr)?;
         if let Some(connected_info) = connecting_client.connected_info() {
             debug!("connected! {connected_info:?}");
             self.connected_info = Some(*connected_info);
@@ -79,67 +109,85 @@ impl<
         Ok(())
     }
 
-    fn connecting_receive_front(&mut self, payload: &[u8]) -> io::Result<()> {
-        let (_, in_stream) = self.datagram_parser.parse(payload)?;
+    fn connecting_receive_front(&mut self, payload: &[u8]) -> Result<(), ClientStreamError> {
+        let (_, in_stream) = self
+            .datagram_parser
+            .parse(payload)
+            .map_err(ClientStreamError::DatagramOrderError)?;
         self.connecting_receive(in_stream)
     }
 
-    fn connected_receive(&mut self, in_stream: &mut InOctetStream) -> io::Result<()> {
+    fn connected_receive(
+        &mut self,
+        in_stream: &mut InOctetStream,
+    ) -> Result<(), ClientStreamError> {
         let logic = match self.phase {
             ClientPhase::Connected(ref mut logic) => logic,
-            _ => Err(Error::new(ErrorKind::InvalidData, "bad phase"))?,
+            _ => Err(ClientStreamError::WrongPhase)?,
         };
         while !in_stream.has_reached_end() {
-            let cmd = HostToClientCommands::from_stream(in_stream)?;
+            let cmd =
+                HostToClientCommands::from_stream(in_stream).map_err(ClientStreamError::IoErr)?;
             trace!("connected_receive {cmd:?}");
             logic
                 .receive_cmd(&cmd)
-                .map_err(|err| Error::new(ErrorKind::InvalidData, err.to_string()))?;
+                .map_err(|err| ClientStreamError::ClientErr(ClientError::Single(err)))?;
         }
         Ok(())
     }
 
-    fn connected_receive_front(&mut self, payload: &[u8]) -> io::Result<()> {
-        let (datagram_header, mut in_stream) = self.datagram_parser.parse(payload)?;
+    fn connected_receive_front(&mut self, payload: &[u8]) -> Result<(), ClientStreamError> {
+        let (datagram_header, mut in_stream) = self
+            .datagram_parser
+            .parse(payload)
+            .map_err(ClientStreamError::DatagramOrderError)?;
 
         // TODO: use connection_id from DatagramType::connection_id
         trace!("connection: client time {:?}", datagram_header.client_time);
         self.connected_receive(&mut in_stream)
     }
 
-    pub fn receive(&mut self, payload: &[u8]) -> io::Result<()> {
+    pub fn receive(&mut self, payload: &[u8]) -> Result<(), ClientStreamError> {
         match &mut self.phase {
             ClientPhase::Connecting(_) => self.connecting_receive_front(payload),
             ClientPhase::Connected(_) => self.connected_receive_front(payload),
         }
     }
 
-    fn connecting_send_front(&mut self) -> io::Result<Vec<u8>> {
+    fn connecting_send_front(&mut self) -> Result<Vec<u8>, ClientStreamError> {
         let connecting_client = match &mut self.phase {
             ClientPhase::Connecting(ref mut connecting_client) => connecting_client,
-            _ => Err(io::Error::new(ErrorKind::InvalidData, "illegal state"))?,
+            _ => Err(ClientStreamError::WrongPhase)?,
         };
         let request = connecting_client.send();
         let mut out_stream = OutOctetStream::new();
-        request.to_stream(&mut out_stream)?;
+        request
+            .to_stream(&mut out_stream)
+            .map_err(ClientStreamError::IoErr)?;
 
-        self.datagram_builder.clear()?;
+        self.datagram_builder
+            .clear()
+            .map_err(ClientStreamError::IoErr)?;
         self.datagram_builder
             .push(out_stream.octets().as_slice())
-            .map_err(|err| Error::new(ErrorKind::InvalidData, err.to_string()))?;
-        Ok(self.datagram_builder.finalize()?.to_vec())
+            .map_err(ClientStreamError::DatagramError)?;
+        Ok(self
+            .datagram_builder
+            .finalize()
+            .map_err(ClientStreamError::IoErr)?
+            .to_vec())
     }
 
-    fn connected_send_front(&mut self) -> io::Result<Vec<Vec<u8>>> {
+    fn connected_send_front(&mut self) -> Result<Vec<Vec<u8>>, ClientStreamError> {
         let client_logic = match &mut self.phase {
             ClientPhase::Connected(ref mut client_logic) => client_logic,
-            _ => Err(io::Error::new(ErrorKind::InvalidData, "illegal state"))?,
+            _ => Err(ClientStreamError::WrongPhase)?,
         };
         let commands = client_logic.send();
-        serialize_datagrams(commands, &mut self.datagram_builder)
+        serialize_datagrams(commands, &mut self.datagram_builder).map_err(ClientStreamError::IoErr)
     }
 
-    pub fn send(&mut self) -> io::Result<Vec<Vec<u8>>> {
+    pub fn send(&mut self) -> Result<Vec<Vec<u8>>, ClientStreamError> {
         match &mut self.phase {
             ClientPhase::Connecting(_) => Ok(vec![self.connecting_send_front()?]),
             ClientPhase::Connected(_) => self.connected_send_front(),
