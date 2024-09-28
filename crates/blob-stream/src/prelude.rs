@@ -2,7 +2,6 @@
  * Copyright (c) Peter Bjorklund. All rights reserved. https://github.com/nimble-rust/nimble
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
-
 //! A module that re-exports commonly used items for convenience.
 //!
 //! The `prelude` module provides easy access to commonly used types, structs, and enums across
