@@ -21,6 +21,8 @@ hexify = "^0.0.3"
 err-rs = "^0.0.2"
 tick-id = "^0.0.7"
 nimble-steps = { path = "../steps", version = "0.0.12-dev" }
+seq-map = "^0.0.1"
+
 
 [dev-dependencies]
 nimble-sample-step = { path = "../sample-step", version = "0.0.12-dev" }

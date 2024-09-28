@@ -8,10 +8,11 @@ use log::{info, trace};
 use nimble_client::client::{ClientPhase, ClientStream, ClientStreamError};
 use nimble_protocol::Version;
 use nimble_sample_step::{SampleState, SampleStep};
-use nimble_step_types::{IndexMap, LocalIndex, PredictedStep};
+use nimble_step_types::{LocalIndex, PredictedStep};
 use nimble_steps::Step;
 use rand::prelude::StdRng;
 use rand::{Rng, RngCore, SeedableRng};
+use seq_map::SeqMap;
 use std::collections::HashSet;
 use tick_id::TickId;
 
@@ -47,7 +48,6 @@ fn connect<
     assert!(matches!(phase, &ClientPhase::Connecting(_)));
 
     #[rustfmt::skip]
-
     let connect_response_from_host = [
         // Header
         0x00, 0x00, // Datagram sequence
@@ -175,11 +175,6 @@ fn connect_stream() -> Result<(), ClientStreamError> {
 
     download_state(&mut stream)?;
 
-    /*
-            self.transfer_id.to_stream(stream)?;
-    self.data.to_stream(stream)?;
-     */
-
     Ok(())
 }
 
@@ -301,7 +296,7 @@ fn create_predicted_steps<StepT: Clone>(
 
     let mut predicted_steps_vector = Vec::with_capacity(longest_steps_vector);
     for result_index in 0..longest_steps_vector {
-        let mut predicted_players: IndexMap<LocalIndex, StepT> = IndexMap::new();
+        let mut predicted_players: SeqMap<LocalIndex, StepT> = SeqMap::new();
         for (local_index, steps_vector) in predicted_steps_for_all_players.iter() {
             if result_index >= steps_vector.len() {
                 continue;
@@ -328,13 +323,20 @@ fn feed_garbled() -> Result<(), ClientStreamError> {
 
     let mut stream: ClientStream<SampleState, Step<SampleStep>> =
         ClientStream::new(&application_version);
-    let mut rng = StdRng::seed_from_u64(0x4399F00D);
+    let mut rng = StdRng::seed_from_u64(0x1199F00D);
 
-    for index in 0..200 {
+    stream.send()?;
+
+    for index in 0u16..2000 {
         let length = rng.gen_range(10..=1200);
-        let mut random_octets = vec![0u8; length]; // Initialize a vector with the random length
+        let mut random_octets = vec![0u8; length];
         rng.fill_bytes(&mut random_octets);
-        random_octets[0..4].copy_from_slice(&[0x00, index as u8, 0x00, 0x00]);
+        random_octets[0..4].copy_from_slice(&[
+            ((index >> 8) & 0xff).try_into().unwrap(),
+            (index & 0xff) as u8,
+            0x00,
+            0x00,
+        ]);
         let result = stream.receive(&random_octets).err().unwrap();
         trace!("received {result:?}");
     }

@@ -9,7 +9,8 @@ use io::ErrorKind;
 use log::trace;
 use nimble_blob_stream::prelude::ReceiverToSenderFrontCommands;
 use nimble_participant::ParticipantId;
-use nimble_step_types::{IndexMap, LocalIndex, PredictedStep};
+use nimble_step_types::{LocalIndex, PredictedStep};
+use seq_map::SeqMap;
 use std::collections::HashSet;
 use std::fmt::Debug;
 use std::{fmt, io};
@@ -328,7 +329,7 @@ pub struct SerializeAuthoritativeStepVectorForOneParticipants<StepT: Serialize +
 #[derive(Debug, PartialEq, Clone)]
 pub struct SerializeAuthoritativeStepRangeForAllParticipants<StepT: Serialize + Deserialize> {
     pub authoritative_participants:
-        IndexMap<ParticipantId, SerializeAuthoritativeStepVectorForOneParticipants<StepT>>,
+        SeqMap<ParticipantId, SerializeAuthoritativeStepVectorForOneParticipants<StepT>>,
 }
 
 impl<StepT: Serialize + Deserialize + std::fmt::Debug>
@@ -359,7 +360,7 @@ impl<StepT: Serialize + Deserialize + std::fmt::Debug>
 
     pub fn deserialize_with_len(stream: &mut impl ReadOctetStream) -> io::Result<Self> {
         let required_participant_count_in_range = stream.read_u8()?;
-        let mut authoritative_participants = IndexMap::new();
+        let mut authoritative_participants = SeqMap::new();
         for _ in 0..required_participant_count_in_range {
             let participant_id = ParticipantId::from_stream(stream)?;
             let delta_tick_id_from_range = stream.read_u8()?;
@@ -428,7 +429,7 @@ impl<StepT: Serialize + Deserialize + Clone> Serialize for CombinedPredictedStep
         sorted_unique_ids.sort();
 
         let mut root_hash_map =
-            IndexMap::<LocalIndex, SerializePredictedStepsVectorForOnePlayer<StepT>>::new();
+            SeqMap::<LocalIndex, SerializePredictedStepsVectorForOnePlayer<StepT>>::new();
 
         for local_index in sorted_unique_ids {
             let vector_for_one_player = SerializePredictedStepsVectorForOnePlayer::<StepT> {
@@ -465,7 +466,7 @@ impl<StepT: Serialize + Deserialize + Clone> Serialize for CombinedPredictedStep
 
 #[derive(Debug, Clone)]
 pub struct SerializePredictedStepsForAllPlayers<StepT: Serialize + Deserialize> {
-    pub predicted_players: IndexMap<LocalIndex, SerializePredictedStepsVectorForOnePlayer<StepT>>,
+    pub predicted_players: SeqMap<LocalIndex, SerializePredictedStepsVectorForOnePlayer<StepT>>,
 }
 
 impl<StepT: Serialize + Deserialize> SerializePredictedStepsForAllPlayers<StepT> {
@@ -483,7 +484,7 @@ impl<StepT: Serialize + Deserialize> SerializePredictedStepsForAllPlayers<StepT>
     pub fn from_stream(stream: &mut impl ReadOctetStream) -> io::Result<Self> {
         let player_count = stream.read_u8()?;
 
-        let mut players_vector = IndexMap::new();
+        let mut players_vector = SeqMap::new();
 
         for _ in 0..player_count {
             let predicted_steps_for_one_player =

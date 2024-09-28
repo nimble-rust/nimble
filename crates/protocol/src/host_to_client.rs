@@ -12,7 +12,8 @@ use io::ErrorKind;
 use log::trace;
 use nimble_blob_stream::prelude::SenderToReceiverFrontCommands;
 use nimble_participant::ParticipantId;
-use nimble_step_types::{AuthoritativeStep, IndexMap};
+use nimble_step_types::AuthoritativeStep;
+use seq_map::SeqMap;
 use std::collections::HashSet;
 use std::fmt::Debug;
 use std::io;
@@ -349,7 +350,7 @@ impl<StepT: Deserialize + Serialize + Debug + Clone> Serialize for Authoritative
             let delta_steps_from_previous = (auth_range.tick_id - tick_id) as u8;
             tick_id = auth_range.tick_id + auth_range.authoritative_steps.len() as u32;
 
-            let mut hash_map = IndexMap::<
+            let mut hash_map = SeqMap::<
                 ParticipantId,
                 SerializeAuthoritativeStepVectorForOneParticipants<StepT>,
             >::new();
@@ -441,7 +442,7 @@ impl<StepT: Deserialize + Serialize + Debug + Clone> Deserialize
             let mut auth_step_range_vec = Vec::<AuthoritativeStep<StepT>>::new();
             for _ in 0..max_vector_length {
                 auth_step_range_vec.push(AuthoritativeStep::<StepT> {
-                    authoritative_participants: IndexMap::new(),
+                    authoritative_participants: SeqMap::new(),
                 })
             }
 

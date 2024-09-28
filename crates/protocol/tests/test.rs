@@ -16,7 +16,8 @@ use nimble_protocol::host_to_client::{
 use nimble_protocol::{ClientRequestId, Version};
 
 use nimble_sample_step::SampleStep;
-use nimble_step_types::{AuthoritativeStep, IndexMap};
+use nimble_step_types::AuthoritativeStep;
+use seq_map::SeqMap;
 use std::io;
 use tick_id::TickId;
 
@@ -62,7 +63,7 @@ fn check_connect() {
 #[test_log::test]
 fn check_authoritative() -> io::Result<()> {
     // Prepare all steps
-    let mut range_for_all_participants = IndexMap::<
+    let mut range_for_all_participants = SeqMap::<
         ParticipantId,
         SerializeAuthoritativeStepVectorForOneParticipants<SampleStep>,
     >::new();
@@ -167,7 +168,7 @@ fn create_authoritative_step_range() -> AuthoritativeStepRange<SampleStep> {
 
     let mut authoritative_steps = Vec::new();
     for index in 0..3 {
-        let mut authoritative_participants = IndexMap::new();
+        let mut authoritative_participants = SeqMap::new();
         for participant_index in 0..PARTICIPANT_COUNT {
             let sample_step = &steps_per_participant[participant_index][index];
             authoritative_participants

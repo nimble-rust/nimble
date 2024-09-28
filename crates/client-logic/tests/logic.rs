@@ -12,9 +12,10 @@ use nimble_protocol::host_to_client::{
 };
 use nimble_protocol::prelude::{ClientToHostCommands, HostToClientCommands};
 use nimble_sample_step::{SampleState, SampleStep};
-use nimble_step_types::{AuthoritativeStep, IndexMap, PredictedStep};
+use nimble_step_types::{AuthoritativeStep, PredictedStep};
 use nimble_steps::Step::{Custom, Forced};
 use nimble_steps::{Step, StepInfo, StepsError};
+use seq_map::SeqMap;
 use std::fmt::Debug;
 use tick_id::TickId;
 
@@ -83,7 +84,7 @@ fn setup_sample_steps() -> AuthoritativeStepRanges<Step<SampleStep>> {
 
     let mut auth_steps = Vec::<AuthoritativeStep<Step<SampleStep>>>::new();
     for index in 0..3 {
-        let mut hash_map = IndexMap::<ParticipantId, Step<SampleStep>>::new();
+        let mut hash_map = SeqMap::<ParticipantId, Step<SampleStep>>::new();
         hash_map
             .insert(first_participant_id, first_steps[index].clone())
             .expect("first participant should be unique");
@@ -138,7 +139,7 @@ fn receive_authoritative_steps() -> Result<(), ClientError> {
     let first_participant_id = ParticipantId(255);
     let second_participant_id = ParticipantId(1);
 
-    let mut expected_hash_map = IndexMap::<ParticipantId, Step<SampleStep>>::new();
+    let mut expected_hash_map = SeqMap::<ParticipantId, Step<SampleStep>>::new();
     expected_hash_map
         .insert(first_participant_id, Custom(SampleStep::MoveLeft(-10)))
         .expect("should be unique");
