@@ -16,8 +16,7 @@ use nimble_protocol::host_to_client::{
 use nimble_protocol::{ClientRequestId, Version};
 
 use nimble_sample_step::SampleStep;
-use nimble_step_types::AuthoritativeStep;
-use std::collections::HashMap;
+use nimble_step_types::{AuthoritativeStep, IndexMap};
 use std::io;
 use tick_id::TickId;
 
@@ -63,7 +62,7 @@ fn check_connect() {
 #[test_log::test]
 fn check_authoritative() -> io::Result<()> {
     // Prepare all steps
-    let mut range_for_all_participants = HashMap::<
+    let mut range_for_all_participants = IndexMap::<
         ParticipantId,
         SerializeAuthoritativeStepVectorForOneParticipants<SampleStep>,
     >::new();
@@ -80,7 +79,9 @@ fn check_authoritative() -> io::Result<()> {
         steps: first_steps.clone(),
     };
 
-    range_for_all_participants.insert(first_participant_id, first_vector);
+    range_for_all_participants
+        .insert(first_participant_id, first_vector)
+        .expect("first participant should be unique");
 
     let second_steps = vec![SampleStep::MoveLeft(40), SampleStep::Jump, SampleStep::Jump];
     let second_participant_id = ParticipantId(1);
@@ -89,7 +90,9 @@ fn check_authoritative() -> io::Result<()> {
         steps: second_steps.clone(),
     };
 
-    range_for_all_participants.insert(second_participant_id, second_vector);
+    range_for_all_participants
+        .insert(second_participant_id, second_vector)
+        .expect("second participant should be unique");
 
     let range_to_send = SerializeAuthoritativeStepRange::<SampleStep> {
         delta_steps_from_previous: 0,
@@ -164,11 +167,12 @@ fn create_authoritative_step_range() -> AuthoritativeStepRange<SampleStep> {
 
     let mut authoritative_steps = Vec::new();
     for index in 0..3 {
-        let mut authoritative_participants = HashMap::new();
+        let mut authoritative_participants = IndexMap::new();
         for participant_index in 0..PARTICIPANT_COUNT {
             let sample_step = &steps_per_participant[participant_index][index];
             authoritative_participants
-                .insert(ParticipantId(participant_index as u8), sample_step.clone());
+                .insert(ParticipantId(participant_index as u8), sample_step.clone())
+                .expect("should be unique participants ids");
         }
         authoritative_steps.push(AuthoritativeStep {
             authoritative_participants,

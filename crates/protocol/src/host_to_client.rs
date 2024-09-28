@@ -12,8 +12,8 @@ use io::ErrorKind;
 use log::trace;
 use nimble_blob_stream::prelude::SenderToReceiverFrontCommands;
 use nimble_participant::ParticipantId;
-use nimble_step_types::AuthoritativeStep;
-use std::collections::{HashMap, HashSet};
+use nimble_step_types::{AuthoritativeStep, IndexMap};
+use std::collections::HashSet;
 use std::fmt::Debug;
 use std::io;
 use tick_id::TickId;
@@ -349,7 +349,7 @@ impl<StepT: Deserialize + Serialize + Debug + Clone> Serialize for Authoritative
             let delta_steps_from_previous = (auth_range.tick_id - tick_id) as u8;
             tick_id = auth_range.tick_id + auth_range.authoritative_steps.len() as u32;
 
-            let mut hash_map = HashMap::<
+            let mut hash_map = IndexMap::<
                 ParticipantId,
                 SerializeAuthoritativeStepVectorForOneParticipants<StepT>,
             >::new();
@@ -362,14 +362,20 @@ impl<StepT: Deserialize + Serialize + Debug + Clone> Serialize for Authoritative
                 }
             }
 
-            for participant_id in unique_participant_ids {
-                hash_map.insert(
-                    participant_id,
-                    SerializeAuthoritativeStepVectorForOneParticipants::<StepT> {
-                        delta_tick_id_from_range: 0,
-                        steps: vec![],
-                    },
-                );
+            let mut sorted_unique_ids: Vec<ParticipantId> =
+                unique_participant_ids.into_iter().collect();
+            sorted_unique_ids.sort();
+
+            for participant_id in sorted_unique_ids {
+                hash_map
+                    .insert(
+                        participant_id,
+                        SerializeAuthoritativeStepVectorForOneParticipants::<StepT> {
+                            delta_tick_id_from_range: 0,
+                            steps: vec![],
+                        },
+                    )
+                    .expect("participant ids to be unique");
             }
 
             for (index_in_range, combined_auth_step) in
@@ -435,7 +441,7 @@ impl<StepT: Deserialize + Serialize + Debug + Clone> Deserialize
             let mut auth_step_range_vec = Vec::<AuthoritativeStep<StepT>>::new();
             for _ in 0..max_vector_length {
                 auth_step_range_vec.push(AuthoritativeStep::<StepT> {
-                    authoritative_participants: HashMap::new(),
+                    authoritative_participants: IndexMap::new(),
                 })
             }
 
@@ -448,7 +454,9 @@ impl<StepT: Deserialize + Serialize + Debug + Clone> Deserialize
                         .get_mut(index)
                         .unwrap()
                         .authoritative_participants;
-                    hash_map_for_auth_step.insert(*participant_id, serialized_step.clone());
+                    hash_map_for_auth_step
+                        .insert(*participant_id, serialized_step.clone())
+                        .expect("expect unique participant_id");
                 }
             }
 

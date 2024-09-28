@@ -8,9 +8,9 @@ use log::info;
 use nimble_client::client::{ClientPhase, ClientStream, ClientStreamError};
 use nimble_protocol::Version;
 use nimble_sample_step::{SampleState, SampleStep};
-use nimble_step_types::{LocalIndex, PredictedStep};
+use nimble_step_types::{IndexMap, LocalIndex, PredictedStep};
 use nimble_steps::Step;
-use std::collections::HashMap;
+use std::collections::HashSet;
 use tick_id::TickId;
 
 fn connect<
@@ -178,38 +178,6 @@ fn connect_stream() -> Result<(), ClientStreamError> {
     self.data.to_stream(stream)?;
      */
 
-    /* TODO
-    let expected_steps_request_octets = &[
-        EXPECTED_CONNECTION_ID,
-        0x1A,
-        0x93,
-        0x76,
-        0x47, // HASH
-        0x00,
-        0x01,
-        0,
-        0,    //?
-        0x02, // Steps Request
-        // Steps Ack
-        0x00,
-        0x00,
-        0x00,
-        0x00, // Waiting for this tick ID
-        0x00,
-        0x00,
-        0x00,
-        0x00,
-        0x00,
-        0x00,
-        0x00,
-        0x00, // Receive mask
-        // Predicted Steps
-        0x00, // Number of local participants
-    ];
-
-    assert_eq!(only_datagram, expected_steps_request_octets);
-    */
-
     Ok(())
 }
 
@@ -247,17 +215,24 @@ fn predicted_steps() -> Result<(), ClientStreamError> {
         expected_zero_predicted_steps,
     );
 
-    let mut predicted_players = HashMap::<LocalIndex, Step<SampleStep>>::new();
-    predicted_players.insert(1, Step::Custom(SampleStep::Jump));
-    let predicted_step_for_local_players = PredictedStep { predicted_players };
-    stream.push_predicted_step(TickId::new(0), predicted_step_for_local_players)?;
+    let array: &[(LocalIndex, &[Step<SampleStep>])] = &[
+        (
+            1,
+            &[
+                Step::Custom(SampleStep::Jump),
+                Step::Custom(SampleStep::MoveLeft(-10)),
+            ],
+        ),
+        (2, &[Step::Custom(SampleStep::MoveRight(10))]),
+    ];
 
-    let mut predicted_players2 = HashMap::<LocalIndex, Step<SampleStep>>::new();
-    predicted_players2.insert(1, Step::Custom(SampleStep::MoveLeft(-10)));
-    let predicted_step_for_local_players2 = PredictedStep {
-        predicted_players: predicted_players2,
-    };
-    stream.push_predicted_step(TickId::new(1), predicted_step_for_local_players2)?;
+    let predicted_steps = create_predicted_steps(array);
+
+    let mut tick_id = TickId::new(0);
+    for predicted_step in predicted_steps {
+        stream.push_predicted_step(tick_id, predicted_step)?;
+        tick_id = TickId::new(tick_id.0 + 1);
+    }
 
     let probably_one_predicted_step = stream.send()?;
 
@@ -275,8 +250,9 @@ fn predicted_steps() -> Result<(), ClientStreamError> {
         0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Receive Mask for steps
 
         // Predicted steps Header
-        0x01, // number of player streams following
-        0x01, // Player Index
+        0x02, // number of player streams following
+
+        0x01, // Local Player ID
         0x00, 0x00, 0x00, 0x00, // Start TickId
 
         0x02, // Predicted Step Count following
@@ -287,10 +263,55 @@ fn predicted_steps() -> Result<(), ClientStreamError> {
 
         0x05, // Step::Custom
         0x01, // SampleStep::Move Left
-        0xFF, 0xF6, // FFF6 = -10 (16-bit two’s complement notation)
+        0xFF, 0xF6, // FFF6 = -10 (signed 16-bit two’s complement notation)
+    
+        0x02, // Local Player ID
+        0x00, 0x00, 0x00, 0x00, // Start TickId for Local Player 2 (usually the same as for player 1)
+        0x01, // Predicted Step Count following
+        0x05, // Step::Custom
+        0x02, // SampleStep::Move Right
+        0x00, 0x0A, // = +10 (signed 16-bit two’s complement notation)
     ];
 
     assert_eq_slices(&probably_one_predicted_step[0], expected_one_predicted_step);
 
     Ok(())
+}
+
+fn create_predicted_steps<StepT: Clone>(
+    predicted_steps_for_all_players: &[(LocalIndex, &[StepT])],
+) -> Vec<PredictedStep<StepT>> {
+    let unique_indexes: HashSet<u8> = predicted_steps_for_all_players
+        .iter()
+        .map(|(local_index, _)| *local_index)
+        .collect();
+    assert_eq!(unique_indexes.len(), predicted_steps_for_all_players.len());
+
+    let longest_steps_vector: usize =
+        predicted_steps_for_all_players
+            .iter()
+            .fold(0, |mut acc, (_, step_vec)| {
+                if step_vec.len() > acc {
+                    acc = step_vec.len();
+                }
+                acc
+            });
+
+    let mut predicted_steps_vector = Vec::with_capacity(longest_steps_vector);
+    for result_index in 0..longest_steps_vector {
+        let mut predicted_players: IndexMap<LocalIndex, StepT> = IndexMap::new();
+        for (local_index, steps_vector) in predicted_steps_for_all_players.iter() {
+            if result_index >= steps_vector.len() {
+                continue;
+            }
+
+            info!("adding {local_index:?} to predicted_steps");
+            predicted_players
+                .insert(*local_index as u8, steps_vector[result_index].clone())
+                .expect("in the test, it should work to insert");
+        }
+        predicted_steps_vector.push(PredictedStep { predicted_players });
+    }
+
+    predicted_steps_vector
 }

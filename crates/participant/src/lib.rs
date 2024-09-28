@@ -5,7 +5,7 @@
 use flood_rs::{ReadOctetStream, WriteOctetStream};
 use std::fmt::Display;
 
-#[derive(PartialEq, Eq, Copy, Hash, Clone, Debug)]
+#[derive(PartialEq, Eq, Copy, Ord, Hash, Clone, Debug, PartialOrd)]
 pub struct ParticipantId(pub u8);
 
 impl ParticipantId {

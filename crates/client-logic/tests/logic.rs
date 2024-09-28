@@ -12,10 +12,9 @@ use nimble_protocol::host_to_client::{
 };
 use nimble_protocol::prelude::{ClientToHostCommands, HostToClientCommands};
 use nimble_sample_step::{SampleState, SampleStep};
-use nimble_step_types::{AuthoritativeStep, PredictedStep};
+use nimble_step_types::{AuthoritativeStep, IndexMap, PredictedStep};
 use nimble_steps::Step::{Custom, Forced};
 use nimble_steps::{Step, StepInfo, StepsError};
-use std::collections::HashMap;
 use std::fmt::Debug;
 use tick_id::TickId;
 
@@ -45,9 +44,12 @@ fn setup_logic<StateT: BufferDeserializer, StepT: Clone + Deserialize + Serializ
 fn send_steps() -> Result<(), StepsError> {
     let mut client_logic = setup_logic::<SampleState, Step<SampleStep>>();
 
-    client_logic.push_predicted_step(TickId(0), PredictedStep {
-        predicted_players: [(0, Custom(SampleStep::MoveRight(3)))].into(),
-    })?;
+    client_logic.push_predicted_step(
+        TickId(0),
+        PredictedStep {
+            predicted_players: [(0u8, Custom(SampleStep::MoveRight(3)))].as_slice().into(),
+        },
+    )?;
 
     {
         let commands = client_logic.send();
@@ -60,7 +62,7 @@ fn send_steps() -> Result<(), StepsError> {
             panic!("Command did not match expected structure or pattern");
         }
     }
-    
+
     Ok(())
 }
 
@@ -81,9 +83,13 @@ fn setup_sample_steps() -> AuthoritativeStepRanges<Step<SampleStep>> {
 
     let mut auth_steps = Vec::<AuthoritativeStep<Step<SampleStep>>>::new();
     for index in 0..3 {
-        let mut hash_map = HashMap::<ParticipantId, Step<SampleStep>>::new();
-        hash_map.insert(first_participant_id, first_steps[index].clone());
-        hash_map.insert(second_participant_id, second_steps[index].clone());
+        let mut hash_map = IndexMap::<ParticipantId, Step<SampleStep>>::new();
+        hash_map
+            .insert(first_participant_id, first_steps[index].clone())
+            .expect("first participant should be unique");
+        hash_map
+            .insert(second_participant_id, second_steps[index].clone())
+            .expect("second_participant should be unique");
         auth_steps.push(AuthoritativeStep {
             authoritative_participants: hash_map,
         });
@@ -132,9 +138,13 @@ fn receive_authoritative_steps() -> Result<(), ClientError> {
     let first_participant_id = ParticipantId(255);
     let second_participant_id = ParticipantId(1);
 
-    let mut expected_hash_map = HashMap::<ParticipantId, Step<SampleStep>>::new();
-    expected_hash_map.insert(first_participant_id, Custom(SampleStep::MoveLeft(-10)));
-    expected_hash_map.insert(second_participant_id, Forced);
+    let mut expected_hash_map = IndexMap::<ParticipantId, Step<SampleStep>>::new();
+    expected_hash_map
+        .insert(first_participant_id, Custom(SampleStep::MoveLeft(-10)))
+        .expect("should be unique");
+    expected_hash_map
+        .insert(second_participant_id, Forced)
+        .expect("should be unique");
 
     let expected_step = AuthoritativeStep::<Step<SampleStep>> {
         authoritative_participants: expected_hash_map,

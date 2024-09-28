@@ -9,8 +9,8 @@ use io::ErrorKind;
 use log::trace;
 use nimble_blob_stream::prelude::ReceiverToSenderFrontCommands;
 use nimble_participant::ParticipantId;
-use nimble_step_types::{LocalIndex, PredictedStep};
-use std::collections::{HashMap, HashSet};
+use nimble_step_types::{IndexMap, LocalIndex, PredictedStep};
+use std::collections::HashSet;
 use std::fmt::Debug;
 use std::{fmt, io};
 use tick_id::TickId;
@@ -328,7 +328,7 @@ pub struct SerializeAuthoritativeStepVectorForOneParticipants<StepT: Serialize +
 #[derive(Debug, PartialEq, Clone)]
 pub struct SerializeAuthoritativeStepRangeForAllParticipants<StepT: Serialize + Deserialize> {
     pub authoritative_participants:
-        HashMap<ParticipantId, SerializeAuthoritativeStepVectorForOneParticipants<StepT>>,
+        IndexMap<ParticipantId, SerializeAuthoritativeStepVectorForOneParticipants<StepT>>,
 }
 
 impl<StepT: Serialize + Deserialize + std::fmt::Debug>
@@ -342,7 +342,7 @@ impl<StepT: Serialize + Deserialize + std::fmt::Debug>
         stream.write_u8(self.authoritative_participants.len() as u8)?;
 
         for (participant_id, authoritative_steps_for_one_player_vector) in
-            self.authoritative_participants.iter()
+            &self.authoritative_participants
         {
             participant_id.to_stream(stream)?;
             stream.write_u8(authoritative_steps_for_one_player_vector.delta_tick_id_from_range)?;
@@ -359,8 +359,7 @@ impl<StepT: Serialize + Deserialize + std::fmt::Debug>
 
     pub fn deserialize_with_len(stream: &mut impl ReadOctetStream) -> io::Result<Self> {
         let required_participant_count_in_range = stream.read_u8()?;
-        let mut authoritative_participants =
-            HashMap::with_capacity(required_participant_count_in_range as usize);
+        let mut authoritative_participants = IndexMap::new();
         for _ in 0..required_participant_count_in_range {
             let participant_id = ParticipantId::from_stream(stream)?;
             let delta_tick_id_from_range = stream.read_u8()?;
@@ -377,13 +376,15 @@ impl<StepT: Serialize + Deserialize + std::fmt::Debug>
                 authoritative_steps_for_one_participant.push(authoritative_step);
             }
 
-            authoritative_participants.insert(
-                participant_id,
-                SerializeAuthoritativeStepVectorForOneParticipants {
-                    delta_tick_id_from_range,
-                    steps: authoritative_steps_for_one_participant,
-                },
-            );
+            authoritative_participants
+                .insert(
+                    participant_id,
+                    SerializeAuthoritativeStepVectorForOneParticipants {
+                        delta_tick_id_from_range,
+                        steps: authoritative_steps_for_one_participant,
+                    },
+                )
+                .map_err(|err| io::Error::new(io::ErrorKind::Other, err))?;
         }
 
         Ok(Self {
@@ -416,24 +417,27 @@ impl<StepT: Serialize + Deserialize + Clone> Serialize for CombinedPredictedStep
     where
         Self: Sized,
     {
-        // TODO: Serialize
         let mut unique_keys: HashSet<u8> = HashSet::new();
-
         for map in &self.steps {
             for key in map.predicted_players.keys() {
                 unique_keys.insert(*key);
             }
         }
 
-        let mut root_hash_map =
-            HashMap::<LocalIndex, SerializePredictedStepsVectorForOnePlayer<StepT>>::new();
+        let mut sorted_unique_ids: Vec<u8> = unique_keys.into_iter().collect();
+        sorted_unique_ids.sort();
 
-        for local_index in unique_keys {
+        let mut root_hash_map =
+            IndexMap::<LocalIndex, SerializePredictedStepsVectorForOnePlayer<StepT>>::new();
+
+        for local_index in sorted_unique_ids {
             let vector_for_one_player = SerializePredictedStepsVectorForOnePlayer::<StepT> {
                 first_tick_id: Default::default(),
                 predicted_steps: vec![],
             };
-            root_hash_map.insert(local_index, vector_for_one_player);
+            root_hash_map
+                .insert(local_index, vector_for_one_player)
+                .expect("local_index should be unique");
         }
 
         let mut current_tick_id = self.first_tick;
@@ -461,15 +465,15 @@ impl<StepT: Serialize + Deserialize + Clone> Serialize for CombinedPredictedStep
 
 #[derive(Debug, Clone)]
 pub struct SerializePredictedStepsForAllPlayers<StepT: Serialize + Deserialize> {
-    pub predicted_players: HashMap<LocalIndex, SerializePredictedStepsVectorForOnePlayer<StepT>>,
+    pub predicted_players: IndexMap<LocalIndex, SerializePredictedStepsVectorForOnePlayer<StepT>>,
 }
 
 impl<StepT: Serialize + Deserialize> SerializePredictedStepsForAllPlayers<StepT> {
     pub fn to_stream(&self, stream: &mut impl WriteOctetStream) -> io::Result<()> {
         stream.write_u8(self.predicted_players.len() as u8)?;
 
-        for (local_index, predicted_steps_for_one_player) in self.predicted_players.iter() {
-            stream.write_u8(*local_index)?;
+        for (local_player_id, predicted_steps_for_one_player) in &self.predicted_players {
+            stream.write_u8(*local_player_id)?;
             predicted_steps_for_one_player.to_stream(stream)?;
         }
 
@@ -479,13 +483,15 @@ impl<StepT: Serialize + Deserialize> SerializePredictedStepsForAllPlayers<StepT>
     pub fn from_stream(stream: &mut impl ReadOctetStream) -> io::Result<Self> {
         let player_count = stream.read_u8()?;
 
-        let mut players_vector = HashMap::with_capacity(player_count as usize);
+        let mut players_vector = IndexMap::new();
 
         for _ in 0..player_count {
             let predicted_steps_for_one_player =
                 SerializePredictedStepsVectorForOnePlayer::from_stream(stream)?;
             let index = stream.read_u8()?;
-            players_vector.insert(index, predicted_steps_for_one_player);
+            players_vector
+                .insert(index, predicted_steps_for_one_player)
+                .map_err(|err| io::Error::new(io::ErrorKind::Other, err))?;
         }
 
         Ok(Self {

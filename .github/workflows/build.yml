@@ -11,10 +11,14 @@ jobs:
       - run: rustup install stable
       - run: RUSTFLAGS="-D warnings" cargo clippy --color=always # -- -Wclippy::pedantic
       - run: RUSTFLAGS="-D warnings" cargo build --color=always --all-features
-      - name: run tests with color
+      - name: run tests with color multiple times
         env:
           RUST_LOG: trace
           RUST_LOG_STYLE: always
           TERM: xterm-256color
         run:
-          RUST_LOG=trace cargo test --color=always -- --nocapture --color=always
+          run: |
+            for i in {1..5}; do
+              echo "Running tests iteration $i"
+              RUST_LOG=trace cargo test --color=always -- --nocapture --color=always
+            done
