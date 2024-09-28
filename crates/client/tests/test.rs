@@ -4,12 +4,14 @@
  */
 use flood_rs::BufferDeserializer;
 use hexify::assert_eq_slices;
-use log::info;
+use log::{info, trace};
 use nimble_client::client::{ClientPhase, ClientStream, ClientStreamError};
 use nimble_protocol::Version;
 use nimble_sample_step::{SampleState, SampleStep};
 use nimble_step_types::{IndexMap, LocalIndex, PredictedStep};
 use nimble_steps::Step;
+use rand::prelude::StdRng;
+use rand::{Rng, RngCore, SeedableRng};
 use std::collections::HashSet;
 use tick_id::TickId;
 
@@ -314,4 +316,27 @@ fn create_predicted_steps<StepT: Clone>(
     }
 
     predicted_steps_vector
+}
+
+#[test_log::test]
+fn feed_garbled() -> Result<(), ClientStreamError> {
+    let application_version = Version {
+        major: 0,
+        minor: 1,
+        patch: 2,
+    };
+
+    let mut stream: ClientStream<SampleState, Step<SampleStep>> =
+        ClientStream::new(&application_version);
+    let mut rng = StdRng::seed_from_u64(0x4399F00D);
+
+    for index in 0..200 {
+        let length = rng.gen_range(10..=1200);
+        let mut random_octets = vec![0u8; length]; // Initialize a vector with the random length
+        rng.fill_bytes(&mut random_octets);
+        random_octets[0..4].copy_from_slice(&[0x00, index as u8, 0x00, 0x00]);
+        let result = stream.receive(&random_octets).err().unwrap();
+        trace!("received {result:?}");
+    }
+    Ok(())
 }
