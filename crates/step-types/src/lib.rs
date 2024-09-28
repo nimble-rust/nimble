@@ -12,3 +12,9 @@ pub type LocalIndex = u8;
 pub struct PredictedStep<StepT> {
     pub predicted_players: HashMap<LocalIndex, StepT>,
 }
+
+impl<StepT> PredictedStep<StepT> {
+    pub fn is_empty(&self) -> bool {
+        self.predicted_players.is_empty()
+    }
+}

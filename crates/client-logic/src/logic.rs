@@ -2,7 +2,6 @@
  * Copyright (c) Peter Bjorklund. All rights reserved. https://github.com/nimble-rust/nimble
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
-use crate::err::ClientErrorKind::Unexpected;
 use crate::err::{ClientError, ClientErrorKind};
 use err_rs::{ErrorLevel, ErrorLevelProvider};
 use flood_rs::BufferDeserializer;
@@ -13,7 +12,7 @@ use nimble_protocol::client_to_host::{CombinedPredictedSteps, DownloadGameStateR
 use nimble_protocol::host_to_client::DownloadGameStateResponse;
 use nimble_protocol::prelude::*;
 use nimble_step_types::{AuthoritativeStep, PredictedStep};
-use nimble_steps::Steps;
+use nimble_steps::{Steps, StepsError};
 use std::fmt::Debug;
 use tick_id::TickId;
 
@@ -151,8 +150,15 @@ impl<StateT: BufferDeserializer, StepT: Clone + Deserialize + Serialize + Debug>
         commands
     }
 
-    pub fn add_predicted_step(&mut self, step: PredictedStep<StepT>) {
-        self.outgoing_predicted_steps.push(step);
+    pub fn push_predicted_step(
+        &mut self,
+        tick_id: TickId,
+        step: PredictedStep<StepT>,
+    ) -> Result<(), StepsError> {
+        if step.is_empty() {
+            Err(StepsError::CanNotPushEmptyPredictedSteps)?;
+        }
+        self.outgoing_predicted_steps.push_with_check(tick_id, step)
     }
 
     fn on_join_game(&mut self, cmd: &JoinGameAccepted) -> Result<(), ClientErrorKind> {
@@ -178,7 +184,7 @@ impl<StateT: BufferDeserializer, StepT: Clone + Deserialize + Serialize + Debug>
                 {
                     self.incoming_authoritative_steps
                         .push_with_check(current_authoritative_tick_id, combined_auth_step.clone())
-                        .map_err(Unexpected)?;
+                        .map_err(ClientErrorKind::StepsError)?;
                 }
                 current_authoritative_tick_id += 1;
             }

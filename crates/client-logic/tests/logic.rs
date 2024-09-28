@@ -14,7 +14,7 @@ use nimble_protocol::prelude::{ClientToHostCommands, HostToClientCommands};
 use nimble_sample_step::{SampleState, SampleStep};
 use nimble_step_types::{AuthoritativeStep, PredictedStep};
 use nimble_steps::Step::{Custom, Forced};
-use nimble_steps::{Step, StepInfo};
+use nimble_steps::{Step, StepInfo, StepsError};
 use std::collections::HashMap;
 use std::fmt::Debug;
 use tick_id::TickId;
@@ -42,12 +42,12 @@ fn setup_logic<StateT: BufferDeserializer, StepT: Clone + Deserialize + Serializ
 }
 
 #[test_log::test]
-fn send_steps() {
+fn send_steps() -> Result<(), StepsError> {
     let mut client_logic = setup_logic::<SampleState, Step<SampleStep>>();
 
-    client_logic.add_predicted_step(PredictedStep {
+    client_logic.push_predicted_step(TickId(0), PredictedStep {
         predicted_players: [(0, Custom(SampleStep::MoveRight(3)))].into(),
-    });
+    })?;
 
     {
         let commands = client_logic.send();
@@ -60,6 +60,8 @@ fn send_steps() {
             panic!("Command did not match expected structure or pattern");
         }
     }
+    
+    Ok(())
 }
 
 fn setup_sample_steps() -> AuthoritativeStepRanges<Step<SampleStep>> {

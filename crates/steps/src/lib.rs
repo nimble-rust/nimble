@@ -154,6 +154,12 @@ impl<StepType: Clone> Iterator for FromIndexIterator<'_, StepType> {
 
 pub const TICK_ID_MAX: u32 = u32::MAX;
 
+#[derive(Debug)]
+pub enum StepsError {
+    WrongTickId,
+    CanNotPushEmptyPredictedSteps,
+}
+
 impl<StepType: Clone> Steps<StepType> {
     pub fn new() -> Self {
         Self {
@@ -177,12 +183,9 @@ impl<StepType: Clone> Steps<StepType> {
         }
     }
 
-    pub fn push_with_check(&mut self, tick_id: TickId, step: StepType) -> Result<(), String> {
+    pub fn push_with_check(&mut self, tick_id: TickId, step: StepType) -> Result<(), StepsError> {
         if self.expected_write_id != tick_id {
-            Err(format!(
-                "expected {}, but encountered {}",
-                self.expected_write_id, tick_id
-            ))?;
+            Err(StepsError::WrongTickId)?;
         }
 
         self.push(step);

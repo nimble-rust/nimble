@@ -19,8 +19,11 @@ nimble-step-types = { path = "../step-types", version = "0.0.12-dev" }
 datagram-builder = "^0.0.3"
 hexify = "^0.0.1"
 err-rs = "^0.0.2"
+tick-id = "^0.0.7"
+nimble-steps = { path = "../steps", version = "0.0.12-dev" }
 
 [dev-dependencies]
 nimble-sample-step = { path = "../sample-step", version = "0.0.12-dev" }
 nimble-steps = { path = "../steps", version = "0.0.12-dev" }
-test-log = "0.2.16"
+test-log = "^0.2.16"
+tick-id = "^0.0.7"

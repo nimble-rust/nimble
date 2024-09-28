@@ -2,6 +2,7 @@
  * Copyright (c) Peter Bjorklund. All rights reserved. https://github.com/nimble-rust/nimble
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
+use crate::client::ClientPhase::Connected;
 use crate::datagram_build::NimbleDatagramBuilder;
 use crate::datagram_parse::NimbleDatagramParser;
 use datagram::{DatagramBuilder, DatagramError};
@@ -16,6 +17,9 @@ use nimble_client_logic::logic::ClientLogic;
 use nimble_ordered_datagram::DatagramOrderInError;
 use nimble_protocol::prelude::{HostToClientCommands, HostToClientOobCommands};
 use nimble_protocol::{ClientRequestId, Version};
+use nimble_step_types::PredictedStep;
+use nimble_steps::StepsError;
+use tick_id::TickId;
 
 #[derive(Debug)]
 pub enum ClientStreamError {
@@ -25,19 +29,21 @@ pub enum ClientStreamError {
     ClientConnectingErr(nimble_client_connecting::ClientError),
     DatagramError(DatagramError),
     DatagramOrderError(DatagramOrderInError),
+    PredictedStepsError(StepsError),
     WrongPhase,
 }
 
 impl ErrorLevelProvider for ClientStreamError {
     fn error_level(&self) -> ErrorLevel {
         match self {
-            ClientStreamError::Unexpected(_) => ErrorLevel::Info,
-            ClientStreamError::IoErr(_) => ErrorLevel::Info,
-            ClientStreamError::ClientErr(_) => ErrorLevel::Info,
-            ClientStreamError::ClientConnectingErr(_) => ErrorLevel::Info,
-            ClientStreamError::DatagramError(_) => ErrorLevel::Info,
-            ClientStreamError::DatagramOrderError(_) => ErrorLevel::Info,
-            ClientStreamError::WrongPhase => ErrorLevel::Info,
+            Self::Unexpected(_) => ErrorLevel::Info,
+            Self::IoErr(_) => ErrorLevel::Info,
+            Self::ClientErr(_) => ErrorLevel::Info,
+            Self::ClientConnectingErr(_) => ErrorLevel::Info,
+            Self::DatagramError(_) => ErrorLevel::Info,
+            Self::DatagramOrderError(_) => ErrorLevel::Info,
+            Self::WrongPhase => ErrorLevel::Info,
+            Self::PredictedStepsError(_) => ErrorLevel::Warning,
         }
     }
 }
@@ -199,5 +205,18 @@ impl<
 
     pub fn debug_phase(&self) -> &ClientPhase<StateT, StepT> {
         &self.phase
+    }
+
+    pub fn push_predicted_step(
+        &mut self,
+        tick_id: TickId,
+        step: PredictedStep<StepT>,
+    ) -> Result<(), ClientStreamError> {
+        match &mut self.phase {
+            Connected(ref mut client_logic) => client_logic
+                .push_predicted_step(tick_id, step)
+                .map_err(ClientStreamError::PredictedStepsError),
+            _ => Err(ClientStreamError::WrongPhase)?,
+        }
     }
 }

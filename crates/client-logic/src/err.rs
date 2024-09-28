@@ -5,6 +5,7 @@
 use err_rs::{ErrorLevel, ErrorLevelProvider};
 use nimble_blob_stream::in_logic_front::FrontLogicError;
 use nimble_protocol::ClientRequestId;
+use nimble_steps::StepsError;
 use std::{fmt, io};
 
 #[derive(Debug)]
@@ -32,13 +33,13 @@ impl fmt::Display for ClientError {
 
 #[derive(Debug)]
 pub enum ClientErrorKind {
-    Unexpected(String),
     IoErr(io::Error),
     WrongConnectResponseRequestId(ClientRequestId),
     WrongDownloadRequestId,
     DownloadResponseWasUnexpected,
     UnexpectedBlobChannelCommand,
     FrontLogicErr(FrontLogicError),
+    StepsError(StepsError),
 }
 
 impl ErrorLevelProvider for ClientErrorKind {
@@ -48,9 +49,9 @@ impl ErrorLevelProvider for ClientErrorKind {
             Self::WrongConnectResponseRequestId(_) => ErrorLevel::Info,
             Self::WrongDownloadRequestId => ErrorLevel::Warning,
             Self::DownloadResponseWasUnexpected => ErrorLevel::Info,
-            Self::Unexpected(_) => ErrorLevel::Critical,
             Self::UnexpectedBlobChannelCommand => ErrorLevel::Info,
             Self::FrontLogicErr(err) => err.error_level(),
+            Self::StepsError(_) => ErrorLevel::Warning,
         }
     }
 }
@@ -58,9 +59,6 @@ impl ErrorLevelProvider for ClientErrorKind {
 impl fmt::Display for ClientErrorKind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Unexpected(description) => {
-                write!(f, "Unexpected {}", description)
-            }
             Self::IoErr(io_err) => {
                 write!(f, "io:err {:?}", io_err)
             }
@@ -75,6 +73,7 @@ impl fmt::Display for ClientErrorKind {
             }
             Self::UnexpectedBlobChannelCommand => write!(f, "UnexpectedBlobChannelCommand"),
             Self::FrontLogicErr(err) => write!(f, "front logic err {err:?}"),
+            Self::StepsError(err) => write!(f, "StepsError: {err:?}"),
         }
     }
 }

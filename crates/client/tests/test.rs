@@ -2,24 +2,23 @@
  * Copyright (c) Peter Bjorklund. All rights reserved. https://github.com/nimble-rust/nimble
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
+use flood_rs::BufferDeserializer;
 use hexify::assert_eq_slices;
 use log::info;
 use nimble_client::client::{ClientPhase, ClientStream, ClientStreamError};
 use nimble_protocol::Version;
 use nimble_sample_step::{SampleState, SampleStep};
+use nimble_step_types::{LocalIndex, PredictedStep};
 use nimble_steps::Step;
+use std::collections::HashMap;
+use tick_id::TickId;
 
-#[test_log::test]
-fn connect_stream() -> Result<(), ClientStreamError> {
-    let application_version = Version {
-        major: 0,
-        minor: 1,
-        patch: 2,
-    };
-
-    let mut stream: ClientStream<SampleState, Step<SampleStep>> =
-        ClientStream::new(&application_version);
-
+fn connect<
+    StateT: BufferDeserializer + std::fmt::Debug,
+    StepT: Clone + flood_rs::Deserialize + flood_rs::Serialize + std::fmt::Debug,
+>(
+    stream: &mut ClientStream<StateT, Step<StepT>>,
+) -> Result<(), ClientStreamError> {
     let octet_vector = stream.send()?;
     assert_eq!(octet_vector.len(), 1);
 
@@ -30,7 +29,7 @@ fn connect_stream() -> Result<(), ClientStreamError> {
             // OOB Commands
             0x00, 0x00, // Datagram sequence
             0x00, 0x00, // Client Time
-            
+
             0x05, // Connect Request: ClientToHostOobCommand::ConnectType = 0x05
             0, 0, 0, 0, 0, 5, // Nimble version
             0, // Flags (use debug stream)
@@ -68,26 +67,35 @@ fn connect_stream() -> Result<(), ClientStreamError> {
 
     assert!(matches!(phase, &ClientPhase::Connected(_)));
 
+    Ok(())
+}
+
+fn download_state<
+    StateT: BufferDeserializer,
+    StepT: Clone + flood_rs::Deserialize + flood_rs::Serialize + std::fmt::Debug,
+>(
+    stream: &mut ClientStream<StateT, StepT>,
+) -> Result<(), ClientStreamError> {
     let datagrams_request_download_state = stream.send()?;
     assert_eq!(datagrams_request_download_state.len(), 1);
     let datagram_request_download_state = &datagrams_request_download_state[0];
 
     #[rustfmt::skip]
-
     let expected_request_download_state_octets = &[
+        // Header
         0x00, 0x01, // Ordered datagram Sequence number
         0x00, 0x00,  // Client Time
+
+        // Commands
         0x03, // Download Game State
         0x99, // Download Request id, //TODO: Hardcoded, but should not be
     ];
-
     assert_eq_slices(
         datagram_request_download_state,
         expected_request_download_state_octets,
     );
 
     #[rustfmt::skip]
-
     let feed_request_download_response = &[
         // Header
         0x00, 0x01, // Ordered datagram
@@ -118,7 +126,6 @@ fn connect_stream() -> Result<(), ClientStreamError> {
     let start_transfer_octets = &datagrams_request_step[0];
 
     #[rustfmt::skip]
-
     let expected_start_transfer = &[
         // Header
         0x00, 0x02, // Datagram sequence number
@@ -148,30 +155,23 @@ fn connect_stream() -> Result<(), ClientStreamError> {
 
     stream.receive(feed_complete_download)?;
 
-    let hopefully_ack_blob = stream.send()?;
+    Ok(())
+}
 
-    /*
-       stream.write_u32(self.waiting_for_tick_id)?;
-       stream.write_u64(self.lost_steps_mask_after_last_received)?;
+#[test_log::test]
+fn connect_stream() -> Result<(), ClientStreamError> {
+    let application_version = Version {
+        major: 0,
+        minor: 1,
+        patch: 2,
+    };
 
-       self.combined_predicted_steps.serialize(stream)?;
-    */
+    let mut stream: ClientStream<SampleState, Step<SampleStep>> =
+        ClientStream::new(&application_version);
 
-    #[rustfmt::skip]
+    connect(&mut stream)?;
 
-    let expected_ack_blob_stream = &[
-        // Header
-        0x00, 0x03, // Sequence
-        0x00, 0x00, // Client Time
-        
-        // Commands
-        0x02, // Send Predicted steps
-        0x00, 0x00, 0x00, 0x00, // Waiting for Tick ID
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Receive Mask for steps
-        0x00, // number of player streams following
-    ];
-
-    assert_eq_slices(&hopefully_ack_blob[0], expected_ack_blob_stream);
+    download_state(&mut stream)?;
 
     /*
             self.transfer_id.to_stream(stream)?;
@@ -209,6 +209,88 @@ fn connect_stream() -> Result<(), ClientStreamError> {
 
     assert_eq!(only_datagram, expected_steps_request_octets);
     */
+
+    Ok(())
+}
+
+#[test_log::test]
+fn predicted_steps() -> Result<(), ClientStreamError> {
+    let application_version = Version {
+        major: 0,
+        minor: 1,
+        patch: 2,
+    };
+
+    let mut stream: ClientStream<SampleState, Step<SampleStep>> =
+        ClientStream::new(&application_version);
+
+    // Client must be connected and have a state before sending predicted steps
+    connect(&mut stream)?;
+    download_state(&mut stream)?;
+
+    let probably_zero_predicted_steps = stream.send()?;
+
+    #[rustfmt::skip]
+    let expected_zero_predicted_steps = &[
+        // Header
+        0x00, 0x03, // Sequence
+        0x00, 0x00, // Client Time
+
+        // Commands
+        0x02, // Send Predicted steps
+        0x00, 0x00, 0x00, 0x00, // Waiting for Tick ID
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Receive Mask for steps
+        0x00, // number of player streams following
+    ];
+    assert_eq_slices(
+        &probably_zero_predicted_steps[0],
+        expected_zero_predicted_steps,
+    );
+
+    let mut predicted_players = HashMap::<LocalIndex, Step<SampleStep>>::new();
+    predicted_players.insert(1, Step::Custom(SampleStep::Jump));
+    let predicted_step_for_local_players = PredictedStep { predicted_players };
+    stream.push_predicted_step(TickId::new(0), predicted_step_for_local_players)?;
+
+    let mut predicted_players2 = HashMap::<LocalIndex, Step<SampleStep>>::new();
+    predicted_players2.insert(1, Step::Custom(SampleStep::MoveLeft(-10)));
+    let predicted_step_for_local_players2 = PredictedStep {
+        predicted_players: predicted_players2,
+    };
+    stream.push_predicted_step(TickId::new(1), predicted_step_for_local_players2)?;
+
+    let probably_one_predicted_step = stream.send()?;
+
+    #[rustfmt::skip]
+    let expected_one_predicted_step = &[
+        // Header
+        0x00, 0x04, // Sequence
+        0x00, 0x00, // Client Time
+
+        // Commands
+        0x02, // Send Predicted steps
+
+        // ACK
+        0x00, 0x00, 0x00, 0x00, // Waiting for Tick ID
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Receive Mask for steps
+
+        // Predicted steps Header
+        0x01, // number of player streams following
+        0x01, // Player Index
+        0x00, 0x00, 0x00, 0x00, // Start TickId
+
+        0x02, // Predicted Step Count following
+
+        // Predicted Steps
+        0x05, // Step::Custom
+        0x03, // SampleStep::Jump
+
+        0x05, // Step::Custom
+        0x01, // SampleStep::Move Left
+        0xFF, 0xF6, // FFF6 = -10 (16-bit two’s complement notation)
+    ];
+
+    assert_eq_slices(&probably_one_predicted_step[0], expected_one_predicted_step);
 
     Ok(())
 }
