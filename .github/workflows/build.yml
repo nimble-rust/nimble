@@ -16,9 +16,9 @@ jobs:
           RUST_LOG: trace
           RUST_LOG_STYLE: always
           TERM: xterm-256color
-        run:
-          run: |
-            for i in {1..5}; do
-              echo "Running tests iteration $i"
-              RUST_LOG=trace cargo test --color=always -- --nocapture --color=always
-            done
+        run: |
+          cargo test --color=always -- --nocapture --color=always
+          cargo test --color=always -- --nocapture --color=always
+          cargo test --color=always -- --nocapture --color=always
+          cargo test --color=always -- --nocapture --color=always
+          cargo test --color=always -- --nocapture --color=always
