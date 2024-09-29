@@ -18,7 +18,7 @@ pub fn game_step_response() -> Result<(), ClientError> {
             // We ignore the response for now
             connection_buffer_count: 0,
             delta_buffer: 0,
-            last_step_received_from_client: 0,
+            next_expected_tick_id: 0,
         },
         authoritative_steps: AuthoritativeStepRanges { ranges: vec![] },
     };

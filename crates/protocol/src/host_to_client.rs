@@ -18,12 +18,6 @@ use std::collections::HashSet;
 use std::fmt::Debug;
 use std::io;
 use tick_id::TickId;
-// #define NimbleSerializeCmdGameStepResponse (0x08)
-// #define NimbleSerializeCmdJoinGameResponse (0x09)
-// #define NimbleSerializeCmdGameStatePart (0x0a)
-// #define NimbleSerializeCmdGameStateResponse (0x0b)
-// #define NimbleSerializeCmdJoinGameOutOfParticipantSlotsResponse (0x0c)
-// #define NimbleSerializeCmdConnectResponse (0x0d)
 
 #[repr(u8)]
 pub enum HostToClientCommand {
@@ -274,21 +268,21 @@ impl JoinGameAccepted {
 pub struct GameStepResponseHeader {
     pub connection_buffer_count: u8,
     pub delta_buffer: i8,
-    pub last_step_received_from_client: u32,
+    pub next_expected_tick_id: TickId,
 }
 
 impl GameStepResponseHeader {
     pub fn to_stream(&self, stream: &mut impl WriteOctetStream) -> io::Result<()> {
         stream.write_u8(self.connection_buffer_count)?;
         stream.write_i8(self.delta_buffer)?;
-        stream.write_u32(self.last_step_received_from_client)
+        TickIdUtil::to_stream(self.next_expected_tick_id, stream)
     }
 
     pub fn from_stream(stream: &mut impl ReadOctetStream) -> io::Result<Self> {
         Ok(Self {
             connection_buffer_count: stream.read_u8()?,
             delta_buffer: stream.read_i8()?,
-            last_step_received_from_client: stream.read_u32()?,
+            next_expected_tick_id: TickIdUtil::from_stream(stream)?,
         })
     }
 }
@@ -318,7 +312,7 @@ impl<StepT: Deserialize + Serialize + Debug + Clone> SerializeAuthoritativeStepR
         let delta_steps = stream.read_u8()?;
 
         let authoritative_combined_step =
-            SerializeAuthoritativeStepRangeForAllParticipants::deserialize_with_len(stream)?;
+            SerializeAuthoritativeStepRangeForAllParticipants::deserialize(stream)?;
 
         Ok(Self {
             delta_steps_from_previous: delta_steps,

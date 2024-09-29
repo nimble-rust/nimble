@@ -231,7 +231,7 @@ impl<StepT: std::clone::Clone + Eq + Debug + Deserialize + Serialize> HostLogic<
             response_header: GameStepResponseHeader {
                 connection_buffer_count: 0,
                 delta_buffer: 0,
-                last_step_received_from_client: 0,
+                next_expected_tick_id: TickId(0),
             },
             authoritative_steps: AuthoritativeStepRanges { ranges: vec![] },
         };

@@ -272,6 +272,73 @@ fn predicted_steps() -> Result<(), ClientStreamError> {
 
     assert_eq_slices(&probably_one_predicted_step[0], expected_one_predicted_step);
 
+    #[rustfmt::skip]
+    let game_step_response = &[
+           // Header
+        0x00, 0x04, // Sequence
+        0x00, 0x00, // Client Time
+
+        // Commands
+        0x08, // Game Step Response
+
+        // Ack
+        0x00, // Buffer count
+        0x00, // Signed 8-bit delta buffer
+        0x00, 0x00, 0x00, 0x01, // Next Expected TickID. Signals that it received tick_id 0.
+
+        // Authoritative Steps
+        0x00, 0x00, 0x00, 0x00, // Start TickID
+        0x00, // Number of ranges following
+    ];
+    /*
+       stream.write_u8(self.connection_buffer_count)?;
+       stream.write_i8(self.delta_buffer)?;
+       stream.write_u32(self.last_step_received_from_client)
+
+       let root_tick_id = TickIdUtil::from_stream(stream)?;
+       let range_count = stream.read_u8()?;
+           let delta_steps = stream.read_u8()?;
+             let required_participant_count_in_range = stream.read_u8()?;
+                         let participant_id = ParticipantId::from_stream(stream)?;
+                           let delta_tick_id_from_range = stream.read_u8()?;
+                           let number_of_steps_that_follows = stream.read_u8()? as usize;
+    */
+    stream.receive(game_step_response)?;
+
+    let probably_fewer_predicted_steps = stream.send()?;
+
+    #[rustfmt::skip]
+    let expected_fewer_predicted_steps = &[
+        // Header
+        0x00, 0x05, // Sequence
+        0x00, 0x00, // Client Time
+
+        // Commands
+        0x02, // Send Predicted steps
+
+        // ACK
+        0x00, 0x00, 0x00, 0x00, // Waiting for authoritative step for Tick ID
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Receive Mask for steps
+
+        // Predicted steps Header
+        0x01, // number of player streams following
+
+        0x01, // Local Player 1 ID
+        0x00, 0x00, 0x00, 0x01, // Start TickId
+
+        0x01, // Predicted Step Count following
+
+        // Predicted Steps
+        0x05, // Step::Custom
+        0x01, // SampleStep::Move Left
+        0xFF, 0xF6, // FFF6 = -10 (signed 16-bit two’s complement notation)
+    ];
+
+    assert_eq_slices(
+        &probably_fewer_predicted_steps[0],
+        expected_fewer_predicted_steps,
+    );
+
     Ok(())
 }
 

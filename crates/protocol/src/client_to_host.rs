@@ -358,7 +358,7 @@ impl<StepT: Serialize + Deserialize + std::fmt::Debug>
         Ok(())
     }
 
-    pub fn deserialize_with_len(stream: &mut impl ReadOctetStream) -> io::Result<Self> {
+    pub fn deserialize(stream: &mut impl ReadOctetStream) -> io::Result<Self> {
         let required_participant_count_in_range = stream.read_u8()?;
         let mut authoritative_participants = SeqMap::new();
         for _ in 0..required_participant_count_in_range {

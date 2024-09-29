@@ -9,7 +9,7 @@ use flood_rs::{Deserialize, Serialize};
 use log::{debug, trace};
 use nimble_blob_stream::prelude::{FrontLogic, SenderToReceiverFrontCommands};
 use nimble_protocol::client_to_host::{CombinedPredictedSteps, DownloadGameStateRequest};
-use nimble_protocol::host_to_client::DownloadGameStateResponse;
+use nimble_protocol::host_to_client::{DownloadGameStateResponse, GameStepResponseHeader};
 use nimble_protocol::prelude::*;
 use nimble_step_types::{AuthoritativeStep, PredictedStep};
 use nimble_steps::{Steps, StepsError};
@@ -170,8 +170,18 @@ impl<StateT: BufferDeserializer, StepT: Clone + Deserialize + Serialize + Debug>
         self.state.as_ref()
     }
 
+    fn handle_game_step_header(&mut self, header: &GameStepResponseHeader) {
+        let host_expected_tick_id = header.next_expected_tick_id;
+        trace!("removing every predicted step before {host_expected_tick_id}");
+        self.outgoing_predicted_steps
+            .pop_up_to(host_expected_tick_id);
+    }
+
     fn on_game_step(&mut self, cmd: &GameStepResponse<StepT>) -> Result<(), ClientErrorKind> {
         trace!("game step response: {:?}", cmd);
+
+        self.handle_game_step_header(&cmd.response_header);
+
         if cmd.authoritative_steps.ranges.is_empty() {
             return Ok(());
         }
