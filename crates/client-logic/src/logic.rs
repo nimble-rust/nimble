@@ -177,6 +177,8 @@ impl<StateT: BufferDeserializer, StepT: Clone + Deserialize + Serialize + Debug>
             return Ok(());
         }
 
+        let mut accepted_count = 0;
+
         for range in &cmd.authoritative_steps.ranges {
             let mut current_authoritative_tick_id = range.tick_id;
             for combined_auth_step in &range.authoritative_steps {
@@ -186,11 +188,19 @@ impl<StateT: BufferDeserializer, StepT: Clone + Deserialize + Serialize + Debug>
                     self.incoming_authoritative_steps
                         .push_with_check(current_authoritative_tick_id, combined_auth_step.clone())
                         .map_err(ClientErrorKind::StepsError)?;
+                    accepted_count += 1;
                 }
                 current_authoritative_tick_id += 1;
             }
 
             current_authoritative_tick_id += range.authoritative_steps.len() as u32;
+        }
+
+        if accepted_count > 0 {
+            trace!(
+                "accepted authoritative count {accepted_count}, waiting for {}",
+                self.incoming_authoritative_steps.expected_write_tick_id()
+            );
         }
 
         Ok(())

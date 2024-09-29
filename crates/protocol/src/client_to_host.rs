@@ -6,7 +6,6 @@ use crate::host_to_client::TickIdUtil;
 use crate::{ClientRequestId, SessionConnectionSecret};
 use flood_rs::{Deserialize, ReadOctetStream, Serialize, WriteOctetStream};
 use io::ErrorKind;
-use log::trace;
 use nimble_blob_stream::prelude::ReceiverToSenderFrontCommands;
 use nimble_participant::ParticipantId;
 use nimble_step_types::{LocalIndex, PredictedStep};
@@ -366,14 +365,11 @@ impl<StepT: Serialize + Deserialize + std::fmt::Debug>
             let delta_tick_id_from_range = stream.read_u8()?;
             let number_of_steps_that_follows = stream.read_u8()? as usize;
 
-            trace!("participant_id {participant_id}, delta_tick_id_from_range {delta_tick_id_from_range}, number_of_steps_that_follows {number_of_steps_that_follows}");
-
             let mut authoritative_steps_for_one_participant =
                 Vec::with_capacity(number_of_steps_that_follows);
 
             for _ in 0..number_of_steps_that_follows {
                 let authoritative_step = StepT::deserialize(stream)?;
-                trace!("authoritative_step: {authoritative_step:?}");
                 authoritative_steps_for_one_participant.push(authoritative_step);
             }
 

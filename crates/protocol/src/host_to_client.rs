@@ -494,7 +494,6 @@ impl<StepT: Deserialize + Serialize + Debug + Clone> SerializeAuthoritativeStepR
         let root_tick_id = TickIdUtil::from_stream(stream)?;
         let range_count = stream.read_u8()?;
 
-        trace!("root_tick_id {root_tick_id} range_count {range_count}");
         let mut authoritative_step_ranges =
             Vec::<SerializeAuthoritativeStepRange<StepT>>::with_capacity(range_count as usize);
 

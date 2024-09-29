@@ -68,11 +68,6 @@ impl DatagramBuilder for NimbleDatagramBuilder {
 
         self.ordered_datagram_out.to_stream(&mut self.stream)?; // Ordered datagrams
 
-        trace!(
-            "datagram header. sequence:{}",
-            self.ordered_datagram_out.sequence_to_send
-        );
-
         let client_time = ClientTime::new(0);
         client_time.serialize(&mut self.stream)?;
         self.is_empty = false;

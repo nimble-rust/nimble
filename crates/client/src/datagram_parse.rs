@@ -5,6 +5,8 @@
 use datagram_pinger::ClientTime;
 use flood_rs::prelude::InOctetStream;
 use flood_rs::Deserialize;
+use hexify::format_hex;
+use log::trace;
 use nimble_ordered_datagram::{DatagramOrderInError, OrderedIn};
 
 pub struct NimbleDatagramParser {
@@ -28,6 +30,7 @@ impl NimbleDatagramParser {
         &mut self,
         datagram: &[u8],
     ) -> Result<(DatagramHeader, InOctetStream), DatagramOrderInError> {
+        trace!("datagram. parse payload: {}", format_hex(datagram));
         let mut in_stream = InOctetStream::new(datagram);
         self.ordered_in.read_and_verify(&mut in_stream)?;
         let client_time =
