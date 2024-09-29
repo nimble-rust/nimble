@@ -118,7 +118,7 @@ fn receive_authoritative_steps() -> Result<(), ClientError> {
             // We ignore the response for now
             connection_buffer_count: 0,
             delta_buffer: 0,
-            next_expected_tick_id: 0,
+            next_expected_tick_id: TickId(0),
         },
         authoritative_steps: setup_sample_steps(),
     };
