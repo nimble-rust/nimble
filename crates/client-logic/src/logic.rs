@@ -27,8 +27,6 @@ pub enum ClientLogicPhase {
 pub struct ClientLogic<StateT: BufferDeserializer, StepT: Clone + Deserialize + Serialize + Debug> {
     joining_player: Option<JoinGameRequest>,
     state: Option<StateT>,
-    tick_id: u32,
-    debug_tick_id_to_send: u32,
     blob_stream_client: FrontLogic,
     commands_to_send: Vec<ClientToHostCommands<StepT>>,
     outgoing_predicted_steps: Steps<PredictedStep<StepT>>,
@@ -52,8 +50,6 @@ impl<StateT: BufferDeserializer, StepT: Clone + Deserialize + Serialize + Debug>
     pub fn new() -> ClientLogic<StateT, StepT> {
         Self {
             joining_player: None,
-            tick_id: 0,
-            debug_tick_id_to_send: 0,
             blob_stream_client: FrontLogic::new(),
             commands_to_send: Vec::new(),
             last_download_state_request_id: 0x99,
@@ -72,11 +68,6 @@ impl<StateT: BufferDeserializer, StepT: Clone + Deserialize + Serialize + Debug>
 
     pub fn set_joining_player(&mut self, join_game_request: JoinGameRequest) {
         self.joining_player = Some(join_game_request);
-    }
-
-    pub fn debug_set_tick_id(&mut self, tick_id: u32) {
-        self.tick_id = tick_id;
-        self.debug_tick_id_to_send = self.tick_id;
     }
 
     #[allow(unused)]
@@ -107,7 +98,7 @@ impl<StateT: BufferDeserializer, StepT: Clone + Deserialize + Serialize + Debug>
     fn send_steps_request(&mut self) -> ClientToHostCommands<StepT> {
         let steps_request = StepsRequest {
             ack: StepsAck {
-                waiting_for_tick_id: self.tick_id,
+                waiting_for_tick_id: self.incoming_authoritative_steps.expected_write_tick_id(),
                 lost_steps_mask_after_last_received: 0,
             },
             combined_predicted_steps: CombinedPredictedSteps {

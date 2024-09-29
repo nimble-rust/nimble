@@ -301,20 +301,20 @@ impl JoinGameRequest {
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct StepsAck {
-    pub waiting_for_tick_id: u32,
+    pub waiting_for_tick_id: TickId,
     pub lost_steps_mask_after_last_received: u64,
 }
 
 impl StepsAck {
     pub fn to_stream(&self, stream: &mut impl WriteOctetStream) -> io::Result<()> {
-        stream.write_u32(self.waiting_for_tick_id)?;
+        TickIdUtil::to_stream(self.waiting_for_tick_id, stream)?;
         stream.write_u64(self.lost_steps_mask_after_last_received)?;
         Ok(())
     }
 
     pub fn from_stream(stream: &mut impl ReadOctetStream) -> io::Result<Self> {
         Ok(Self {
-            waiting_for_tick_id: stream.read_u32()?,
+            waiting_for_tick_id: TickIdUtil::from_stream(stream)?,
             lost_steps_mask_after_last_received: stream.read_u64()?,
         })
     }
@@ -335,7 +335,7 @@ pub struct SerializeAuthoritativeStepRangeForAllParticipants<StepT: Serialize + 
 impl<StepT: Serialize + Deserialize + std::fmt::Debug>
     SerializeAuthoritativeStepRangeForAllParticipants<StepT>
 {
-    pub fn serialize_with_len(&self, stream: &mut impl WriteOctetStream) -> io::Result<()>
+    pub fn serialize(&self, stream: &mut impl WriteOctetStream) -> io::Result<()>
     where
         Self: Sized,
     {

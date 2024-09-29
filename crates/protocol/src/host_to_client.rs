@@ -303,7 +303,7 @@ impl<StepT: Deserialize + Serialize + Debug + Clone> SerializeAuthoritativeStepR
     pub fn to_stream(&self, stream: &mut impl WriteOctetStream) -> io::Result<()> {
         stream.write_u8(self.delta_steps_from_previous)?;
 
-        self.authoritative_steps.serialize_with_len(stream)?;
+        self.authoritative_steps.serialize(stream)?;
 
         Ok(())
     }
@@ -341,7 +341,7 @@ impl<StepT: Deserialize + Serialize + Debug + Clone> Serialize for Authoritative
                     "ranges are incorrect",
                 ))?;
             }
-            let delta_steps_from_previous = (auth_range.tick_id - tick_id) as u8;
+            let delta_ticks_from_previous = (auth_range.tick_id - tick_id) as u8;
             tick_id = auth_range.tick_id + auth_range.authoritative_steps.len() as u32;
 
             let mut hash_map = SeqMap::<
@@ -390,7 +390,7 @@ impl<StepT: Deserialize + Serialize + Debug + Clone> Serialize for Authoritative
             }
 
             let range = SerializeAuthoritativeStepRange {
-                delta_steps_from_previous,
+                delta_steps_from_previous: delta_ticks_from_previous,
                 authoritative_steps: SerializeAuthoritativeStepRangeForAllParticipants::<StepT> {
                     authoritative_participants: hash_map,
                 },
