@@ -2,78 +2,74 @@
  * Copyright (c) Peter Bjorklund. All rights reserved. https://github.com/nimble-rust/nimble
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
-use datagram::{DatagramBuilder, DatagramError};
-use datagram_pinger::ClientTime;
 use flood_rs::prelude::OutOctetStream;
-use flood_rs::{Serialize, WriteOctetStream};
-use hexify::format_hex;
-use log::trace;
-use nimble_ordered_datagram::OrderedOut;
+use flood_rs::Serialize;
+use std::fmt::Debug;
 use std::io;
+use std::io::Error;
 
-pub struct NimbleDatagramBuilder {
-    ordered_datagram_out: OrderedOut,
-    max_size: usize,
-    stream: OutOctetStream,
-    is_empty: bool, // TODO: Add on OutOctetStream
+#[derive(Debug)]
+pub enum DatagramChunkerError {
+    ItemSizeTooBig,
+    IoError(std::io::Error),
 }
 
-impl NimbleDatagramBuilder {
+
+pub struct DatagramChunker {
+    datagrams: Vec<Vec<u8>>,
+    current: Vec<u8>,
+    max_size: usize,
+}
+
+impl DatagramChunker {
     pub fn new(max_size: usize) -> Self {
         Self {
-            ordered_datagram_out: Default::default(),
-            stream: OutOctetStream::new(),
+            current: Vec::with_capacity(max_size),
+            datagrams: Vec::new(),
             max_size,
-            is_empty: true,
         }
     }
 
-    fn finalize_header(&mut self) -> io::Result<Vec<u8>> {
-        let payload = self.stream.octets();
-        trace!(
-            "datagram. finalize: total    payload: {}",
-            format_hex(&payload)
-        );
-        Ok(payload)
+    fn push(&mut self, data: &[u8]) -> Result<(), DatagramChunkerError> {
+        if data.len() > self.max_size {
+            return Err(DatagramChunkerError::ItemSizeTooBig);
+        }
+
+        if self.current.len() + data.len() > self.max_size {
+            self.datagrams.push(std::mem::take(&mut self.current));
+            self.current = data.to_vec();
+        } else {
+            self.current.extend_from_slice(data);
+        }
+
+        Ok(())
+    }
+
+    pub fn finalize(mut self) -> Vec<Vec<u8>> {
+        if !self.current.is_empty() {
+            self.datagrams.push(self.current.clone());
+        }
+        self.datagrams
     }
 }
 
-impl DatagramBuilder for NimbleDatagramBuilder {
-    fn push(&mut self, data: &[u8]) -> Result<(), DatagramError> {
-        const FOOTER_SIZE: usize = 1;
+impl From<io::Error> for DatagramChunkerError {
+    fn from(value: Error) -> Self {
+        Self::IoError(value)
+    }
+}
 
-        if data.len() > self.max_size - FOOTER_SIZE {
-            return Err(DatagramError::ItemSizeTooBig);
-        }
-
-        if self.stream.octets().len() + data.len() > self.max_size - FOOTER_SIZE {
-            return Err(DatagramError::BufferFull);
-        }
-
-        self.stream.write(data)?;
-        Ok(())
+pub fn serialize_to_chunker<I, T>(items: I, max_datagram_size: usize) -> Result<Vec<Vec<u8>>, DatagramChunkerError>
+where
+    T: Serialize + Debug,
+    I: AsRef<[T]>,
+{
+    let mut chunker = DatagramChunker::new(max_datagram_size);
+    for item in items.as_ref() {
+        let mut temp = OutOctetStream::new();
+        item.serialize(&mut temp)?;
+        chunker.push(temp.octets_ref())?;
     }
 
-    fn finalize(&mut self) -> io::Result<Vec<u8>> {
-        // Finalize header
-        self.finalize_header()
-    }
-
-    fn is_empty(&self) -> bool {
-        self.is_empty // self.stream.is_empty()
-    }
-
-    fn clear(&mut self) -> io::Result<()> {
-        self.stream = OutOctetStream::new(); // TODO: implement self.stream.clear()
-
-        self.ordered_datagram_out.to_stream(&mut self.stream)?; // Ordered datagrams
-
-        let client_time = ClientTime::new(0);
-        client_time.serialize(&mut self.stream)?;
-        self.is_empty = false;
-
-        self.ordered_datagram_out.commit();
-
-        Ok(())
-    }
+    Ok(chunker.finalize())
 }

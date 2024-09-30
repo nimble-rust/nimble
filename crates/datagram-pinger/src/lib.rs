@@ -11,6 +11,10 @@ impl ClientTime {
     pub fn new(time: u16) -> Self {
         Self(time)
     }
+    
+    pub fn inner(&self) -> u16 {
+        self.0
+    }
 }
 
 impl Serialize for ClientTime {

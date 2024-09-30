@@ -1,13 +1,17 @@
 /*
- * Copyright (c) Peter Bjorklund. All rights reserved. https://github.com/nimble-rust/nimble
- * Licensed under the MIT License. See LICENSE in the project root for license information.
- */
-use datagram_pinger::ClientTime;
-use flood_rs::prelude::InOctetStream;
-use flood_rs::Deserialize;
-use hexify::format_hex;
-use log::trace;
-use nimble_ordered_datagram::{DatagramOrderInError, OrderedIn};
+
+pub struct Front {
+            clock: InstantMonotonicClock::new(),
+}
+
+
+pub fn later() {
+    let now = self.clock.now();
+    let low_16 = datagram_header.client_time.inner() as MillisLow16;
+    let earlier = now.from_lower(low_16).ok_or_else(|| ClientStreamError::Unexpected("from_lower_error".to_string()))?;
+    let duration_ms = now.checked_duration_since_ms(earlier).ok_or_else(|| ClientStreamError::Unexpected("earlier".to_string()))?;
+}
+
 
 pub struct NimbleDatagramParser {
     ordered_in: OrderedIn,
@@ -44,3 +48,8 @@ impl NimbleDatagramParser {
         Ok((datagram_type, in_stream))
     }
 }
+
+
+*/
+
+

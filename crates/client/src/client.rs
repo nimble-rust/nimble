@@ -3,18 +3,14 @@
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
 use crate::client::ClientPhase::Connected;
-use crate::datagram_build::NimbleDatagramBuilder;
-use crate::datagram_parse::NimbleDatagramParser;
-use datagram::{DatagramBuilder, DatagramError};
-use datagram_builder::serialize::serialize_datagrams;
+use crate::datagram_build::{serialize_to_chunker, DatagramChunkerError};
 use err_rs::{ErrorLevel, ErrorLevelProvider};
-use flood_rs::prelude::{InOctetStream, OutOctetStream};
+use flood_rs::prelude::OctetRefReader;
 use flood_rs::{BufferDeserializer, ReadOctetStream};
 use log::{debug, trace};
 use nimble_client_connecting::ConnectingClient;
 use nimble_client_logic::err::ClientError;
 use nimble_client_logic::logic::ClientLogic;
-use nimble_ordered_datagram::DatagramOrderInError;
 use nimble_protocol::prelude::{HostToClientCommands, HostToClientOobCommands};
 use nimble_protocol::{ClientRequestId, Version};
 use nimble_step_types::PredictedStep;
@@ -27,9 +23,8 @@ pub enum ClientStreamError {
     IoErr(std::io::Error),
     ClientErr(ClientError),
     ClientConnectingErr(nimble_client_connecting::ClientError),
-    DatagramError(DatagramError),
-    DatagramOrderError(DatagramOrderInError),
     PredictedStepsError(StepsError),
+    DatagramChunkError(DatagramChunkerError),
     WrongPhase,
 }
 
@@ -40,11 +35,16 @@ impl ErrorLevelProvider for ClientStreamError {
             Self::IoErr(_) => ErrorLevel::Info,
             Self::ClientErr(_) => ErrorLevel::Info,
             Self::ClientConnectingErr(_) => ErrorLevel::Info,
-            Self::DatagramError(_) => ErrorLevel::Info,
-            Self::DatagramOrderError(_) => ErrorLevel::Info,
             Self::WrongPhase => ErrorLevel::Info,
             Self::PredictedStepsError(_) => ErrorLevel::Warning,
+            Self::DatagramChunkError(_) => ErrorLevel::Warning,
         }
+    }
+}
+
+impl From<DatagramChunkerError> for ClientStreamError {
+    fn from(value: DatagramChunkerError) -> Self {
+        Self::DatagramChunkError(value)
     }
 }
 
@@ -61,15 +61,13 @@ pub struct ClientStream<
     StateT: BufferDeserializer,
     StepT: Clone + flood_rs::Deserialize + flood_rs::Serialize + std::fmt::Debug,
 > {
-    datagram_parser: NimbleDatagramParser,
-    datagram_builder: NimbleDatagramBuilder,
     phase: ClientPhase<StateT, StepT>,
 }
 
 impl<
-        StateT: BufferDeserializer,
-        StepT: Clone + flood_rs::Deserialize + flood_rs::Serialize + std::fmt::Debug,
-    > ClientStream<StateT, StepT>
+    StateT: BufferDeserializer,
+    StepT: Clone + flood_rs::Deserialize + flood_rs::Serialize + std::fmt::Debug,
+> ClientStream<StateT, StepT>
 {
     pub fn new(application_version: &Version) -> Self {
         let nimble_protocol_version = Version {
@@ -78,10 +76,7 @@ impl<
             patch: 5,
         };
         let client_request_id = ClientRequestId(0);
-        const DATAGRAM_MAX_SIZE: usize = 1024;
         Self {
-            datagram_parser: NimbleDatagramParser::new(),
-            datagram_builder: NimbleDatagramBuilder::new(DATAGRAM_MAX_SIZE),
             phase: ClientPhase::Connecting(ConnectingClient::new(
                 client_request_id,
                 *application_version,
@@ -92,14 +87,14 @@ impl<
 
     fn connecting_receive(
         &mut self,
-        mut in_octet_stream: InOctetStream,
+        in_octet_stream: &mut impl ReadOctetStream,
     ) -> Result<(), ClientStreamError> {
         let connecting_client = match self.phase {
             ClientPhase::Connecting(ref mut connecting_client) => connecting_client,
             _ => Err(ClientStreamError::WrongPhase)?,
         };
 
-        let command = HostToClientOobCommands::from_stream(&mut in_octet_stream)
+        let command = HostToClientOobCommands::from_stream(in_octet_stream)
             .map_err(ClientStreamError::IoErr)?;
         connecting_client
             .receive(&command)
@@ -112,16 +107,13 @@ impl<
     }
 
     fn connecting_receive_front(&mut self, payload: &[u8]) -> Result<(), ClientStreamError> {
-        let (_, in_stream) = self
-            .datagram_parser
-            .parse(payload)
-            .map_err(ClientStreamError::DatagramOrderError)?;
-        self.connecting_receive(in_stream)
+        let mut in_stream = OctetRefReader::new(payload);
+        self.connecting_receive(&mut in_stream)
     }
 
     fn connected_receive(
         &mut self,
-        in_stream: &mut InOctetStream,
+        in_stream: &mut impl ReadOctetStream,
     ) -> Result<(), ClientStreamError> {
         let logic = match self.phase {
             ClientPhase::Connected(ref mut logic) => logic,
@@ -139,13 +131,9 @@ impl<
     }
 
     fn connected_receive_front(&mut self, payload: &[u8]) -> Result<(), ClientStreamError> {
-        let (datagram_header, mut in_stream) = self
-            .datagram_parser
-            .parse(payload)
-            .map_err(ClientStreamError::DatagramOrderError)?;
+        trace!("connected receive payload length: {}", payload.len());
 
-        // TODO: use connection_id from DatagramType::connection_id
-        trace!("connection: client time {:?}", datagram_header.client_time);
+        let mut in_stream = OctetRefReader::new(payload);
         self.connected_receive(&mut in_stream)
     }
 
@@ -156,29 +144,15 @@ impl<
         }
     }
 
-    fn connecting_send_front(&mut self) -> Result<Vec<u8>, ClientStreamError> {
+    fn connecting_send_front(&mut self) -> Result<Vec<Vec<u8>>, ClientStreamError> {
         let connecting_client = match &mut self.phase {
             ClientPhase::Connecting(ref mut connecting_client) => connecting_client,
             _ => Err(ClientStreamError::WrongPhase)?,
         };
         let request = connecting_client.send();
-        let mut out_stream = OutOctetStream::new();
-        request
-            .to_stream(&mut out_stream)
-            .map_err(ClientStreamError::IoErr)?;
-
-        self.datagram_builder
-            .clear()
-            .map_err(ClientStreamError::IoErr)?;
-        self.datagram_builder
-            .push(out_stream.octets().as_slice())
-            .map_err(ClientStreamError::DatagramError)?;
-        Ok(self
-            .datagram_builder
-            .finalize()
-            .map_err(ClientStreamError::IoErr)?
-            .to_vec())
+        Ok(serialize_to_chunker([request], Self::DATAGRAM_MAX_SIZE)?)
     }
+    const DATAGRAM_MAX_SIZE: usize = 1024;
 
     fn connected_send_front(&mut self) -> Result<Vec<Vec<u8>>, ClientStreamError> {
         let client_logic = match &mut self.phase {
@@ -186,12 +160,12 @@ impl<
             _ => Err(ClientStreamError::WrongPhase)?,
         };
         let commands = client_logic.send();
-        serialize_datagrams(commands, &mut self.datagram_builder).map_err(ClientStreamError::IoErr)
+        Ok(serialize_to_chunker(commands, Self::DATAGRAM_MAX_SIZE)?)
     }
 
     pub fn send(&mut self) -> Result<Vec<Vec<u8>>, ClientStreamError> {
         match &mut self.phase {
-            ClientPhase::Connecting(_) => Ok(vec![self.connecting_send_front()?]),
+            ClientPhase::Connecting(_) => Ok(self.connecting_send_front()?),
             ClientPhase::Connected(_) => self.connected_send_front(),
         }
     }

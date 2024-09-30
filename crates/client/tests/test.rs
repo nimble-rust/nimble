@@ -29,10 +29,6 @@ fn connect<
     assert_eq!(
         octet_vector[0],
         &[
-            // OOB Commands
-            0x00, 0x00, // Datagram sequence
-            0x00, 0x00, // Client Time
-
             0x05, // Connect Request: ClientToHostOobCommand::ConnectType = 0x05
             0, 0, 0, 0, 0, 5, // Nimble version
             0, // Flags (use debug stream)
@@ -49,10 +45,6 @@ fn connect<
 
     #[rustfmt::skip]
     let connect_response_from_host = [
-        // Header
-        0x00, 0x00, // Datagram sequence
-        0x00, 0x00, // Client Time
-
         // OOB Commands
         0x0D, // Connect Response
         0x00, // Flags
@@ -84,10 +76,6 @@ fn download_state<
 
     #[rustfmt::skip]
     let expected_request_download_state_octets = &[
-        // Header
-        0x00, 0x01, // Ordered datagram Sequence number
-        0x00, 0x00,  // Client Time
-
         // Commands
         0x03, // Download Game State
         0x99, // Download Request id, //TODO: Hardcoded, but should not be
@@ -99,10 +87,6 @@ fn download_state<
 
     #[rustfmt::skip]
     let feed_request_download_response = &[
-        // Header
-        0x00, 0x01, // Ordered datagram
-        0x00, 0x00, // Client Time
-
         // Commands
 
         // Download Game State Response Command
@@ -129,10 +113,6 @@ fn download_state<
 
     #[rustfmt::skip]
     let expected_start_transfer = &[
-        // Header
-        0x00, 0x02, // Datagram sequence number
-        0x00, 0x00,    // Client Time
-
         // Commands
         0x04, // blob stream channel
         0x03, // Ack Start. Client acknowledges that the transfer has started
@@ -142,10 +122,6 @@ fn download_state<
 
     #[rustfmt::skip]
     let feed_complete_download = &[
-        // Header
-        0x00, 0x02, // Sequence
-        0x00, 0x00, // Client Time
-
         // Commands
         0x0C, // HostToClient::BlobStreamChannel
         0x01, // Set Chunk
@@ -197,10 +173,6 @@ fn predicted_steps() -> Result<(), ClientStreamError> {
 
     #[rustfmt::skip]
     let expected_zero_predicted_steps = &[
-        // Header
-        0x00, 0x03, // Sequence
-        0x00, 0x00, // Client Time
-
         // Commands
         0x02, // Send Predicted steps
         0x00, 0x00, 0x00, 0x00, // Waiting for Tick ID
@@ -235,10 +207,6 @@ fn predicted_steps() -> Result<(), ClientStreamError> {
 
     #[rustfmt::skip]
     let expected_one_predicted_step = &[
-        // Header
-        0x00, 0x04, // Sequence
-        0x00, 0x00, // Client Time
-
         // Commands
         0x02, // Send Predicted steps
 
@@ -274,10 +242,6 @@ fn predicted_steps() -> Result<(), ClientStreamError> {
 
     #[rustfmt::skip]
     let game_step_response = &[
-        // Header
-        0x00, 0x04, // Sequence
-        0x00, 0x00, // Client Time
-
         // Commands
         0x08, // Game Step Response
 
@@ -297,10 +261,6 @@ fn predicted_steps() -> Result<(), ClientStreamError> {
 
     #[rustfmt::skip]
     let expected_fewer_predicted_steps = &[
-        // Header
-        0x00, 0x05, // Sequence
-        0x00, 0x00, // Client Time
-
         // Commands
         0x02, // Send Predicted steps
 
@@ -329,10 +289,6 @@ fn predicted_steps() -> Result<(), ClientStreamError> {
 
     #[rustfmt::skip]
     let game_step_response_with_new_steps = &[
-        // Header
-        0x00, 0x05, // Sequence
-        0x00, 0x00, // Client Time
-
         // Commands
         0x08, // Game Step Response
 
@@ -364,10 +320,6 @@ fn predicted_steps() -> Result<(), ClientStreamError> {
 
     #[rustfmt::skip]
     let expected_fewer_predicted_steps_but_received_auth = &[
-        // Header
-        0x00, 0x06, // Sequence
-        0x00, 0x00, // Client Time
-
         // Commands
         0x02, // Send Predicted steps
 

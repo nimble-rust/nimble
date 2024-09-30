@@ -64,8 +64,10 @@ impl ClientToHostOobCommands {
             ClientToHostOobCommands::ConnectType(_) => ClientToHostOobCommand::Connect as u8,
         }
     }
+}
 
-    pub fn to_stream(&self, stream: &mut impl WriteOctetStream) -> io::Result<()> {
+impl Serialize for ClientToHostOobCommands {
+    fn serialize(&self, stream: &mut impl WriteOctetStream) -> io::Result<()> {
         stream.write_u8(self.to_octet())?;
         match self {
             ClientToHostOobCommands::ConnectType(connect_command) => {
@@ -73,8 +75,10 @@ impl ClientToHostOobCommands {
             }
         }
     }
+}
 
-    pub fn from_stream(stream: &mut impl ReadOctetStream) -> io::Result<Self> {
+impl Deserialize for ClientToHostOobCommands {
+    fn deserialize(stream: &mut impl ReadOctetStream) -> io::Result<Self> {
         let command_value = stream.read_u8()?;
         let command = ClientToHostOobCommand::try_from(command_value)?;
         let x = match command {
@@ -85,6 +89,7 @@ impl ClientToHostOobCommands {
         Ok(x)
     }
 }
+
 
 impl fmt::Display for ClientToHostOobCommands {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {

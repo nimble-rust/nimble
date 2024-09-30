@@ -4,7 +4,6 @@
  */
 pub mod client;
 mod datagram_build;
-mod datagram_parse;
 /*
     pub fn send(&mut self) -> io::Result<Vec<Vec<u8>>> {
         let mut out_stream = OutOctetStream::new();
