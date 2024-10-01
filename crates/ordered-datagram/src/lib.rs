@@ -5,6 +5,26 @@
 use flood_rs::{ReadOctetStream, WriteOctetStream};
 use std::{fmt, io};
 
+pub struct DatagramIdDiff(i32);
+
+impl DatagramIdDiff {
+    const EXPECTED_MAX_DATAGRAMS_PER_SECOND: i32 = 1000;
+    const EXPECTED_MAX_LATENCY_MS: i32 = 1000;
+    const ORDERED_DATAGRAM_ID_ACCEPTABLE_DIFF: i32 =
+        Self::EXPECTED_MAX_DATAGRAMS_PER_SECOND * Self::EXPECTED_MAX_LATENCY_MS / 1000;
+    pub fn is_successor(&self) -> bool {
+        self.0 > 0 && self.0 <= Self::ORDERED_DATAGRAM_ID_ACCEPTABLE_DIFF
+    }
+
+    pub fn is_equal_or_successor(&self) -> bool {
+        self.0 >= 0 && self.0 <= Self::ORDERED_DATAGRAM_ID_ACCEPTABLE_DIFF
+    }
+
+    pub fn inner(&self) -> i32 {
+        self.0
+    }
+}
+
 #[derive(Debug, Default, Copy, Clone)]
 pub struct DatagramId(u16);
 
@@ -30,21 +50,17 @@ impl DatagramId {
         Ok(Self(stream.read_u16()?))
     }
 
-    fn diff(self, after: DatagramId) -> i32 {
-        after.0.wrapping_sub(self.0) as i32
+    pub fn sub(self, after: DatagramId) -> DatagramIdDiff {
+        DatagramIdDiff(after.0.wrapping_sub(self.0) as i32)
     }
 
     #[allow(unused)]
     pub fn is_valid_successor(self, after: DatagramId) -> bool {
-        const ORDERED_DATAGRAM_ID_ACCEPTABLE_DIFF: i32 = 625; // 10 datagrams / tick * tickFrequency (62.5) * 1 second latency
-        let diff = self.diff(after);
-        diff > 0 && diff <= ORDERED_DATAGRAM_ID_ACCEPTABLE_DIFF
+        self.sub(after).is_successor()
     }
 
-    fn is_equal_or_successor(self, after: DatagramId) -> bool {
-        const ORDERED_DATAGRAM_ID_ACCEPTABLE_DIFF: i32 = 625; // 10 datagrams / tick * tickFrequency (62.5) * 1 second latency
-        let diff = self.diff(after);
-        (0..=ORDERED_DATAGRAM_ID_ACCEPTABLE_DIFF).contains(&diff)
+    pub fn is_equal_or_successor(self, after: DatagramId) -> bool {
+        self.sub(after).is_equal_or_successor()
     }
 }
 
@@ -92,16 +108,14 @@ impl OrderedIn {
     pub fn read_and_verify(
         &mut self,
         stream: &mut impl ReadOctetStream,
-    ) -> Result<(), DatagramOrderInError> {
+    ) -> Result<DatagramIdDiff, DatagramOrderInError> {
         let potential_expected_or_successor =
             DatagramId::from_stream(stream).map_err(DatagramOrderInError::IoError)?;
 
-        if self
-            .expected_sequence
-            .is_equal_or_successor(potential_expected_or_successor)
-        {
+        let diff = self.expected_sequence.sub(potential_expected_or_successor);
+        if diff.is_equal_or_successor() {
             self.expected_sequence = potential_expected_or_successor.next();
-            Ok(())
+            Ok(diff)
         } else {
             Err(DatagramOrderInError::WrongOrder {
                 received: potential_expected_or_successor,
