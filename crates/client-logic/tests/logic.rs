@@ -116,8 +116,8 @@ fn receive_authoritative_steps() -> Result<(), ClientError> {
     let response = GameStepResponse::<Step<SampleStep>> {
         response_header: GameStepResponseHeader {
             // We ignore the response for now
-            connection_buffer_count: 0,
-            delta_buffer: 0,
+            connection_buffer_count: 2,
+            delta_buffer: -2,
             next_expected_tick_id: TickId(0),
         },
         authoritative_steps: setup_sample_steps(),
@@ -162,6 +162,47 @@ fn receive_authoritative_steps() -> Result<(), ClientError> {
     assert_eq!(authoritative_steps.len(), 3);
 
     assert_eq!(*auth_steps, expected_step_with_step_info);
+
+    // Create a GameStep command
+    let response2 = GameStepResponse::<Step<SampleStep>> {
+        response_header: GameStepResponseHeader {
+            // We ignore the response for now
+            connection_buffer_count: 2,
+            delta_buffer: -3,
+            next_expected_tick_id: TickId(0),
+        },
+        authoritative_steps: setup_sample_steps(),
+    };
+    let command2 = HostToClientCommands::GameStep(response2);
+    // Receive
+    client_logic.receive(&[command2])?;
+
+    assert_eq!(client_logic.server_buffer_count(), None);
+    assert_eq!(client_logic.server_buffer_delta_tick(), None);
+
+    // Create a GameStep command
+    let response3 = GameStepResponse::<Step<SampleStep>> {
+        response_header: GameStepResponseHeader {
+            // We ignore the response for now
+            connection_buffer_count: 8,
+            delta_buffer: -4,
+            next_expected_tick_id: TickId(0),
+        },
+        authoritative_steps: setup_sample_steps(),
+    };
+    let command3 = HostToClientCommands::GameStep(response3);
+    client_logic.receive(&[command3])?;
+
+    assert_eq!(
+        client_logic.server_buffer_count().expect("should work"),
+        4.0
+    );
+    assert_eq!(
+        client_logic
+            .server_buffer_delta_tick()
+            .expect("should work"),
+        -3.0
+    );
 
     Ok(())
 }

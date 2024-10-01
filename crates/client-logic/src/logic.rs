@@ -7,6 +7,7 @@ use err_rs::{ErrorLevel, ErrorLevelProvider};
 use flood_rs::BufferDeserializer;
 use flood_rs::{Deserialize, Serialize};
 use log::{debug, trace};
+use metricator::AggregateMetric;
 use nimble_blob_stream::prelude::{FrontLogic, SenderToReceiverFrontCommands};
 use nimble_protocol::client_to_host::{CombinedPredictedSteps, DownloadGameStateRequest};
 use nimble_protocol::host_to_client::{DownloadGameStateResponse, GameStepResponseHeader};
@@ -34,6 +35,8 @@ pub struct ClientLogic<StateT: BufferDeserializer, StepT: Clone + Deserialize + 
     #[allow(unused)]
     phase: ClientLogicPhase,
     last_download_state_request_id: u8,
+    server_delta_steps: AggregateMetric<i16>,
+    server_buffer_count: AggregateMetric<u8>,
 }
 
 impl<StateT: BufferDeserializer, StepT: Clone + Deserialize + Serialize + Debug> Default
@@ -55,6 +58,8 @@ impl<StateT: BufferDeserializer, StepT: Clone + Deserialize + Serialize + Debug>
             last_download_state_request_id: 0x99,
             outgoing_predicted_steps: Steps::new(),
             incoming_authoritative_steps: Steps::new(),
+            server_delta_steps: AggregateMetric::new(3).unwrap(),
+            server_buffer_count: AggregateMetric::new(3).unwrap(),
             state: None,
             phase: ClientLogicPhase::RequestDownloadState {
                 download_state_request_id: 0x99,
@@ -163,6 +168,8 @@ impl<StateT: BufferDeserializer, StepT: Clone + Deserialize + Serialize + Debug>
 
     fn handle_game_step_header(&mut self, header: &GameStepResponseHeader) {
         let host_expected_tick_id = header.next_expected_tick_id;
+        self.server_delta_steps.add(header.delta_buffer as i16);
+        self.server_buffer_count.add(header.connection_buffer_count);
         trace!("removing every predicted step before {host_expected_tick_id}");
         self.outgoing_predicted_steps
             .pop_up_to(host_expected_tick_id);
@@ -286,5 +293,13 @@ impl<StateT: BufferDeserializer, StepT: Clone + Deserialize + Serialize + Debug>
             1 => Err(ClientError::Single(client_errors.pop().unwrap())),
             _ => Err(ClientError::Multiple(client_errors)),
         }
+    }
+
+    pub fn server_buffer_count(&self) -> Option<f32> {
+        self.server_buffer_count.average()
+    }
+
+    pub fn server_buffer_delta_tick(&self) -> Option<f32> {
+        self.server_delta_steps.average()
     }
 }
