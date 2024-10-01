@@ -90,7 +90,6 @@ impl Deserialize for ClientToHostOobCommands {
     }
 }
 
-
 impl fmt::Display for ClientToHostOobCommands {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {

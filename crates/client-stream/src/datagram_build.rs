@@ -14,7 +14,6 @@ pub enum DatagramChunkerError {
     IoError(std::io::Error),
 }
 
-
 pub struct DatagramChunker {
     datagrams: Vec<Vec<u8>>,
     current: Vec<u8>,
@@ -59,7 +58,10 @@ impl From<io::Error> for DatagramChunkerError {
     }
 }
 
-pub fn serialize_to_chunker<I, T>(items: I, max_datagram_size: usize) -> Result<Vec<Vec<u8>>, DatagramChunkerError>
+pub fn serialize_to_chunker<I, T>(
+    items: I,
+    max_datagram_size: usize,
+) -> Result<Vec<Vec<u8>>, DatagramChunkerError>
 where
     T: Serialize + Debug,
     I: AsRef<[T]>,

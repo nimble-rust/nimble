@@ -13,9 +13,11 @@ members = [
     "crates/ordered-datagram",
     "crates/datagram-pinger",
     "crates/sample-step",
-    "crates/client",
+    "crates/client-stream",
     "crates/client-connecting",
     "crates/nimble",
-    "crates/step-types", "crates/sample-game-type", "crates/client-front",
+    "crates/step-types",
+    "crates/sample-game-type",
+    "crates/client-front", "crates/protocol-header",
 ]
 resolver = "2"

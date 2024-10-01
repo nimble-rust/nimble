@@ -5,7 +5,7 @@
 use flood_rs::BufferDeserializer;
 use hexify::assert_eq_slices;
 use log::{info, trace};
-use nimble_client::client::{ClientPhase, ClientStream, ClientStreamError};
+use nimble_client_stream::client::{ClientPhase, ClientStream, ClientStreamError};
 use nimble_protocol::Version;
 use nimble_sample_step::{SampleState, SampleStep};
 use nimble_step_types::{LocalIndex, PredictedStep};

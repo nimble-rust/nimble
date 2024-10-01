@@ -9,7 +9,8 @@ repository = "https://github.com/nimble-rust/nimble"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-nimble-client = { path = "../client", version = "0.0.12-dev" }
+nimble-client-front = { path = "../client-front", version = "0.0.12-dev" }
+nimble-client-stream = { path = "../client-stream", version = "0.0.12-dev" }
 nimble-host = { path = "../host", version = "0.0.12-dev" }
 nimble-assent = { path = "../assent", version = "0.0.12-dev" }
 nimble-seer = { path = "../seer", version = "0.0.12-dev" }

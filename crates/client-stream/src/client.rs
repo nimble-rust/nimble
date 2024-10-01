@@ -15,6 +15,7 @@ use nimble_protocol::prelude::{HostToClientCommands, HostToClientOobCommands};
 use nimble_protocol::{ClientRequestId, Version};
 use nimble_step_types::PredictedStep;
 use nimble_steps::StepsError;
+use std::io;
 use tick_id::TickId;
 
 #[derive(Debug)]
@@ -42,6 +43,12 @@ impl ErrorLevelProvider for ClientStreamError {
     }
 }
 
+impl From<io::Error> for ClientStreamError {
+    fn from(err: io::Error) -> Self {
+        ClientStreamError::IoErr(err)
+    }
+}
+
 impl From<DatagramChunkerError> for ClientStreamError {
     fn from(value: DatagramChunkerError) -> Self {
         Self::DatagramChunkError(value)
@@ -65,9 +72,9 @@ pub struct ClientStream<
 }
 
 impl<
-    StateT: BufferDeserializer,
-    StepT: Clone + flood_rs::Deserialize + flood_rs::Serialize + std::fmt::Debug,
-> ClientStream<StateT, StepT>
+        StateT: BufferDeserializer,
+        StepT: Clone + flood_rs::Deserialize + flood_rs::Serialize + std::fmt::Debug,
+    > ClientStream<StateT, StepT>
 {
     pub fn new(application_version: &Version) -> Self {
         let nimble_protocol_version = Version {
@@ -94,8 +101,7 @@ impl<
             _ => Err(ClientStreamError::WrongPhase)?,
         };
 
-        let command = HostToClientOobCommands::from_stream(in_octet_stream)
-            .map_err(ClientStreamError::IoErr)?;
+        let command = HostToClientOobCommands::from_stream(in_octet_stream)?;
         connecting_client
             .receive(&command)
             .map_err(ClientStreamError::ClientConnectingErr)?;
@@ -120,8 +126,7 @@ impl<
             _ => Err(ClientStreamError::WrongPhase)?,
         };
         while !in_stream.has_reached_end() {
-            let cmd =
-                HostToClientCommands::from_stream(in_stream).map_err(ClientStreamError::IoErr)?;
+            let cmd = HostToClientCommands::from_stream(in_stream)?;
             trace!("connected_receive {cmd:?}");
             logic
                 .receive_cmd(&cmd)
