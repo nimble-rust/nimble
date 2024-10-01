@@ -1,7 +1,8 @@
-/*
+/*!
  * Copyright (c) Peter Bjorklund. All rights reserved. https://github.com/nimble-rust/nimble
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
+
 use crate::err::{ClientError, ClientErrorKind};
 use err_rs::{ErrorLevel, ErrorLevelProvider};
 use flood_rs::BufferDeserializer;
@@ -17,31 +18,57 @@ use nimble_steps::{Steps, StepsError};
 use std::fmt::Debug;
 use tick_id::TickId;
 
+/// Represents the various phases of the client logic.
 #[derive(Debug)]
 pub enum ClientLogicPhase {
+    /// Requesting a download of the game state.
     RequestDownloadState { download_state_request_id: u8 },
+
+    /// Downloading the game state from the host.
     DownloadingState(TickId),
+
+    /// Sending predicted steps from the client to the host.
     SendPredictedSteps,
 }
 
+/// `ClientLogic` manages the client's state and communication logic
+/// with the host in a multiplayer game session.
+///
+/// # Type Parameters
+/// * `StateT`: A type implementing representing the game state.
+/// * `StepT`: A type implementing representing the game steps.
 #[derive(Debug)]
 pub struct ClientLogic<StateT: BufferDeserializer, StepT: Clone + Deserialize + Serialize + Debug> {
+    /// Represents the player's join game request, if available.
     joining_player: Option<JoinGameRequest>,
+
+    /// Holds the current game state.
     state: Option<StateT>,
+
+    /// Manages the blob stream logic for the client.
     blob_stream_client: FrontLogic,
-    commands_to_send: Vec<ClientToHostCommands<StepT>>,
+
+    /// Stores the outgoing predicted steps from the client.
     outgoing_predicted_steps: Steps<PredictedStep<StepT>>,
+
+    /// Stores the incoming authoritative steps from the host.
     incoming_authoritative_steps: Steps<AuthoritativeStep<StepT>>,
+
+    /// Represents the current phase of the client's logic.
     #[allow(unused)]
     phase: ClientLogicPhase,
-    last_download_state_request_id: u8,
-    server_delta_steps: AggregateMetric<i16>,
+
+    /// Tracks the delta of tick id on the server.
+    server_buffer_delta_tick_id: AggregateMetric<i16>,
+
+    /// Tracks the buffer step count on the server.
     server_buffer_count: AggregateMetric<u8>,
 }
 
 impl<StateT: BufferDeserializer, StepT: Clone + Deserialize + Serialize + Debug> Default
     for ClientLogic<StateT, StepT>
 {
+    /// Creates a new `ClientLogic` instance with default values.
     fn default() -> Self {
         Self::new()
     }
@@ -50,15 +77,14 @@ impl<StateT: BufferDeserializer, StepT: Clone + Deserialize + Serialize + Debug>
 impl<StateT: BufferDeserializer, StepT: Clone + Deserialize + Serialize + Debug>
     ClientLogic<StateT, StepT>
 {
+    /// Creates a new `ClientLogic` instance, initializing all fields.
     pub fn new() -> ClientLogic<StateT, StepT> {
         Self {
             joining_player: None,
             blob_stream_client: FrontLogic::new(),
-            commands_to_send: Vec::new(),
-            last_download_state_request_id: 0x99,
             outgoing_predicted_steps: Steps::new(),
             incoming_authoritative_steps: Steps::new(),
-            server_delta_steps: AggregateMetric::new(3).unwrap(),
+            server_buffer_delta_tick_id: AggregateMetric::new(3).unwrap(),
             server_buffer_count: AggregateMetric::new(3).unwrap(),
             state: None,
             phase: ClientLogicPhase::RequestDownloadState {
@@ -67,22 +93,26 @@ impl<StateT: BufferDeserializer, StepT: Clone + Deserialize + Serialize + Debug>
         }
     }
 
+    /// Returns a reference to the incoming authoritative steps.
     pub fn debug_authoritative_steps(&self) -> &Steps<AuthoritativeStep<StepT>> {
         &self.incoming_authoritative_steps
     }
 
+    /// Sets the joining player request for this client.
+    ///
+    /// # Arguments
+    /// * `join_game_request`: The join game request to send to the host.
     pub fn set_joining_player(&mut self, join_game_request: JoinGameRequest) {
         self.joining_player = Some(join_game_request);
     }
 
-    #[allow(unused)]
-    fn request_game_state(&mut self) {
-        self.last_download_state_request_id += 1;
-        self.phase = ClientLogicPhase::RequestDownloadState {
-            download_state_request_id: self.last_download_state_request_id,
-        };
-    }
-
+    /// Generates a download state request command to send to the host.
+    ///
+    /// # Arguments
+    /// * `download_request_id`: The request ID for the download state.
+    ///
+    /// # Returns
+    /// A vector of `ClientToHostCommands`.
     fn download_state_request(
         &mut self,
         download_request_id: u8,
@@ -100,6 +130,10 @@ impl<StateT: BufferDeserializer, StepT: Clone + Deserialize + Serialize + Debug>
         vec
     }
 
+    /// Sends the predicted steps to the host.
+    ///
+    /// # Returns
+    /// A `ClientToHostCommands` representing the predicted steps.
     fn send_steps_request(&mut self) -> ClientToHostCommands<StepT> {
         let steps_request = StepsRequest {
             ack: StepsAck {
@@ -118,9 +152,12 @@ impl<StateT: BufferDeserializer, StepT: Clone + Deserialize + Serialize + Debug>
         ClientToHostCommands::Steps(steps_request)
     }
 
+    /// Returns client commands that should be sent to the host.
+    ///
+    /// # Returns
+    /// A vector of `ClientToHostCommands` representing all the commands to be sent to the host.
     pub fn send(&mut self) -> Vec<ClientToHostCommands<StepT>> {
-        let mut commands: Vec<ClientToHostCommands<StepT>> = self.commands_to_send.clone();
-        self.commands_to_send.clear();
+        let mut commands: Vec<ClientToHostCommands<StepT>> = vec![];
 
         let normal_commands: Vec<ClientToHostCommands<StepT>> = match self.phase {
             ClientLogicPhase::RequestDownloadState {
@@ -146,6 +183,14 @@ impl<StateT: BufferDeserializer, StepT: Clone + Deserialize + Serialize + Debug>
         commands
     }
 
+    /// Adds a predicted step to the outgoing steps queue.
+    ///
+    /// # Arguments
+    /// * `tick_id`: The tick ID of the step.
+    /// * `step`: The predicted step to add.
+    ///
+    /// # Errors
+    /// Returns a [`StepsError`] if the step is empty or cannot be added.
     pub fn push_predicted_step(
         &mut self,
         tick_id: TickId,
@@ -157,24 +202,47 @@ impl<StateT: BufferDeserializer, StepT: Clone + Deserialize + Serialize + Debug>
         self.outgoing_predicted_steps.push_with_check(tick_id, step)
     }
 
+    /// Handles the reception of the join game acceptance message from the host.
+    ///
+    /// # Arguments
+    /// * `cmd`: The join game acceptance command.
+    ///
+    /// # Errors
+    /// Returns a [`ClientErrorKind`] if the join game process encounters an error.
     fn on_join_game(&mut self, cmd: &JoinGameAccepted) -> Result<(), ClientErrorKind> {
         debug!("join game accepted: {:?}", cmd);
         Ok(())
     }
 
+    /// Returns the received game state from the host.
+    ///
+    /// # Returns
+    /// An `Option` containing a reference to the received game state, if available.
     pub fn state(&self) -> Option<&StateT> {
         self.state.as_ref()
     }
 
+    /// Processes the game step response header received from the host.
+    ///
+    /// # Arguments
+    /// * `header`: The game step response header.
     fn handle_game_step_header(&mut self, header: &GameStepResponseHeader) {
         let host_expected_tick_id = header.next_expected_tick_id;
-        self.server_delta_steps.add(header.delta_buffer as i16);
+        self.server_buffer_delta_tick_id
+            .add(header.delta_buffer as i16);
         self.server_buffer_count.add(header.connection_buffer_count);
         trace!("removing every predicted step before {host_expected_tick_id}");
         self.outgoing_predicted_steps
             .pop_up_to(host_expected_tick_id);
     }
 
+    /// Handles the reception of a game step response from the host.
+    ///
+    /// # Arguments
+    /// * `cmd`: The game step response.
+    ///
+    /// # Errors
+    /// Returns a `ClientErrorKind` if there are issues processing the game steps.
     fn on_game_step(&mut self, cmd: &GameStepResponse<StepT>) -> Result<(), ClientErrorKind> {
         trace!("game step response: {:?}", cmd);
 
@@ -213,6 +281,13 @@ impl<StateT: BufferDeserializer, StepT: Clone + Deserialize + Serialize + Debug>
         Ok(())
     }
 
+    /// Handles the reception of a download game state response.
+    ///
+    /// # Arguments
+    /// * `download_response`: The download game state response from the host.
+    ///
+    /// # Errors
+    /// Returns a `ClientErrorKind` if the download response is unexpected or has a mismatched request ID.
     fn on_download_state_response(
         &mut self,
         download_response: &DownloadGameStateResponse,
@@ -233,6 +308,13 @@ impl<StateT: BufferDeserializer, StepT: Clone + Deserialize + Serialize + Debug>
         Ok(())
     }
 
+    /// Handles the reception of a blob stream command.
+    ///
+    /// # Arguments
+    /// * `blob_stream_command`: The blob stream command from the host.
+    ///
+    /// # Errors
+    /// Returns a `ClientErrorKind` if the blob stream command is unexpected.
     fn on_blob_stream(
         &mut self,
         blob_stream_command: &SenderToReceiverFrontCommands,
@@ -255,6 +337,13 @@ impl<StateT: BufferDeserializer, StepT: Clone + Deserialize + Serialize + Debug>
         Ok(())
     }
 
+    /// Receives a command from the host and processes it accordingly.
+    ///
+    /// # Arguments
+    /// * `command`: The command from the host.
+    ///
+    /// # Errors
+    /// Returns a [`ClientErrorKind`] if the command cannot be processed.
     pub fn receive_cmd(
         &mut self,
         command: &HostToClientCommands<StepT>,
@@ -276,6 +365,13 @@ impl<StateT: BufferDeserializer, StepT: Clone + Deserialize + Serialize + Debug>
         Ok(())
     }
 
+    /// Processes a list of commands received from the host.
+    ///
+    /// # Arguments
+    /// * `commands`: A slice of commands to process.
+    ///
+    /// # Errors
+    /// Returns a `ClientError` if any command encounters an error during processing.
     pub fn receive(&mut self, commands: &[HostToClientCommands<StepT>]) -> Result<(), ClientError> {
         let mut client_errors: Vec<ClientErrorKind> = Vec::new();
 
@@ -295,11 +391,23 @@ impl<StateT: BufferDeserializer, StepT: Clone + Deserialize + Serialize + Debug>
         }
     }
 
-    pub fn server_buffer_count(&self) -> Option<f32> {
-        self.server_buffer_count.average()
+    /// Returns the average predicted step buffer count from the server, if available.
+    ///
+    /// # Returns
+    /// An optional average predicted step buffer count.
+    pub fn server_buffer_count(&self) -> Option<u8> {
+        self.server_buffer_count
+            .average()
+            .map(|value| value.round() as u8)
     }
 
-    pub fn server_buffer_delta_tick(&self) -> Option<f32> {
-        self.server_delta_steps.average()
+    /// Returns the average server buffer delta tick, if available.
+    ///
+    /// # Returns
+    /// An optional average server buffer delta tick.
+    pub fn server_buffer_delta_tick(&self) -> Option<i16> {
+        self.server_buffer_delta_tick_id
+            .average()
+            .map(|value| value.round() as i16)
     }
 }
