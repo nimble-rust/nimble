@@ -3,24 +3,25 @@
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
 use flood_rs::{ReadOctetStream, WriteOctetStream};
+use std::ops::Sub;
 use std::{fmt, io};
 
-pub struct DatagramIdDiff(i32);
+pub struct DatagramIdDiff(u16);
 
 impl DatagramIdDiff {
-    const EXPECTED_MAX_DATAGRAMS_PER_SECOND: i32 = 1000;
-    const EXPECTED_MAX_LATENCY_MS: i32 = 1000;
-    const ORDERED_DATAGRAM_ID_ACCEPTABLE_DIFF: i32 =
-        Self::EXPECTED_MAX_DATAGRAMS_PER_SECOND * Self::EXPECTED_MAX_LATENCY_MS / 1000;
+    const EXPECTED_MAX_DATAGRAMS_PER_SECOND: u16 = 1000;
+    const EXPECTED_MAX_LATENCY_MS: u16 = 1000;
+    const ORDERED_DATAGRAM_ID_ACCEPTABLE_DIFF: u16 =
+        Self::EXPECTED_MAX_DATAGRAMS_PER_SECOND * (Self::EXPECTED_MAX_LATENCY_MS / 1000);
     pub fn is_successor(&self) -> bool {
         self.0 > 0 && self.0 <= Self::ORDERED_DATAGRAM_ID_ACCEPTABLE_DIFF
     }
 
     pub fn is_equal_or_successor(&self) -> bool {
-        self.0 >= 0 && self.0 <= Self::ORDERED_DATAGRAM_ID_ACCEPTABLE_DIFF
+        self.0 <= Self::ORDERED_DATAGRAM_ID_ACCEPTABLE_DIFF
     }
 
-    pub fn inner(&self) -> i32 {
+    pub fn inner(&self) -> u16 {
         self.0
     }
 }
@@ -50,17 +51,20 @@ impl DatagramId {
         Ok(Self(stream.read_u16()?))
     }
 
-    pub fn sub(self, after: DatagramId) -> DatagramIdDiff {
-        DatagramIdDiff(after.0.wrapping_sub(self.0) as i32)
-    }
-
     #[allow(unused)]
     pub fn is_valid_successor(self, after: DatagramId) -> bool {
-        self.sub(after).is_successor()
+        (self - after).is_successor()
     }
 
     pub fn is_equal_or_successor(self, after: DatagramId) -> bool {
-        self.sub(after).is_equal_or_successor()
+        (self - after).is_equal_or_successor()
+    }
+}
+
+impl Sub for DatagramId {
+    type Output = DatagramIdDiff;
+    fn sub(self, rhs: DatagramId) -> DatagramIdDiff {
+        DatagramIdDiff(rhs.0.wrapping_sub(self.0))
     }
 }
 

@@ -116,7 +116,7 @@ impl<StateT: BufferDeserializer, StepT: Clone + Deserialize + Serialize + Debug>
     pub fn receive(&mut self, datagram: &[u8]) -> Result<(), ClientFrontError> {
         let mut in_stream = InOctetStream::new(datagram);
         let dropped_packets = self.ordered_in.read_and_verify(&mut in_stream)?;
-        self.datagram_drops.add(dropped_packets.inner() as u16);
+        self.datagram_drops.add(dropped_packets.inner());
 
         self.in_octets_per_second.add(datagram.len() as u32);
         self.in_datagrams_per_second.add(1);
