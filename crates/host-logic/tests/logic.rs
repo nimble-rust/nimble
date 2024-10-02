@@ -3,26 +3,39 @@
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
 use log::debug;
+use monotonic_time_rs::Millis;
 use nimble_blob_stream::in_logic_front::FrontLogic;
 use nimble_blob_stream::prelude::{ReceiverToSenderFrontCommands, SenderToReceiverFrontCommands};
-use nimble_host::logic::HostLogic;
-use nimble_host::state::State;
+use nimble_host_logic::logic::{GameStateProvider, HostLogic};
 use nimble_protocol::client_to_host::DownloadGameStateRequest;
 use nimble_protocol::prelude::{ClientToHostCommands, HostToClientCommands};
 use nimble_sample_step::SampleStep;
-use std::time::Instant;
 use tick_id::TickId;
+
+pub struct TestStateProvider {
+    pub tick_id: TickId,
+    pub payload: Vec<u8>,
+}
+
+impl GameStateProvider for TestStateProvider {
+    fn state(&self, _: TickId) -> (TickId, Vec<u8>) {
+        (self.tick_id, self.payload.clone())
+    }
+}
 
 #[test_log::test]
 fn game_state_download() {
     const TICK_ID: TickId = TickId(42);
     const EXPECTED_PAYLOAD: &[u8] = &[0xff, 0x33];
-    let state = State::new(TICK_ID, EXPECTED_PAYLOAD);
-    let mut host = HostLogic::<SampleStep>::new(state);
+    let state = TestStateProvider {
+        tick_id: TICK_ID,
+        payload: EXPECTED_PAYLOAD.to_vec(),
+    };
+    let mut host = HostLogic::<SampleStep>::new(TICK_ID);
 
     let connection_id = host.create_connection().expect("it should work");
     assert_eq!(connection_id.0, 0);
-    let now = Instant::now();
+    let now = Millis::from(0);
 
     // Send a Download Game State request to the host.
     // This is usually done by the client, but we do it manually here.
@@ -32,6 +45,7 @@ fn game_state_download() {
             connection_id,
             now,
             &ClientToHostCommands::DownloadGameState(download_request.clone()),
+            &state,
         )
         .expect("Should download game state");
 
@@ -93,6 +107,7 @@ fn game_state_download() {
             connection_id,
             now,
             &ClientToHostCommands::BlobStreamChannel(probably_start_acks),
+            &state,
         )
         .expect("Should download game state");
 
@@ -140,6 +155,7 @@ fn game_state_download() {
         connection_id,
         now,
         &ClientToHostCommands::BlobStreamChannel(last_ack.unwrap()),
+        &state,
     )
     .expect("Should download game state");
 

@@ -12,7 +12,7 @@ pub struct SampleState {
 }
 
 impl BufferDeserializer for SampleState {
-    fn deserialize(buf: &[u8]) -> std::io::Result<(Self, usize)>
+    fn deserialize(buf: &[u8]) -> io::Result<(Self, usize)>
     where
         Self: Sized,
     {

@@ -405,7 +405,7 @@ impl<StateT: BufferDeserializer, StepT: Clone + Deserialize + Serialize + Debug>
     ///
     /// # Returns
     /// An optional average server buffer delta tick.
-    pub fn server_buffer_delta_tick(&self) -> Option<i16> {
+    pub fn server_buffer_delta_ticks(&self) -> Option<i16> {
         self.server_buffer_delta_tick_id
             .average()
             .map(|value| value.round() as i16)

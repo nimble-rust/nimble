@@ -11,7 +11,7 @@ repository = "https://github.com/nimble-rust/nimble"
 [dependencies]
 nimble-client-front = { path = "../client-front", version = "0.0.12-dev" }
 nimble-client-stream = { path = "../client-stream", version = "0.0.12-dev" }
-nimble-host = { path = "../host", version = "0.0.12-dev" }
+nimble-host-logic = { path = "../host-logic", version = "0.0.12-dev" }
 nimble-assent = { path = "../assent", version = "0.0.12-dev" }
 nimble-seer = { path = "../seer", version = "0.0.12-dev" }
 nimble-rectify = { path = "../rectify", version = "0.0.12-dev" }
@@ -23,6 +23,8 @@ nimble-client-logic = { path = "../client-logic", version = "0.0.12-dev" }
 log = "^0.4.22"
 nimble-step-types = { path = "../step-types", version = "0.0.12-dev" }
 nimble-sample-game = { path = "../sample-game-type", version = "0.0.12-dev" }
+monotonic-time-rs = "^0.0.3"
+
 
 [dev-dependencies]
 test-log = "^0.2.16"

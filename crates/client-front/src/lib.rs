@@ -161,4 +161,12 @@ impl<StateT: BufferDeserializer, StepT: Clone + Deserialize + Serialize + Debug>
     pub fn out_octets_per_second(&self) -> f32 {
         self.out_octets_per_second.rate()
     }
+
+    /// Returns the average server buffer delta tick, if available.
+    ///
+    /// # Returns
+    /// An optional average server buffer delta tick.
+    pub fn server_buffer_delta_ticks(&self) -> Option<i16> {
+        self.client.server_buffer_delta_ticks()
+    }
 }

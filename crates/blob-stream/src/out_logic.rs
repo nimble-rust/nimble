@@ -4,7 +4,8 @@
  */
 use crate::out_stream::{BlobStreamOut, OutStreamError};
 use crate::prelude::{SetChunkData, SetChunkFrontData, TransferId};
-use std::time::{Duration, Instant};
+use monotonic_time_rs::Millis;
+use std::time::Duration;
 
 #[allow(unused)]
 #[derive(Debug)]
@@ -51,7 +52,7 @@ impl Logic {
     }
 
     #[must_use]
-    pub fn send(&mut self, now: Instant, max_count: usize) -> Vec<SetChunkFrontData> {
+    pub fn send(&mut self, now: Millis, max_count: usize) -> Vec<SetChunkFrontData> {
         let indices = self.out_stream.send(now, max_count);
         let mut set_chunks = Vec::new();
         for chunk_index in indices {

@@ -2,8 +2,9 @@
  * Copyright (c) Peter Bjorklund. All rights reserved. https://github.com/nimble-rust/nimble
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
+use monotonic_time_rs::Millis;
 use std::cmp::min;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 #[derive(Debug)]
 pub enum OutStreamError {
@@ -18,7 +19,7 @@ pub enum OutStreamError {
 /// - `start` and `end`: Byte ranges representing the chunk's position within the full blob.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct BlobStreamOutEntry {
-    pub last_sent_at: Option<Instant>,
+    pub last_sent_at: Option<Millis>,
     pub index: usize,
     pub is_received_by_remote: bool,
 }
@@ -47,7 +48,7 @@ impl BlobStreamOutEntry {
     /// # Arguments
     ///
     /// * `time` - The `Instant` at which the entry is being sent.
-    pub fn sent_at_time(&mut self, time: Instant) {
+    pub fn sent_at_time(&mut self, time: Millis) {
         self.last_sent_at = Some(time);
     }
 }
@@ -175,7 +176,7 @@ impl BlobStreamOut {
     /// # Returns
     ///
     /// A vector containing up to `max_count` `BlobStreamOutEntry` items, representing the chunks to be sent.
-    pub fn send(&mut self, now: Instant, max_count: usize) -> Vec<usize> {
+    pub fn send(&mut self, now: Millis, max_count: usize) -> Vec<usize> {
         // Filter by index range, timer expiration, and limit the number of results
         let mut filtered_out_indices: Vec<usize> = self
             .entries

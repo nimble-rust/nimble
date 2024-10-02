@@ -3,10 +3,10 @@
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
 use crate::combinator::Combinator;
-use crate::state::State;
 use flood_rs::{Deserialize, Serialize};
 use freelist_rs::FreeList;
 use log::{debug, info, trace};
+use monotonic_time_rs::Millis;
 use nimble_blob_stream::prelude::*;
 use nimble_participant::ParticipantId;
 use nimble_protocol::client_to_host::{
@@ -14,7 +14,8 @@ use nimble_protocol::client_to_host::{
 };
 use nimble_protocol::host_to_client::{
     AuthoritativeStepRanges, DownloadGameStateResponse, GameStepResponseHeader,
-    HostToClientCommands, JoinGameAccepted, JoinGameParticipants, PartyAndSessionSecret,
+    HostToClientCommands, JoinGameAccepted, JoinGameParticipant, JoinGameParticipants,
+    PartyAndSessionSecret,
 };
 use nimble_protocol::prelude::{GameStepResponse, JoinGameRequest};
 use nimble_protocol::SessionConnectionSecret;
@@ -22,7 +23,7 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::fmt::Debug;
 use std::rc::Rc;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 use tick_id::TickId;
 
 #[derive(Copy, Clone, Debug)]
@@ -35,22 +36,26 @@ pub struct Participant {
 }
 
 pub struct GameSession {
-    pub state: State,
     pub participants: HashMap<ParticipantId, Rc<RefCell<Participant>>>,
     pub participant_ids: FreeList,
 }
 
+impl Default for GameSession {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+pub trait GameStateProvider {
+    fn state(&self, tick_id: TickId) -> (TickId, Vec<u8>);
+}
+
 impl GameSession {
-    pub fn new(state: State) -> Self {
+    pub fn new() -> Self {
         Self {
-            state,
             participants: HashMap::new(),
             participant_ids: FreeList::new(0xff),
         }
-    }
-
-    pub fn state(&self) -> &State {
-        &self.state
     }
 
     pub(crate) fn create_participant(
@@ -116,7 +121,7 @@ pub enum HostLogicError {
     BlobStreamErr(OutStreamError),
 }
 
-pub struct HostLogic<StepT: std::clone::Clone> {
+pub struct HostLogic<StepT: Clone> {
     #[allow(unused)]
     combinator: Combinator<StepT>,
     connections: HashMap<u8, Connection>,
@@ -124,12 +129,12 @@ pub struct HostLogic<StepT: std::clone::Clone> {
     free_list: FreeList,
 }
 
-impl<StepT: std::clone::Clone + Eq + Debug + Deserialize + Serialize> HostLogic<StepT> {
-    pub fn new(last_known_state: State) -> Self {
+impl<StepT: Clone + Eq + Debug + Deserialize + Serialize> HostLogic<StepT> {
+    pub fn new(tick_id: TickId) -> Self {
         Self {
-            combinator: Combinator::<StepT>::new(last_known_state.tick_id),
+            combinator: Combinator::<StepT>::new(tick_id),
             connections: HashMap::new(),
-            session: GameSession::new(last_known_state),
+            session: GameSession::new(),
             free_list: FreeList::new(0xff),
         }
     }
@@ -173,18 +178,14 @@ impl<StepT: std::clone::Clone + Eq + Debug + Deserialize + Serialize> HostLogic<
     ) -> Result<HostToClientCommands<StepT>, HostLogicError> {
         debug!("on_join {:?}", request);
 
-        let join_accepted = JoinGameAccepted {
-            client_request_id: request.client_request_id,
-            party_and_session_secret: PartyAndSessionSecret {
-                session_secret: SessionConnectionSecret { value: 0 },
-                party_id: 0,
-            },
-            participants: JoinGameParticipants(vec![]),
-        };
+        if request.player_requests.players.is_empty() {
+            return Err(HostLogicError::NoFreeParticipantIds);
+        }
 
+        let local_index = request.player_requests.players[0].local_index;
         let participant = self
             .session
-            .create_participant(request.player_requests.players[0].local_index)
+            .create_participant(local_index)
             .ok_or(HostLogicError::NoFreeParticipantIds)?;
         let connection = self
             .connections
@@ -193,6 +194,23 @@ impl<StepT: std::clone::Clone + Eq + Debug + Deserialize + Serialize> HostLogic<
         connection
             .participant_lookup
             .insert(request.player_requests.players[0].local_index, participant);
+
+        let found_participant = connection.participant_lookup.get(&local_index).unwrap();
+
+        let join_game_participant = JoinGameParticipant {
+            local_index: request.player_requests.players[0].local_index,
+            participant_id: found_participant.borrow().id,
+        };
+
+        let join_accepted = JoinGameAccepted {
+            client_request_id: request.client_request_id,
+            party_and_session_secret: PartyAndSessionSecret {
+                session_secret: SessionConnectionSecret { value: 0 },
+                party_id: 0,
+            },
+            participants: JoinGameParticipants(Vec::from([join_game_participant])),
+        };
+
         Ok(HostToClientCommands::JoinGame(join_accepted))
     }
 
@@ -241,11 +259,12 @@ impl<StepT: std::clone::Clone + Eq + Debug + Deserialize + Serialize> HostLogic<
     fn on_download(
         &mut self,
         connection_id: ConnectionId,
-        now: Instant,
+        now: Millis,
         request: &DownloadGameStateRequest,
+        state_provider: &impl GameStateProvider,
     ) -> Result<Vec<HostToClientCommands<StepT>>, HostLogicError> {
         debug!("client requested download {:?}", request);
-        let state = self.session.state();
+        let (state_tick_id, state_vec) = state_provider.state(self.combinator.tick_id_to_produce);
         let connection = self
             .connections
             .get_mut(&connection_id.0)
@@ -266,13 +285,13 @@ impl<StepT: std::clone::Clone + Eq + Debug + Deserialize + Serialize> HostLogic<
                 transfer_id,
                 FIXED_CHUNK_SIZE,
                 RESEND_DURATION,
-                self.session.state().data.as_slice(),
+                state_vec.as_slice(),
             ));
         }
 
         let response = DownloadGameStateResponse {
             client_request: request.request_id,
-            tick_id: TickId(state.tick_id.0),
+            tick_id: state_tick_id,
             blob_stream_channel: connection.out_blob_stream.as_ref().unwrap().transfer_id().0,
         };
         let mut commands = vec![];
@@ -299,7 +318,7 @@ impl<StepT: std::clone::Clone + Eq + Debug + Deserialize + Serialize> HostLogic<
     fn on_blob_stream(
         &mut self,
         connection_id: ConnectionId,
-        now: Instant,
+        now: Millis,
         blob_stream_command: &ReceiverToSenderFrontCommands,
     ) -> Result<Vec<HostToClientCommands<StepT>>, HostLogicError> {
         let connection = self
@@ -329,8 +348,9 @@ impl<StepT: std::clone::Clone + Eq + Debug + Deserialize + Serialize> HostLogic<
     pub fn update(
         &mut self,
         connection_id: ConnectionId,
-        now: Instant,
+        now: Millis,
         request: &ClientToHostCommands<StepT>,
+        state_provider: &impl GameStateProvider,
     ) -> Result<Vec<HostToClientCommands<StepT>>, HostLogicError> {
         match request {
             ClientToHostCommands::JoinGameType(join_game_request) => {
@@ -339,9 +359,13 @@ impl<StepT: std::clone::Clone + Eq + Debug + Deserialize + Serialize> HostLogic<
             ClientToHostCommands::Steps(add_steps_request) => {
                 Ok(vec![self.on_steps(connection_id, add_steps_request)?])
             }
-            ClientToHostCommands::DownloadGameState(download_game_state_request) => {
-                Ok(self.on_download(connection_id, now, download_game_state_request)?)
-            }
+            ClientToHostCommands::DownloadGameState(download_game_state_request) => Ok(self
+                .on_download(
+                    connection_id,
+                    now,
+                    download_game_state_request,
+                    state_provider,
+                )?),
             ClientToHostCommands::BlobStreamChannel(blob_stream_command) => {
                 Ok(self.on_blob_stream(connection_id, now, blob_stream_command)?)
             }

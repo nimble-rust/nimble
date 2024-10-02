@@ -1,0 +1,17 @@
+[package]
+name = "nimble-host-stream"
+version = "0.0.1"
+edition = "2021"
+
+[dependencies]
+nimble-host-logic = { path = "../host-logic", version = "0.0.12-dev" }
+flood-rs = "^0.0.11"
+tick-id = "^0.0.7"
+datagram-chunker = { path = "../datagram-chunker", version = "0.0.1" }
+nimble-protocol = { path = "../protocol", version = "0.0.12-dev" }
+monotonic-time-rs = "0.0.3"
+
+[dev-dependencies]
+test-log = "^0.2.16"
+nimble-sample-step = { path = "../sample-step", version = "0.0.12-dev" }
+hexify = "^0.0.3"

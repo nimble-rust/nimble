@@ -5,7 +5,7 @@
 use flood_rs::prelude::{InOctetStream, OutOctetStream};
 use flood_rs::{BufferDeserializer, Deserialize, ReadOctetStream, Serialize, WriteOctetStream};
 use log::info;
-use nimble_assent::AssentCallback;
+use nimble_assent::{AssentCallback, DeterministicVersion, DeterministicVersionProvider};
 use nimble_rectify::RectifyCallback;
 use nimble_seer::SeerCallback;
 use nimble_step_types::AuthoritativeStep;
@@ -91,6 +91,22 @@ pub struct SampleGame {
 impl SampleGame {
     pub fn authoritative_octets(&self) -> io::Result<Vec<u8>> {
         self.authoritative.to_octets()
+    }
+}
+
+impl BufferDeserializer for SampleGame {
+    fn deserialize(_: &[u8]) -> io::Result<(Self, usize)> {
+        todo!()
+    }
+}
+
+impl DeterministicVersionProvider for SampleGame {
+    fn deterministic_version() -> DeterministicVersion {
+        DeterministicVersion {
+            major: 0,
+            minor: 0,
+            patch: 5,
+        }
     }
 }
 

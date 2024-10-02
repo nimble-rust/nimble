@@ -8,7 +8,9 @@ use nimble_blob_stream::prelude::TransferId;
 use nimble_blob_stream::protocol::AckChunkData;
 
 use crate::helper::generate_deterministic_blob_array;
-use std::time::{Duration, Instant};
+use monotonic_time_rs::{Millis, MillisDuration};
+use std::time::Duration;
+
 pub mod helper;
 
 #[test_log::test]
@@ -29,7 +31,7 @@ fn test_blob_stream() {
         blob_to_transfer.as_slice(),
     );
 
-    let mut now = Instant::now();
+    let mut now = Millis::new(0);
 
     for i in 0..ITERATION_COUNT {
         let set_chunks = out_logic.send(now, MAX_CHUNK_COUNT_EACH_SEND);
@@ -60,7 +62,7 @@ fn test_blob_stream() {
                 .expect("ack chunk index and receive mask should work in the test");
         }
 
-        now += Duration::from_millis(32);
+        now += MillisDuration::from_millis(32);
     }
 
     assert_eq!(

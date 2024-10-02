@@ -178,7 +178,7 @@ fn receive_authoritative_steps() -> Result<(), ClientError> {
     client_logic.receive(&[command2])?;
 
     assert_eq!(client_logic.server_buffer_count(), None);
-    assert_eq!(client_logic.server_buffer_delta_tick(), None);
+    assert_eq!(client_logic.server_buffer_delta_ticks(), None);
 
     // Create a GameStep command
     let response3 = GameStepResponse::<Step<SampleStep>> {
@@ -196,7 +196,7 @@ fn receive_authoritative_steps() -> Result<(), ClientError> {
     assert_eq!(client_logic.server_buffer_count().expect("should work"), 4);
     assert_eq!(
         client_logic
-            .server_buffer_delta_tick()
+            .server_buffer_delta_ticks()
             .expect("should work"),
         -3
     );

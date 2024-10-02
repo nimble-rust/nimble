@@ -4,12 +4,14 @@
  */
 use crate::helper::generate_deterministic_blob_array;
 use log::trace;
+use monotonic_time_rs::{Millis, MillisDuration};
 use nimble_blob_stream::out_logic_front::OutLogicFront;
 use nimble_blob_stream::prelude::TransferId;
 use rand::prelude::StdRng;
 use rand::Rng;
 use rand::SeedableRng;
-use std::time::{Duration, Instant};
+use std::time::Duration;
+
 pub mod helper;
 
 #[test_log::test]
@@ -30,7 +32,7 @@ fn test_blob_stream_front() {
         blob_to_transfer.as_slice(),
     );
 
-    let mut now = Instant::now();
+    let mut now = Millis::new(0);
 
     for _ in 0..ITERATION_COUNT {
         let send_commands = out_logic.send(now).expect("should work");
@@ -50,7 +52,7 @@ fn test_blob_stream_front() {
                 trace!("dropped from sender to receiver: {:?}", send_command);
             }
         }
-        now += Duration::from_millis(32);
+        now += MillisDuration::from_millis(32);
     }
 
     assert_eq!(

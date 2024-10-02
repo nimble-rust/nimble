@@ -13,30 +13,31 @@ pub trait RectifyCallback {
     fn on_copy_from_authoritative(&mut self);
 }
 
+pub trait RectifyCallbacks<StepT>:
+    AssentCallback<StepT> + SeerCallback<StepT> + RectifyCallback
+{
+}
+
+impl<T, StepT> RectifyCallbacks<StepT> for T where
+    T: AssentCallback<StepT> + SeerCallback<StepT> + RectifyCallback
+{
+}
+
 /// The `Rectify` struct coordinates between the [`Assent`] and [`Seer`] components, managing
 /// authoritative and predicted game states.
 #[derive(Debug)]
-pub struct Rectify<
-    Game: AssentCallback<StepT> + SeerCallback<StepT> + RectifyCallback,
-    StepT: Clone,
-> {
+pub struct Rectify<Game: RectifyCallbacks<StepT>, StepT: Clone> {
     assent: Assent<Game, StepT>,
     seer: Seer<Game, StepT>,
 }
 
-impl<Game: AssentCallback<StepT> + SeerCallback<StepT> + RectifyCallback, StepT: Clone> Default
-    for Rectify<Game, StepT>
-{
+impl<Game: RectifyCallbacks<StepT>, StepT: Clone> Default for Rectify<Game, StepT> {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl<
-        Game: AssentCallback<StepT> + SeerCallback<StepT> + RectifyCallback,
-        StepT: std::clone::Clone,
-    > Rectify<Game, StepT>
-{
+impl<Game: RectifyCallbacks<StepT>, StepT: Clone> Rectify<Game, StepT> {
     /// Creates a new `Rectify` instance, initializing both [`Assent`] and [`Seer`] components.
     ///
     /// # Returns

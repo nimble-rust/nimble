@@ -3,10 +3,10 @@
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
 use crate::client::ClientPhase::Connected;
-use crate::datagram_build::{serialize_to_chunker, DatagramChunkerError};
+use datagram_chunker::{serialize_to_chunker, DatagramChunkerError};
 use err_rs::{ErrorLevel, ErrorLevelProvider};
 use flood_rs::prelude::OctetRefReader;
-use flood_rs::{BufferDeserializer, ReadOctetStream};
+use flood_rs::{BufferDeserializer, Deserialize, ReadOctetStream};
 use log::{debug, trace};
 use nimble_client_connecting::ConnectingClient;
 use nimble_client_logic::err::ClientError;
@@ -126,7 +126,7 @@ impl<
             _ => Err(ClientStreamError::WrongPhase)?,
         };
         while !in_stream.has_reached_end() {
-            let cmd = HostToClientCommands::from_stream(in_stream)?;
+            let cmd = HostToClientCommands::deserialize(in_stream)?;
             trace!("connected_receive {cmd:?}");
             logic
                 .receive_cmd(&cmd)
@@ -196,6 +196,17 @@ impl<
                 .push_predicted_step(tick_id, step)
                 .map_err(ClientStreamError::PredictedStepsError),
             _ => Err(ClientStreamError::WrongPhase)?,
+        }
+    }
+
+    /// Returns the average server buffer delta tick, if available.
+    ///
+    /// # Returns
+    /// An optional average server buffer delta tick.
+    pub fn server_buffer_delta_ticks(&self) -> Option<i16> {
+        match &self.phase {
+            Connected(ref client_logic) => client_logic.server_buffer_delta_ticks(),
+            _ => None,
         }
     }
 }

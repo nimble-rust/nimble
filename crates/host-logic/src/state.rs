@@ -2,25 +2,10 @@
  * Copyright (c) Peter Bjorklund. All rights reserved. https://github.com/nimble-rust/nimble
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
+/*
 use nimble_protocol::client_to_host::DownloadGameStateRequest;
 use nimble_protocol::host_to_client::DownloadGameStateResponse;
 use tick_id::TickId;
-
-#[derive(Debug, Clone)]
-#[allow(unused)]
-pub struct State {
-    pub data: Vec<u8>,
-    pub tick_id: TickId,
-}
-impl State {
-    #[allow(unused)]
-    pub fn new(tick_id: TickId, state: &[u8]) -> Self {
-        Self {
-            data: state.to_vec(),
-            tick_id,
-        }
-    }
-}
 
 #[allow(unused)]
 pub struct HostStateConnection {
@@ -71,3 +56,6 @@ impl HostState {
         }
     }
 }
+
+
+ */

@@ -2,7 +2,7 @@
 members = [
     "crates/assent",
     "crates/client-logic",
-    "crates/host",
+    "crates/host-logic",
     "crates/blob-stream",
     "crates/participant",
     "crates/participant-steps",
@@ -11,13 +11,14 @@ members = [
     "crates/rectify",
     "crates/protocol",
     "crates/ordered-datagram",
-    "crates/datagram-pinger",
     "crates/sample-step",
     "crates/client-stream",
     "crates/client-connecting",
     "crates/nimble",
     "crates/step-types",
     "crates/sample-game-type",
-    "crates/client-front", "crates/protocol-header",
+    "crates/client-front",
+    "crates/protocol-header",
+    "crates/client", "crates/host-stream", "crates/datagram-chunker",
 ]
 resolver = "2"

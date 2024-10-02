@@ -8,7 +8,8 @@ use crate::prelude::{
     ReceiverToSenderFrontCommands, SenderToReceiverFrontCommands, StartTransferData, TransferId,
 };
 use log::{debug, trace};
-use std::time::{Duration, Instant};
+use monotonic_time_rs::Millis;
+use std::time::Duration;
 
 #[derive(Debug)]
 pub enum Phase {
@@ -75,7 +76,7 @@ impl OutLogicFront {
     #[allow(unused)]
     pub fn send(
         &mut self,
-        now: Instant,
+        now: Millis,
     ) -> Result<Vec<SenderToReceiverFrontCommands>, OutStreamError> {
         match self.phase {
             Phase::StartTransfer => {
