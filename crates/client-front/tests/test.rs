@@ -2,7 +2,6 @@
  * Copyright (c) Peter Bjorklund. All rights reserved. https://github.com/nimble-rust/nimble
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
-
 use hexify::{assert_eq_slices, format_hex};
 use log::info;
 use monotonic_time_rs::{Millis, MonotonicClock};
