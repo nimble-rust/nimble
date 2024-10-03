@@ -6,7 +6,7 @@ use crate::client_to_host::{
     SerializeAuthoritativeStepRangeForAllParticipants,
     SerializeAuthoritativeStepVectorForOneParticipants,
 };
-use crate::{ClientRequestId, ServerConnectionId, SessionConnectionSecret};
+use crate::{ClientRequestId, SessionConnectionSecret};
 use flood_rs::{Deserialize, ReadOctetStream, Serialize, WriteOctetStream};
 use io::ErrorKind;
 use log::trace;
@@ -89,14 +89,12 @@ pub struct GameStatePart {
 pub struct ConnectResponse {
     pub flags: u8,
     pub client_request_id: ClientRequestId,
-    pub server_connection_id: ServerConnectionId,
 }
 
 impl ConnectResponse {
     pub fn to_stream(&self, stream: &mut impl WriteOctetStream) -> io::Result<()> {
         stream.write_u8(self.flags)?;
         stream.write_u8(self.client_request_id.0)?;
-        stream.write_u8(self.server_connection_id.0)?;
         Ok(())
     }
 
@@ -104,7 +102,6 @@ impl ConnectResponse {
         Ok(Self {
             flags: stream.read_u8()?,
             client_request_id: ClientRequestId(stream.read_u8()?),
-            server_connection_id: ServerConnectionId(stream.read_u8()?),
         })
     }
 }
@@ -336,7 +333,11 @@ impl<StepT: Deserialize + Serialize + Debug + Clone> Serialize for Authoritative
     {
         let mut converted_ranges = Vec::new();
 
-        let root_tick_id = self.ranges[0].tick_id;
+        let root_tick_id = if self.ranges.is_empty() {
+            TickId(0)
+        } else {
+            self.ranges[0].tick_id
+        };
         let mut tick_id = root_tick_id;
         for auth_range in &self.ranges {
             if auth_range.tick_id < tick_id {

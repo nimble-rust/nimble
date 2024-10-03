@@ -1,6 +1,6 @@
 [package]
 name = "nimble-host-stream"
-version = "0.0.1"
+version = "0.0.12-dev"
 edition = "2021"
 
 [dependencies]
@@ -10,6 +10,7 @@ tick-id = "^0.0.7"
 datagram-chunker = { path = "../datagram-chunker", version = "0.0.1" }
 nimble-protocol = { path = "../protocol", version = "0.0.12-dev" }
 monotonic-time-rs = "0.0.3"
+app-version = { path = "../app-version", version = "0.0.1" }
 
 [dev-dependencies]
 test-log = "^0.2.16"

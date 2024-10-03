@@ -4,7 +4,7 @@
  */
 
 use hexify::assert_eq_slices;
-use monotonic_time_rs::Millis;
+use monotonic_time_rs::{Millis, MillisDuration};
 use nimble_host_logic::logic::GameStateProvider;
 use nimble_host_stream::{HostStream, HostStreamError};
 use nimble_sample_step::SampleStep;
@@ -22,8 +22,13 @@ impl GameStateProvider for TestStateProvider {
 }
 
 #[test_log::test]
-fn test() -> Result<(), HostStreamError> {
-    let mut host = HostStream::<SampleStep>::new(TickId(0));
+fn join_game() -> Result<(), HostStreamError> {
+    let application_version = app_version::Version {
+        major: 0,
+        minor: 1,
+        patch: 2,
+    };
+    let mut host = HostStream::<SampleStep>::new(&application_version, TickId(0));
     let connection_id = host
         .create_connection()
         .expect("it should not be out of connections");
@@ -32,6 +37,18 @@ fn test() -> Result<(), HostStreamError> {
         tick_id: TickId(32),
         payload: vec![0xff],
     };
+    let mut now = Millis::new(0);
+
+    #[rustfmt::skip]
+    let connect_datagram: &[u8] = &[
+            0x05, // Connect Request: ClientToHostOobCommand::ConnectType = 0x05
+            0, 0, 0, 0, 0, 5, // Nimble version
+            0, // Flags (use debug stream)
+            0, 0, 0, 1, 0, 2, // Application version
+            0,  // Client Request Id
+    ];
+
+    let _ = host.update(connection_id, now, connect_datagram, &state_provider)?;
 
     #[rustfmt::skip]
     let join_datagram: &[u8] = &[
@@ -42,7 +59,7 @@ fn test() -> Result<(), HostStreamError> {
         0x42, // The local player index
     ];
 
-    let now = Millis::new(0);
+    now += MillisDuration::from_millis(200);
 
     let probably_join_responses =
         host.update(connection_id, now, join_datagram, &state_provider)?;

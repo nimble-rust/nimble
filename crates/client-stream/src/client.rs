@@ -76,7 +76,7 @@ impl<
         StepT: Clone + flood_rs::Deserialize + flood_rs::Serialize + std::fmt::Debug,
     > ClientStream<StateT, StepT>
 {
-    pub fn new(application_version: &Version) -> Self {
+    pub fn new(application_version: &app_version::Version) -> Self {
         let nimble_protocol_version = Version {
             major: 0,
             minor: 0,
@@ -86,7 +86,7 @@ impl<
         Self {
             phase: ClientPhase::Connecting(ConnectingClient::new(
                 client_request_id,
-                *application_version,
+                application_version,
                 nimble_protocol_version,
             )),
         }
@@ -101,7 +101,7 @@ impl<
             _ => Err(ClientStreamError::WrongPhase)?,
         };
 
-        let command = HostToClientOobCommands::from_stream(in_octet_stream)?;
+        let command = HostToClientOobCommands::deserialize(in_octet_stream)?;
         connecting_client
             .receive(&command)
             .map_err(ClientStreamError::ClientConnectingErr)?;

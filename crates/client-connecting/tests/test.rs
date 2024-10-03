@@ -7,10 +7,10 @@ use nimble_protocol::prelude::*;
 use nimble_protocol::ClientRequestId;
 
 fn create_connecting_client(
-    application_version: Option<Version>,
+    application_version: Option<app_version::Version>,
     nimble_version: Option<Version>,
 ) -> ConnectingClient {
-    let app_version = application_version.unwrap_or(Version {
+    let app_version = application_version.unwrap_or(app_version::Version {
         major: 1,
         minor: 0,
         patch: 0,
@@ -20,7 +20,7 @@ fn create_connecting_client(
         minor: 0,
         patch: 5,
     });
-    ConnectingClient::new(ClientRequestId(42), app_version, nimble_ver)
+    ConnectingClient::new(ClientRequestId(42), &app_version, nimble_ver)
 }
 
 #[test_log::test]

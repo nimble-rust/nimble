@@ -2,12 +2,11 @@
  * Copyright (c) Peter Bjorklund. All rights reserved. https://github.com/nimble-rust/nimble
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
-
+use app_version::{Version, VersionProvider};
 use flood_rs::{BufferDeserializer, Deserialize, Serialize};
 use monotonic_time_rs::InstantMonotonicClock;
-use nimble_assent::{Assent, DeterministicVersionProvider};
+use nimble_assent::Assent;
 use nimble_client_front::{ClientFront, ClientFrontError};
-use nimble_protocol::Version;
 use nimble_rectify::RectifyCallbacks;
 use nimble_step_types::AuthoritativeStep;
 use nimble_steps::Step;
@@ -16,14 +15,12 @@ use std::fmt::Debug;
 use std::rc::Rc;
 
 pub trait GameCallbacks<StepT>:
-    RectifyCallbacks<AuthoritativeStep<Step<StepT>>> + DeterministicVersionProvider + BufferDeserializer
+    RectifyCallbacks<AuthoritativeStep<Step<StepT>>> + VersionProvider + BufferDeserializer
 {
 }
 
 impl<T, StepT> GameCallbacks<StepT> for T where
-    T: RectifyCallbacks<AuthoritativeStep<Step<StepT>>>
-        + DeterministicVersionProvider
-        + BufferDeserializer
+    T: RectifyCallbacks<AuthoritativeStep<Step<StepT>>> + VersionProvider + BufferDeserializer
 {
 }
 
@@ -48,7 +45,7 @@ impl<StepT: Clone + Deserialize + Serialize + Debug, GameT: GameCallbacks<StepT>
     pub fn new() -> Self {
         let clock = Rc::new(RefCell::new(InstantMonotonicClock::new()));
 
-        let deterministic_app_version = GameT::deterministic_version();
+        let deterministic_app_version = GameT::version();
         let application_version = Version {
             major: deterministic_app_version.major,
             minor: deterministic_app_version.minor,

@@ -6,7 +6,6 @@ use flood_rs::BufferDeserializer;
 use hexify::assert_eq_slices;
 use log::{info, trace};
 use nimble_client_stream::client::{ClientPhase, ClientStream, ClientStreamError};
-use nimble_protocol::Version;
 use nimble_sample_step::{SampleState, SampleStep};
 use nimble_step_types::{LocalIndex, PredictedStep};
 use nimble_steps::Step;
@@ -138,7 +137,7 @@ fn download_state<
 
 #[test_log::test]
 fn connect_stream() -> Result<(), ClientStreamError> {
-    let application_version = Version {
+    let application_version = app_version::Version {
         major: 0,
         minor: 1,
         patch: 2,
@@ -156,7 +155,7 @@ fn connect_stream() -> Result<(), ClientStreamError> {
 
 #[test_log::test]
 fn predicted_steps() -> Result<(), ClientStreamError> {
-    let application_version = Version {
+    let application_version = app_version::Version {
         major: 0,
         minor: 1,
         patch: 2,
@@ -389,7 +388,7 @@ fn create_predicted_steps<StepT: Clone>(
 
 #[test_log::test]
 fn feed_garbled() -> Result<(), ClientStreamError> {
-    let application_version = Version {
+    let application_version = app_version::Version {
         major: 0,
         minor: 1,
         patch: 2,

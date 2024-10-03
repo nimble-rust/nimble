@@ -8,7 +8,6 @@ use metricator::{AggregateMetric, RateMetric};
 use monotonic_time_rs::{MillisLow16, MonotonicClock};
 use nimble_client_stream::client::{ClientStream, ClientStreamError};
 use nimble_ordered_datagram::{DatagramOrderInError, OrderedIn, OrderedOut};
-use nimble_protocol::Version;
 use nimble_protocol_header::ClientTime;
 use std::cell::RefCell;
 use std::fmt::Debug;
@@ -57,7 +56,10 @@ pub struct ClientFront<StateT: BufferDeserializer, StepT: Clone + Deserialize + 
 impl<StateT: BufferDeserializer, StepT: Clone + Deserialize + Serialize + Debug>
     ClientFront<StateT, StepT>
 {
-    pub fn new(application_version: &Version, clock: Rc<RefCell<dyn MonotonicClock>>) -> Self {
+    pub fn new(
+        application_version: &app_version::Version,
+        clock: Rc<RefCell<dyn MonotonicClock>>,
+    ) -> Self {
         let now = clock.borrow_mut().now();
         Self {
             clock,

@@ -22,12 +22,10 @@ use nimble_protocol::SessionConnectionSecret;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::fmt::Debug;
+use std::marker::PhantomData;
 use std::rc::Rc;
 use std::time::Duration;
 use tick_id::TickId;
-
-#[derive(Copy, Clone, Debug)]
-pub struct ConnectionId(pub u8);
 
 #[derive(Copy, Clone, Debug)]
 pub struct Participant {
@@ -81,17 +79,18 @@ impl GameSession {
 
 #[derive(Debug)]
 #[allow(clippy::new_without_default)]
-pub struct Connection {
+pub struct Connection<StepT: Clone + Eq + Debug + Deserialize + Serialize> {
     pub participant_lookup: HashMap<u8, Rc<RefCell<Participant>>>,
     pub out_blob_stream: Option<OutLogicFront>,
     pub blob_stream_for_client_request: Option<u8>,
     last_transfer_id: u16,
     #[allow(unused)]
     debug_counter: u16,
+    phantom_data: PhantomData<StepT>,
 }
 
 #[allow(clippy::new_without_default)]
-impl Connection {
+impl<StepT: Clone + Eq + Debug + Deserialize + Serialize> Connection<StepT> {
     pub fn new() -> Self {
         Self {
             participant_lookup: Default::default(),
@@ -99,6 +98,7 @@ impl Connection {
             blob_stream_for_client_request: None,
             last_transfer_id: 0,
             debug_counter: 0,
+            phantom_data: PhantomData,
         }
     }
 
@@ -107,73 +107,34 @@ impl Connection {
             .as_ref()
             .map_or(false, |stream| stream.is_received_by_remote())
     }
-}
 
-#[derive(Debug)]
-pub enum HostLogicError {
-    UnknownConnectionId(ConnectionId),
-    FreeListError {
-        connection_id: ConnectionId,
-        message: String,
-    },
-    UnknownPartyMemberIndex(u8),
-    NoFreeParticipantIds,
-    BlobStreamErr(OutStreamError),
-}
-
-pub struct HostLogic<StepT: Clone> {
-    #[allow(unused)]
-    combinator: Combinator<StepT>,
-    connections: HashMap<u8, Connection>,
-    session: GameSession,
-    free_list: FreeList,
-}
-
-impl<StepT: Clone + Eq + Debug + Deserialize + Serialize> HostLogic<StepT> {
-    pub fn new(tick_id: TickId) -> Self {
-        Self {
-            combinator: Combinator::<StepT>::new(tick_id),
-            connections: HashMap::new(),
-            session: GameSession::new(),
-            free_list: FreeList::new(0xff),
-        }
-    }
-
-    pub fn create_connection(&mut self) -> Option<ConnectionId> {
-        let new_connection_id = self.free_list.allocate();
-        if let Some(id) = new_connection_id {
-            self.connections.insert(id, Connection::new());
-            Some(ConnectionId(id))
-        } else {
-            None
-        }
-    }
-
-    pub fn get(&self, connection_id: ConnectionId) -> Option<&Connection> {
-        self.connections.get(&connection_id.0)
-    }
-
-    pub fn destroy_connection(
+    fn on_blob_stream(
         &mut self,
-        connection_id: ConnectionId,
-    ) -> Result<(), HostLogicError> {
-        self.free_list
-            .free(connection_id.0)
-            .map_err(|err| HostLogicError::FreeListError {
-                connection_id,
-                message: err,
-            })?;
+        now: Millis,
+        blob_stream_command: &ReceiverToSenderFrontCommands,
+    ) -> Result<Vec<HostToClientCommands<StepT>>, HostLogicError> {
+        let blob_stream = self
+            .out_blob_stream
+            .as_mut()
+            .ok_or(HostLogicError::NoDownloadNow)?;
+        blob_stream
+            .receive(blob_stream_command)
+            .map_err(HostLogicError::BlobStreamErr)?;
+        let blob_commands = blob_stream
+            .send(now)
+            .map_err(HostLogicError::BlobStreamErr)?;
 
-        if self.connections.remove(&connection_id.0).is_some() {
-            Ok(())
-        } else {
-            Err(HostLogicError::UnknownConnectionId(connection_id))
-        }
+        let converted_commands: Vec<_> = blob_commands
+            .into_iter()
+            .map(HostToClientCommands::BlobStreamChannel)
+            .collect();
+
+        Ok(converted_commands)
     }
 
     fn on_join(
         &mut self,
-        connection_id: ConnectionId,
+        session: &mut GameSession,
         request: &JoinGameRequest,
     ) -> Result<HostToClientCommands<StepT>, HostLogicError> {
         debug!("on_join {:?}", request);
@@ -183,19 +144,14 @@ impl<StepT: Clone + Eq + Debug + Deserialize + Serialize> HostLogic<StepT> {
         }
 
         let local_index = request.player_requests.players[0].local_index;
-        let participant = self
-            .session
+        let participant = session
             .create_participant(local_index)
             .ok_or(HostLogicError::NoFreeParticipantIds)?;
-        let connection = self
-            .connections
-            .get_mut(&connection_id.0)
-            .ok_or(HostLogicError::UnknownConnectionId(connection_id))?;
-        connection
-            .participant_lookup
+
+        self.participant_lookup
             .insert(request.player_requests.players[0].local_index, participant);
 
-        let found_participant = connection.participant_lookup.get(&local_index).unwrap();
+        let found_participant = self.participant_lookup.get(&local_index).unwrap();
 
         let join_game_participant = JoinGameParticipant {
             local_index: request.player_requests.players[0].local_index,
@@ -214,9 +170,63 @@ impl<StepT: Clone + Eq + Debug + Deserialize + Serialize> HostLogic<StepT> {
         Ok(HostToClientCommands::JoinGame(join_accepted))
     }
 
+    fn on_download(
+        &mut self,
+        tick_id_to_be_produced: TickId,
+        now: Millis,
+        request: &DownloadGameStateRequest,
+        state_provider: &impl GameStateProvider,
+    ) -> Result<Vec<HostToClientCommands<StepT>>, HostLogicError> {
+        debug!("client requested download {:?}", request);
+        let (state_tick_id, state_vec) = state_provider.state(tick_id_to_be_produced);
+
+        const FIXED_CHUNK_SIZE: usize = 1024;
+        const RESEND_DURATION: Duration = Duration::from_millis(32 * 3);
+
+        let is_new_request = if let Some(x) = self.blob_stream_for_client_request {
+            x == request.request_id
+        } else {
+            true
+        };
+        if is_new_request {
+            self.last_transfer_id += 1;
+            let transfer_id = TransferId(self.last_transfer_id);
+            self.out_blob_stream = Some(OutLogicFront::new(
+                transfer_id,
+                FIXED_CHUNK_SIZE,
+                RESEND_DURATION,
+                state_vec.as_slice(),
+            ));
+        }
+
+        let response = DownloadGameStateResponse {
+            client_request: request.request_id,
+            tick_id: state_tick_id,
+            blob_stream_channel: self.out_blob_stream.as_ref().unwrap().transfer_id().0,
+        };
+        let mut commands = vec![];
+        commands.push(HostToClientCommands::DownloadGameState(response));
+
+        // Since most datagram transports have a very low packet drop rate,
+        // this implementation is optimized for the high likelihood of datagram delivery.
+        // So we start including the first blob commands right away
+        let blob_commands = self
+            .out_blob_stream
+            .as_mut()
+            .unwrap()
+            .send(now)
+            .map_err(HostLogicError::BlobStreamErr)?;
+        let converted_blob_commands: Vec<_> = blob_commands
+            .into_iter()
+            .map(HostToClientCommands::BlobStreamChannel)
+            .collect();
+        commands.extend(converted_blob_commands);
+
+        Ok(commands)
+    }
+
     fn on_steps(
         &mut self,
-        connection_id: ConnectionId,
         request: &StepsRequest<StepT>,
     ) -> Result<HostToClientCommands<StepT>, HostLogicError> {
         trace!("on_step {:?}", request);
@@ -228,15 +238,10 @@ impl<StepT: Clone + Eq + Debug + Deserialize + Serialize> HostLogic<StepT> {
 
         */
 
-        let connection = self
-            .connections
-            .get_mut(&connection_id.0)
-            .ok_or(HostLogicError::UnknownConnectionId(connection_id))?;
-
         for combined_predicted_step in &request.combined_predicted_steps.steps {
             for local_index in combined_predicted_step.predicted_players.keys() {
                 // TODO:
-                if let Some(participant) = connection.participant_lookup.get(local_index) {
+                if let Some(participant) = self.participant_lookup.get(local_index) {
                     // TODO: ADD to participant queue
                     info!("participant {participant:?}");
                 } else {
@@ -255,120 +260,109 @@ impl<StepT: Clone + Eq + Debug + Deserialize + Serialize> HostLogic<StepT> {
         };
         Ok(HostToClientCommands::GameStep(game_step_response))
     }
+}
 
-    fn on_download(
-        &mut self,
-        connection_id: ConnectionId,
-        now: Millis,
-        request: &DownloadGameStateRequest,
-        state_provider: &impl GameStateProvider,
-    ) -> Result<Vec<HostToClientCommands<StepT>>, HostLogicError> {
-        debug!("client requested download {:?}", request);
-        let (state_tick_id, state_vec) = state_provider.state(self.combinator.tick_id_to_produce);
-        let connection = self
-            .connections
-            .get_mut(&connection_id.0)
-            .ok_or(HostLogicError::UnknownConnectionId(connection_id))?;
+#[derive(Debug)]
+pub enum HostLogicError {
+    UnknownConnectionId(HostConnectionId),
+    FreeListError {
+        connection_id: HostConnectionId,
+        message: String,
+    },
+    UnknownPartyMemberIndex(u8),
+    NoFreeParticipantIds,
+    BlobStreamErr(OutStreamError),
+    NoDownloadNow,
+}
 
-        const FIXED_CHUNK_SIZE: usize = 1024;
-        const RESEND_DURATION: Duration = Duration::from_millis(32 * 3);
+#[derive(Debug, Copy, Clone)]
+pub struct HostConnectionId(pub u8);
 
-        let is_new_request = if let Some(x) = connection.blob_stream_for_client_request {
-            x == request.request_id
-        } else {
-            true
-        };
-        if is_new_request {
-            connection.last_transfer_id += 1;
-            let transfer_id = TransferId(connection.last_transfer_id);
-            connection.out_blob_stream = Some(OutLogicFront::new(
-                transfer_id,
-                FIXED_CHUNK_SIZE,
-                RESEND_DURATION,
-                state_vec.as_slice(),
-            ));
+pub struct HostLogic<
+    StepT: Clone + std::cmp::Eq + std::fmt::Debug + flood_rs::Deserialize + flood_rs::Serialize,
+> {
+    #[allow(unused)]
+    combinator: Combinator<StepT>,
+    connections: HashMap<u8, Connection<StepT>>,
+    session: GameSession,
+    free_list: FreeList,
+}
+
+impl<StepT: Clone + Eq + Debug + Deserialize + Serialize> HostLogic<StepT> {
+    pub fn new(tick_id: TickId) -> Self {
+        Self {
+            combinator: Combinator::<StepT>::new(tick_id),
+            connections: HashMap::new(),
+            session: GameSession::new(),
+            free_list: FreeList::new(0xff),
         }
-
-        let response = DownloadGameStateResponse {
-            client_request: request.request_id,
-            tick_id: state_tick_id,
-            blob_stream_channel: connection.out_blob_stream.as_ref().unwrap().transfer_id().0,
-        };
-        let mut commands = vec![];
-        commands.push(HostToClientCommands::DownloadGameState(response));
-
-        // Since most datagram transports have a very low packet drop rate,
-        // this implementation is optimized for the high likelihood of datagram delivery.
-        // So we start including the first blob commands right away
-        let blob_commands = connection
-            .out_blob_stream
-            .as_mut()
-            .unwrap()
-            .send(now)
-            .map_err(HostLogicError::BlobStreamErr)?;
-        let converted_blob_commands: Vec<_> = blob_commands
-            .into_iter()
-            .map(HostToClientCommands::BlobStreamChannel)
-            .collect();
-        commands.extend(converted_blob_commands);
-
-        Ok(commands)
     }
 
-    fn on_blob_stream(
+    pub fn create_connection(&mut self) -> Option<HostConnectionId> {
+        let new_connection_id = self.free_list.allocate();
+        if let Some(id) = new_connection_id {
+            self.connections.insert(id, Connection::new());
+            Some(HostConnectionId(id))
+        } else {
+            None
+        }
+    }
+
+    pub fn get(&self, connection_id: HostConnectionId) -> Option<&Connection<StepT>> {
+        self.connections.get(&connection_id.0)
+    }
+
+    pub fn destroy_connection(
         &mut self,
-        connection_id: ConnectionId,
-        now: Millis,
-        blob_stream_command: &ReceiverToSenderFrontCommands,
-    ) -> Result<Vec<HostToClientCommands<StepT>>, HostLogicError> {
-        let connection = self
-            .connections
-            .get_mut(&connection_id.0)
-            .ok_or(HostLogicError::UnknownConnectionId(connection_id))?;
+        connection_id: HostConnectionId,
+    ) -> Result<(), HostLogicError> {
+        self.free_list
+            .free(connection_id.0)
+            .map_err(|err| HostLogicError::FreeListError {
+                connection_id,
+                message: err,
+            })?;
 
-        let blob_stream = connection
-            .out_blob_stream
-            .as_mut()
-            .ok_or(HostLogicError::UnknownConnectionId(connection_id))?;
-        blob_stream
-            .receive(blob_stream_command)
-            .map_err(HostLogicError::BlobStreamErr)?;
-        let blob_commands = blob_stream
-            .send(now)
-            .map_err(HostLogicError::BlobStreamErr)?;
+        if self.connections.remove(&connection_id.0).is_some() {
+            Ok(())
+        } else {
+            Err(HostLogicError::UnknownConnectionId(connection_id))
+        }
+    }
 
-        let converted_commands: Vec<_> = blob_commands
-            .into_iter()
-            .map(HostToClientCommands::BlobStreamChannel)
-            .collect();
-
-        Ok(converted_commands)
+    pub fn session(&self) -> &GameSession {
+        &self.session
     }
 
     pub fn update(
         &mut self,
-        connection_id: ConnectionId,
+        connection_id: HostConnectionId,
         now: Millis,
         request: &ClientToHostCommands<StepT>,
         state_provider: &impl GameStateProvider,
     ) -> Result<Vec<HostToClientCommands<StepT>>, HostLogicError> {
-        match request {
-            ClientToHostCommands::JoinGameType(join_game_request) => {
-                Ok(vec![self.on_join(connection_id, join_game_request)?])
+        if let Some(ref mut connection) = self.connections.get_mut(&connection_id.0) {
+            match request {
+                ClientToHostCommands::JoinGameType(join_game_request) => Ok(vec![
+                    connection.on_join(&mut self.session, join_game_request)?
+                ]),
+                ClientToHostCommands::Steps(add_steps_request) => {
+                    Ok(vec![connection.on_steps(add_steps_request)?])
+                }
+                ClientToHostCommands::DownloadGameState(download_game_state_request) => {
+                    Ok(connection.on_download(
+                        self.combinator.tick_id_to_produce,
+                        now,
+                        download_game_state_request,
+                        state_provider,
+                    )?)
+                }
+                ClientToHostCommands::BlobStreamChannel(blob_stream_command) => {
+                    Ok(connection.on_blob_stream(now, blob_stream_command)?)
+                }
             }
-            ClientToHostCommands::Steps(add_steps_request) => {
-                Ok(vec![self.on_steps(connection_id, add_steps_request)?])
-            }
-            ClientToHostCommands::DownloadGameState(download_game_state_request) => Ok(self
-                .on_download(
-                    connection_id,
-                    now,
-                    download_game_state_request,
-                    state_provider,
-                )?),
-            ClientToHostCommands::BlobStreamChannel(blob_stream_command) => {
-                Ok(self.on_blob_stream(connection_id, now, blob_stream_command)?)
-            }
+        } else {
+            Err(HostLogicError::UnknownConnectionId(connection_id))
         }
     }
 }

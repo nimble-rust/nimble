@@ -9,16 +9,6 @@ use std::marker::PhantomData;
 use nimble_steps::Steps;
 use tick_id::TickId;
 
-pub struct DeterministicVersion {
-    pub major: u16,
-    pub minor: u16,
-    pub patch: u16,
-}
-
-pub trait DeterministicVersionProvider {
-    fn deterministic_version() -> DeterministicVersion;
-}
-
 pub trait AssentCallback<CombinedStepT> {
     fn on_pre_ticks(&mut self) {}
 

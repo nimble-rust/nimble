@@ -58,7 +58,7 @@ impl TryFrom<u8> for SenderToReceiverFrontCommand {
             0x02 => Ok(Self::StartTransfer),
             _ => Err(io::Error::new(
                 io::ErrorKind::InvalidData,
-                format!("Unknown command {value}"),
+                format!("Unknown SenderToReceiverFrontCommand {value}"),
             )),
         }
     }
@@ -120,7 +120,7 @@ impl TryFrom<u8> for ReceiverToSenderFrontCommand {
             0x04 => Ok(Self::AckChunk),
             _ => Err(io::Error::new(
                 ErrorKind::InvalidData,
-                format!("Unknown command {value}"),
+                format!("Unknown ReceiverToSenderFrontCommand {value}"),
             )),
         }
     }

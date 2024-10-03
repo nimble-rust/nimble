@@ -20,7 +20,7 @@ impl TryFrom<u8> for ClientToHostOobCommand {
             0x05 => Ok(ClientToHostOobCommand::Connect),
             _ => Err(io::Error::new(
                 ErrorKind::InvalidData,
-                format!("Unknown command {}", value),
+                format!("Unknown client to host oob command {}", value),
             )),
         }
     }

@@ -2,10 +2,11 @@
  * Copyright (c) Peter Bjorklund. All rights reserved. https://github.com/nimble-rust/nimble
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
+use app_version::{Version, VersionProvider};
 use flood_rs::prelude::{InOctetStream, OutOctetStream};
 use flood_rs::{BufferDeserializer, Deserialize, ReadOctetStream, Serialize, WriteOctetStream};
 use log::info;
-use nimble_assent::{AssentCallback, DeterministicVersion, DeterministicVersionProvider};
+use nimble_assent::AssentCallback;
 use nimble_rectify::RectifyCallback;
 use nimble_seer::SeerCallback;
 use nimble_step_types::AuthoritativeStep;
@@ -100,9 +101,9 @@ impl BufferDeserializer for SampleGame {
     }
 }
 
-impl DeterministicVersionProvider for SampleGame {
-    fn deterministic_version() -> DeterministicVersion {
-        DeterministicVersion {
+impl VersionProvider for SampleGame {
+    fn version() -> Version {
+        Version {
             major: 0,
             minor: 0,
             patch: 5,

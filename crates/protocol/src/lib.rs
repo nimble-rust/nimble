@@ -15,9 +15,6 @@ pub mod host_to_client_oob;
 pub mod prelude;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub struct ServerConnectionId(pub u8);
-
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct ClientRequestId(pub u8);
 
 impl fmt::Display for ClientRequestId {

@@ -29,10 +29,12 @@ impl TryFrom<u8> for ClientToHostCommand {
     fn try_from(value: u8) -> io::Result<Self> {
         match value {
             0x01 => Ok(ClientToHostCommand::JoinGame),
+            0x02 => Ok(ClientToHostCommand::Steps),
+            0x03 => Ok(ClientToHostCommand::DownloadGameState),
             0x04 => Ok(ClientToHostCommand::BlobStreamChannel),
             _ => Err(io::Error::new(
                 ErrorKind::InvalidData,
-                format!("Unknown command {}", value),
+                format!("Unknown ClientToHostCommand {}", value),
             )),
         }
     }

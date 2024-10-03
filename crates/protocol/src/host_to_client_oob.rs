@@ -51,14 +51,8 @@ impl ConnectionAccepted {
     }
 }
 
-impl HostToClientOobCommands {
-    pub fn to_octet(&self) -> u8 {
-        match self {
-            HostToClientOobCommands::ConnectType(_) => HostToClientOobCommand::Connect as u8,
-        }
-    }
-
-    pub fn to_stream(&self, stream: &mut impl WriteOctetStream) -> io::Result<()> {
+impl Serialize for HostToClientOobCommands {
+    fn serialize(&self, stream: &mut impl WriteOctetStream) -> io::Result<()> {
         stream.write_u8(self.to_octet())?;
         match self {
             HostToClientOobCommands::ConnectType(connect_command) => {
@@ -66,8 +60,10 @@ impl HostToClientOobCommands {
             }
         }
     }
+}
 
-    pub fn from_stream(stream: &mut impl ReadOctetStream) -> io::Result<Self> {
+impl Deserialize for HostToClientOobCommands {
+    fn deserialize(stream: &mut impl ReadOctetStream) -> io::Result<Self> {
         let command_value = stream.read_u8()?;
         let command = HostToClientOobCommand::try_from(command_value)?;
         let x = match command {
@@ -76,5 +72,13 @@ impl HostToClientOobCommands {
             }
         };
         Ok(x)
+    }
+}
+
+impl HostToClientOobCommands {
+    pub fn to_octet(&self) -> u8 {
+        match self {
+            HostToClientOobCommands::ConnectType(_) => HostToClientOobCommand::Connect as u8,
+        }
     }
 }

@@ -6,7 +6,7 @@ use flood_rs::{BufferDeserializer, Deserialize, Serialize};
 use log::trace;
 use monotonic_time_rs::Millis;
 use nimble_client_logic::logic::ClientLogic;
-use nimble_host_logic::logic::{ConnectionId, GameStateProvider, HostLogic};
+use nimble_host_logic::logic::{GameStateProvider, HostConnectionId, HostLogic};
 use nimble_protocol::client_to_host::JoinGameType;
 use nimble_protocol::client_to_host::{JoinPlayerRequest, JoinPlayerRequests};
 use nimble_protocol::prelude::*;
@@ -24,7 +24,7 @@ fn communicate<
 >(
     host: &mut HostLogic<Step<SampleStep>>,
     state_provider: &impl GameStateProvider,
-    connection_id: ConnectionId,
+    connection_id: HostConnectionId,
     client: &mut ClientLogic<SampleState, Step<SampleStep>>,
 ) where
     SampleStep: Serialize,

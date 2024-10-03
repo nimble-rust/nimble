@@ -23,7 +23,7 @@ impl fmt::Display for ClientError {
 #[derive(Debug, PartialEq)]
 pub struct ConnectingClient {
     client_request_id: ClientRequestId,
-    application_version: Version,
+    application_version: app_version::Version,
     nimble_version: Version,
     sent_at_least_once: bool,
     is_connected: bool,
@@ -33,11 +33,11 @@ impl ConnectingClient {
     #[must_use]
     pub const fn new(
         client_request_id: ClientRequestId,
-        application_version: Version,
+        application_version: &app_version::Version,
         nimble_version: Version,
     ) -> Self {
         Self {
-            application_version,
+            application_version: *application_version,
             nimble_version,
             client_request_id,
             is_connected: false,
@@ -50,7 +50,11 @@ impl ConnectingClient {
         let connect_cmd = ConnectRequest {
             nimble_version: self.nimble_version,
             use_debug_stream: false,
-            application_version: self.application_version,
+            application_version: Version {
+                major: self.application_version.major,
+                minor: self.application_version.minor,
+                patch: self.application_version.patch,
+            },
             client_request_id: self.client_request_id,
         };
 

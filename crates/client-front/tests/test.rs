@@ -6,7 +6,6 @@ use hexify::{assert_eq_slices, format_hex};
 use log::info;
 use monotonic_time_rs::{Millis, MonotonicClock};
 use nimble_client_front::{ClientFront, ClientFrontError};
-use nimble_protocol::Version;
 use nimble_sample_step::{SampleState, SampleStep};
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -30,7 +29,7 @@ impl MonotonicClock for FakeClock {
 
 #[test_log::test]
 pub fn client() -> Result<(), ClientFrontError> {
-    let app_version = Version {
+    let app_version = app_version::Version {
         major: 0,
         minor: 0,
         patch: 0,

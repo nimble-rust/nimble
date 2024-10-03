@@ -19,6 +19,6 @@ members = [
     "crates/sample-game-type",
     "crates/client-front",
     "crates/protocol-header",
-    "crates/client", "crates/host-stream", "crates/datagram-chunker",
+    "crates/client", "crates/host-stream", "crates/datagram-chunker", "crates/host-front", "crates/app-version",
 ]
 resolver = "2"
