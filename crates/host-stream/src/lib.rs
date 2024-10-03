@@ -45,12 +45,14 @@ impl From<io::Error> for HostStreamError {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Default)]
 pub enum HostStreamConnectionPhase {
+    #[default]
     Connecting,
     Connected,
 }
 
+#[derive(Debug, Default)]
 pub struct HostStreamConnection {
     phase: HostStreamConnectionPhase,
 }

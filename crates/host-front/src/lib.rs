@@ -1,3 +1,8 @@
+/*
+ * Copyright (c) Peter Bjorklund. All rights reserved. https://github.com/nimble-rust/nimble
+ * Licensed under the MIT License. See LICENSE in the project root for license information.
+ */
+
 use flood_rs::in_stream::InOctetStream;
 use flood_rs::prelude::OutOctetStream;
 use flood_rs::{Deserialize, Serialize, WriteOctetStream};
@@ -10,6 +15,7 @@ use std::collections::HashMap;
 use std::fmt::Debug;
 use tick_id::TickId;
 
+#[derive(Default, Debug)]
 pub struct HostFrontConnection {
     ordered_datagram_out: OrderedOut,
     ordered_in: OrderedIn,
