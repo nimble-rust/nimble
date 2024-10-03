@@ -13,7 +13,7 @@ use nimble_client_logic::err::ClientError;
 use nimble_client_logic::logic::ClientLogic;
 use nimble_protocol::prelude::{HostToClientCommands, HostToClientOobCommands};
 use nimble_protocol::{ClientRequestId, Version};
-use nimble_step_types::PredictedStep;
+use nimble_step_types::{AuthoritativeStep, PredictedStep};
 use nimble_steps::StepsError;
 use std::io;
 use tick_id::TickId;
@@ -52,6 +52,12 @@ impl From<io::Error> for ClientStreamError {
 impl From<DatagramChunkerError> for ClientStreamError {
     fn from(value: DatagramChunkerError) -> Self {
         Self::DatagramChunkError(value)
+    }
+}
+
+impl From<StepsError> for ClientStreamError {
+    fn from(value: StepsError) -> Self {
+        Self::PredictedStepsError(value)
     }
 }
 
@@ -142,6 +148,15 @@ impl<
         self.connected_receive(&mut in_stream)
     }
 
+    pub fn pop_all_authoritative_steps(
+        &mut self,
+    ) -> Result<Vec<AuthoritativeStep<StepT>>, ClientStreamError> {
+        match self.phase {
+            ClientPhase::Connected(ref mut logic) => Ok(logic.pop_all_authoritative_steps()),
+            _ => Err(ClientStreamError::WrongPhase)?,
+        }
+    }
+
     pub fn receive(&mut self, payload: &[u8]) -> Result<(), ClientStreamError> {
         match &mut self.phase {
             ClientPhase::Connecting(_) => self.connecting_receive_front(payload),
@@ -192,9 +207,7 @@ impl<
         step: PredictedStep<StepT>,
     ) -> Result<(), ClientStreamError> {
         match &mut self.phase {
-            Connected(ref mut client_logic) => client_logic
-                .push_predicted_step(tick_id, step)
-                .map_err(ClientStreamError::PredictedStepsError),
+            Connected(ref mut client_logic) => Ok(client_logic.push_predicted_step(tick_id, step)?),
             _ => Err(ClientStreamError::WrongPhase)?,
         }
     }

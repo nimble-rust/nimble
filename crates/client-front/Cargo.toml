@@ -13,6 +13,8 @@ log = "0.4.22"
 monotonic-time-rs = "^0.0.3"
 metricator = "^0.0.2"
 app-version = { path = "../app-version", version = "0.0.1" }
+nimble-step-types = { path = "../step-types", version = "0.0.12-dev" }
+tick-id = "^0.0.7"
 
 [dev-dependencies]
 test-log = "^0.2.16"

@@ -4,15 +4,16 @@
  */
 use app_version::{Version, VersionProvider};
 use flood_rs::{BufferDeserializer, Deserialize, Serialize};
+use log::trace;
 use monotonic_time_rs::InstantMonotonicClock;
-use nimble_assent::Assent;
 use nimble_client_front::{ClientFront, ClientFrontError};
-use nimble_rectify::RectifyCallbacks;
-use nimble_step_types::AuthoritativeStep;
+use nimble_rectify::{Rectify, RectifyCallbacks};
+use nimble_step_types::{AuthoritativeStep, PredictedStep};
 use nimble_steps::Step;
 use std::cell::RefCell;
 use std::fmt::Debug;
 use std::rc::Rc;
+use tick_id::TickId;
 
 pub trait GameCallbacks<StepT>:
     RectifyCallbacks<AuthoritativeStep<Step<StepT>>> + VersionProvider + BufferDeserializer
@@ -32,11 +33,21 @@ impl<StepT: Clone + Deserialize + Serialize + Debug, GameT: GameCallbacks<StepT>
     }
 }
 
+pub enum ClientError {
+    ClientFrontError(ClientFrontError),
+}
+
+impl From<ClientFrontError> for ClientError {
+    fn from(err: ClientFrontError) -> Self {
+        Self::ClientFrontError(err)
+    }
+}
+
 pub struct Client<GameT: GameCallbacks<StepT>, StepT: Clone + Deserialize + Serialize + Debug> {
     client: ClientFront<GameT, StepT>,
     tick_duration_ms: u64,
     #[allow(unused)]
-    assent: Assent<GameT, AuthoritativeStep<Step<StepT>>>,
+    rectify: Rectify<GameT, AuthoritativeStep<Step<StepT>>>,
 }
 
 impl<StepT: Clone + Deserialize + Serialize + Debug, GameT: GameCallbacks<StepT>>
@@ -54,7 +65,7 @@ impl<StepT: Clone + Deserialize + Serialize + Debug, GameT: GameCallbacks<StepT>
         Self {
             client: ClientFront::<GameT, StepT>::new(&application_version, clock),
             tick_duration_ms: 16,
-            assent: Assent::default(),
+            rectify: Rectify::default(),
         }
     }
 
@@ -68,11 +79,37 @@ impl<StepT: Clone + Deserialize + Serialize + Debug, GameT: GameCallbacks<StepT>
     }
 
     pub fn receive(&mut self, datagram: &[u8]) -> Result<(), ClientFrontError> {
-        self.client.receive(datagram)
+        self.client.receive(datagram)?;
+        let auth_steps = self.client.pop_all_authoritative_steps()?;
+        trace!("found auth_steps: {:?}", auth_steps);
+        Ok(())
     }
 
-    pub fn update(&mut self) {
-        self.client.update()
+    pub fn update(&mut self, game: &mut GameT) {
+        self.client.update();
+        self.rectify.update(game);
+    }
+
+    pub fn want_predicted_step(&self) -> bool {
+        true
+    }
+
+    pub fn push_predicted_step(
+        &mut self,
+        tick_id: TickId,
+        step: PredictedStep<StepT>,
+    ) -> Result<(), ClientError> {
+        /*
+            // create authoritative step from predicted step
+            let auth = AuthoritativeStep::<Step<StepT>> {
+                authoritative_participants: SeqMap::<ParticipantId, >,
+            }
+            self.rectify.push_predicted(step);
+        */
+
+        self.client.push_predicted_step(tick_id, step)?;
+
+        Ok(())
     }
 
     pub fn latency(&self) -> Option<u16> {

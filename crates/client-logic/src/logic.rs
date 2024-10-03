@@ -97,6 +97,12 @@ impl<StateT: BufferDeserializer, StepT: Clone + Deserialize + Serialize + Debug>
         &self.incoming_authoritative_steps
     }
 
+    pub fn pop_all_authoritative_steps(&mut self) -> Vec<AuthoritativeStep<StepT>> {
+        let vec = self.incoming_authoritative_steps.to_vec();
+        self.incoming_authoritative_steps.clear();
+        vec
+    }
+
     /// Sets the joining player request for this client.
     ///
     /// # Arguments

@@ -9,10 +9,12 @@ use monotonic_time_rs::{MillisLow16, MonotonicClock};
 use nimble_client_stream::client::{ClientStream, ClientStreamError};
 use nimble_ordered_datagram::{DatagramOrderInError, OrderedIn, OrderedOut};
 use nimble_protocol_header::ClientTime;
+use nimble_step_types::{AuthoritativeStep, PredictedStep};
 use std::cell::RefCell;
 use std::fmt::Debug;
 use std::io;
 use std::rc::Rc;
+use tick_id::TickId;
 
 #[derive(Debug)]
 pub enum ClientFrontError {
@@ -112,6 +114,21 @@ impl<StateT: BufferDeserializer, StepT: Clone + Deserialize + Serialize + Debug>
         self.in_octets_per_second.update(now);
         self.out_datagrams_per_second.update(now);
         self.out_octets_per_second.update(now);
+    }
+
+    pub fn push_predicted_step(
+        &mut self,
+        tick_id: TickId,
+        step: PredictedStep<StepT>,
+    ) -> Result<(), ClientFrontError> {
+        self.client.push_predicted_step(tick_id, step)?;
+        Ok(())
+    }
+
+    pub fn pop_all_authoritative_steps(
+        &mut self,
+    ) -> Result<Vec<AuthoritativeStep<StepT>>, ClientFrontError> {
+        Ok(self.client.pop_all_authoritative_steps()?)
     }
 
     pub fn receive(&mut self, datagram: &[u8]) -> Result<(), ClientFrontError> {
