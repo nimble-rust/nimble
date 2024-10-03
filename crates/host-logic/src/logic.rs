@@ -4,7 +4,7 @@
  */
 use crate::combinator::Combinator;
 use flood_rs::{Deserialize, Serialize};
-use freelist_rs::FreeList;
+use freelist_rs::{FreeList, FreeListError};
 use log::{debug, info, trace};
 use monotonic_time_rs::Millis;
 use nimble_blob_stream::prelude::*;
@@ -35,7 +35,7 @@ pub struct Participant {
 
 pub struct GameSession {
     pub participants: HashMap<ParticipantId, Rc<RefCell<Participant>>>,
-    pub participant_ids: FreeList,
+    pub participant_ids: FreeList<u8>,
 }
 
 impl Default for GameSession {
@@ -56,6 +56,7 @@ impl GameSession {
         }
     }
 
+    /*
     pub(crate) fn create_participant(
         &mut self,
         client_local_index: u8,
@@ -74,6 +75,33 @@ impl GameSession {
         } else {
             None
         }
+    }
+
+     */
+
+    pub fn create_participants(
+        &mut self,
+        client_local_indices: &[u8],
+    ) -> Option<Vec<Rc<RefCell<Participant>>>> {
+        let mut participants: Vec<Rc<RefCell<Participant>>> = vec![];
+
+        let ids = self
+            .participant_ids
+            .allocate_count(client_local_indices.len())?;
+        for (index, id_value) in ids.iter().enumerate() {
+            let participant_id = ParticipantId(*id_value);
+            let participant = Rc::new(RefCell::new(Participant {
+                client_local_index: client_local_indices[index],
+                id: participant_id,
+            }));
+
+            participants.push(participant.clone());
+
+            self.participants
+                .insert(participant_id, participant.clone());
+        }
+
+        Some(participants)
     }
 }
 
@@ -143,20 +171,31 @@ impl<StepT: Clone + Eq + Debug + Deserialize + Serialize> Connection<StepT> {
             return Err(HostLogicError::NoFreeParticipantIds);
         }
 
-        let local_index = request.player_requests.players[0].local_index;
-        let participant = session
-            .create_participant(local_index)
+        let local_indices: Vec<_> = request
+            .player_requests
+            .players
+            .iter()
+            .map(|p| p.local_index)
+            .collect();
+
+        let participants = session
+            .create_participants(local_indices.as_slice())
             .ok_or(HostLogicError::NoFreeParticipantIds)?;
 
-        self.participant_lookup
-            .insert(request.player_requests.players[0].local_index, participant);
+        for participant in &participants {
+            self.participant_lookup.insert(
+                request.player_requests.players[0].local_index,
+                participant.clone(),
+            );
+        }
 
-        let found_participant = self.participant_lookup.get(&local_index).unwrap();
-
-        let join_game_participant = JoinGameParticipant {
-            local_index: request.player_requests.players[0].local_index,
-            participant_id: found_participant.borrow().id,
-        };
+        let join_game_participants = participants
+            .iter()
+            .map(|found_participant| JoinGameParticipant {
+                local_index: found_participant.borrow().client_local_index,
+                participant_id: found_participant.borrow().id,
+            })
+            .collect();
 
         let join_accepted = JoinGameAccepted {
             client_request_id: request.client_request_id,
@@ -164,7 +203,7 @@ impl<StepT: Clone + Eq + Debug + Deserialize + Serialize> Connection<StepT> {
                 session_secret: SessionConnectionSecret { value: 0 },
                 party_id: 0,
             },
-            participants: JoinGameParticipants(Vec::from([join_game_participant])),
+            participants: JoinGameParticipants(join_game_participants),
         };
 
         Ok(HostToClientCommands::JoinGame(join_accepted))
@@ -267,7 +306,7 @@ pub enum HostLogicError {
     UnknownConnectionId(HostConnectionId),
     FreeListError {
         connection_id: HostConnectionId,
-        message: String,
+        message: FreeListError,
     },
     UnknownPartyMemberIndex(u8),
     NoFreeParticipantIds,
@@ -285,7 +324,7 @@ pub struct HostLogic<
     combinator: Combinator<StepT>,
     connections: HashMap<u8, Connection<StepT>>,
     session: GameSession,
-    free_list: FreeList,
+    free_list: FreeList<u8>,
 }
 
 impl<StepT: Clone + Eq + Debug + Deserialize + Serialize> HostLogic<StepT> {
@@ -294,7 +333,7 @@ impl<StepT: Clone + Eq + Debug + Deserialize + Serialize> HostLogic<StepT> {
             combinator: Combinator::<StepT>::new(tick_id),
             connections: HashMap::new(),
             session: GameSession::new(),
-            free_list: FreeList::new(0xff),
+            free_list: FreeList::<u8>::new(0xff),
         }
     }
 

@@ -7,6 +7,7 @@ use hexify::assert_eq_slices;
 use monotonic_time_rs::Millis;
 use nimble_host_front::{HostFront, HostFrontError};
 use nimble_host_logic::logic::{GameStateProvider, HostConnectionId};
+use nimble_participant::ParticipantId;
 use nimble_sample_step::SampleStep;
 use tick_id::TickId;
 
@@ -81,8 +82,9 @@ fn join_game() -> Result<(), HostFrontError> {
         0x01, // Join Game Command
         0x00, // RequestID
         0x00, // Join Type: No Secret
-        0x01, // Number of players
-        0x42, // The local player index
+        0x02, // Number of players
+        0x42, // The local player index for first player
+        0xFF, // Local player index for second player
     ];
 
     let now = Millis::new(0);
@@ -92,7 +94,17 @@ fn join_game() -> Result<(), HostFrontError> {
         host.update(connection_id, now, join_datagram, &state_provider)?;
     assert_eq!(maybe_join_response_datagrams.len(), 1);
 
-    assert_eq!(host.session().participants.len(), 1);
+    assert_eq!(host.session().participants.len(), 2);
+
+    let expected_participant_id = ParticipantId(0);
+    let participant = host
+        .session()
+        .participants
+        .get(&expected_participant_id)
+        .expect("should have participant");
+
+    assert_eq!(participant.borrow().id.0, 0);
+    assert_eq!(participant.borrow().client_local_index, 0x42);
 
     #[rustfmt::skip]
     let expected_join_response: &[u8] = &[
@@ -104,10 +116,12 @@ fn join_game() -> Result<(), HostFrontError> {
         0x09, // Join Game Response
         0x00, // Client Request ID
         0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // SECRET
-        0x00, // Party ID
-        0x01, // Number of participants that joined
-        0x42, // The index of the local player
-        0x00, // The Participant ID assigned to that local player
+        0x00, // Party ID - Only for debug purposes. Maybe should be removed?
+        0x02, // Number of participants that joined
+        0x42, // The index of the first local player
+        0x00, // The Participant ID assigned to that first local player
+        0xFF, // The index of the second local player
+        0x01, // The Participant ID assigned to that second local player
     ];
 
     assert_eq_slices(&maybe_join_response_datagrams[0], expected_join_response);
@@ -125,7 +139,7 @@ fn game_step() -> Result<(), HostFrontError> {
         0xF0, 0x0D, // Client Time
 
         // Commands
-        0x02, // Send Predicted steps
+        0x02, // Send Predicted steps Command
         0x00, 0x00, 0x00, 0x00, // Waiting for Tick ID
         0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Receive Mask for steps
         0x00, // number of player streams following

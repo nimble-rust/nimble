@@ -18,3 +18,4 @@ app-version = { path = "../app-version", version = "0.0.1" }
 test-log = "^0.2.16"
 nimble-sample-step = { path = "../sample-step", version = "0.0.12-dev" }
 hexify = "^0.0.3"
+nimble-participant = { path = "../participant", version = "0.0.12-dev" }
