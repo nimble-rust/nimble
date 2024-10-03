@@ -32,12 +32,11 @@ fn create_and_connect<
         0xF0, 0x0D,
 
         // Commands
-
-        0x05, // Connect Request: ClientToHostOobCommand::ConnectType = 0x05
-        0, 0, 0, 0, 0, 5, // Nimble version
-        0, // Flags (use debug stream)
-        0, 0, 0, 1, 0, 2, // Application version
-        0,  // Client Request Id
+        0x05,               // Connect Request: ClientToHostOobCommand::ConnectType = 0x05
+        0, 0, 0, 0, 0, 5,   // Nimble version
+        0,                  // Flags (use debug stream). Not used yet.
+        0, 0, 0, 1, 0, 2,   // Application version
+        0,                  // Client Request Id
     ];
 
     let application_version = app_version::Version {
@@ -161,7 +160,7 @@ fn game_step() -> Result<(), HostFrontError> {
 
         // Ack
         0x00, // Buffer count
-        0x00, // Signed 8-bit delta buffer
+        0x00, // Signed 8-bit delta tick
         0x00, 0x00, 0x00, 0x00, // Next Expected TickID. Signals that it has not received anything yet.
 
         // Authoritative Steps

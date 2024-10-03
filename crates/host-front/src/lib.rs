@@ -6,6 +6,7 @@
 use flood_rs::in_stream::InOctetStream;
 use flood_rs::prelude::OutOctetStream;
 use flood_rs::{Deserialize, Serialize, WriteOctetStream};
+use log::debug;
 use monotonic_time_rs::Millis;
 use nimble_host_logic::logic::{GameSession, GameStateProvider};
 use nimble_host_stream::{HostStream, HostStreamConnection, HostStreamError};
@@ -62,9 +63,7 @@ impl ConnectionId {
     }
 }
 
-pub struct HostFront<
-    StepT: Clone + std::fmt::Debug + std::cmp::Eq + flood_rs::Deserialize + flood_rs::Serialize,
-> {
+pub struct HostFront<StepT: Clone + Debug + Eq + Deserialize + Serialize> {
     host_stream: HostStream<StepT>,
     connections: HashMap<u8, HostFrontConnection>,
 }
@@ -142,9 +141,20 @@ impl<StepT: Clone + Deserialize + Serialize + Eq + Debug> HostFront<StepT> {
         if let Some(connection_id) = self.host_stream.create_connection() {
             self.connections
                 .insert(connection_id.0, HostFrontConnection::new());
+            debug!("Created connection {:?}", connection_id);
             Some(connection_id)
         } else {
             None
         }
+    }
+
+    pub fn destroy_connection(
+        &mut self,
+        connection_id: nimble_host_logic::logic::HostConnectionId,
+    ) -> Result<(), HostFrontError> {
+        debug!("destroying connection {:?}", connection_id);
+        self.connections.remove(&connection_id.0);
+        self.host_stream.destroy_connection(connection_id)?;
+        Ok(())
     }
 }

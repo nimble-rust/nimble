@@ -150,6 +150,12 @@ impl<StepT: Clone + Eq + Debug + Deserialize + Serialize> HostStream<StepT> {
         }
     }
 
+    pub fn destroy_connection(&mut self, p0: HostConnectionId) -> Result<(), HostStreamError> {
+        self.connections.remove(&p0.0);
+        self.host_logic.destroy_connection(p0)?;
+        Ok(())
+    }
+
     pub fn session(&self) -> &GameSession {
         self.host_logic.session()
     }
