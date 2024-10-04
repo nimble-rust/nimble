@@ -5,6 +5,7 @@
 use app_version::VersionProvider;
 use err_rs::{ErrorLevel, ErrorLevelProvider};
 use flood_rs::{Deserialize, Serialize};
+use hazy_transport::{DeciderConfig, Direction, DirectionConfig};
 use log::{error, info, warn};
 use monotonic_time_rs::{Millis, MillisDuration};
 use nimble_client::{Client, GameCallbacks};
@@ -13,6 +14,8 @@ use nimble_host_front::HostFront;
 use nimble_host_logic::logic::{GameStateProvider, HostConnectionId};
 use nimble_sample_game::{SampleGame, SampleGameState};
 use nimble_sample_step::SampleStep;
+use rand::prelude::StdRng;
+use rand::SeedableRng;
 use std::fmt::Debug;
 use tick_id::TickId;
 
@@ -46,29 +49,61 @@ fn communicate<
     count: usize,
 ) {
     let mut now = Millis::new(0);
-    for _ in 0..count {
-        let to_host_datagrams = client.send().expect("send should work");
+    let config = DirectionConfig {
+        decider: DeciderConfig {
+            unaffected: 90,
+            drop: 3,
+            tamper: 0,
+            duplicate: 4,
+            reorder: 3,
+        },
+    };
+    let rng = StdRng::seed_from_u64(0x01);
+    let mut to_client = Direction::new(config, rng);
 
+    let config2 = DirectionConfig {
+        decider: DeciderConfig {
+            unaffected: 90,
+            drop: 3,
+            tamper: 0,
+            duplicate: 4,
+            reorder: 3,
+        },
+    };
+    let rng2 = StdRng::seed_from_u64(0x01);
+    let mut to_host = Direction::new(config2, rng2);
+
+    for _ in 0..count {
+        // Push to host
+        let to_host_datagrams = client.send().expect("send should work");
         for to_host_datagram in to_host_datagrams {
-            let to_client_datagrams_result = host.update(
-                connection_id,
-                now,
-                to_host_datagram.as_slice(),
-                state_provider,
-            );
+            to_host.push(now.absolute_milliseconds(), &to_host_datagram);
+        }
+
+        // Pop everything that is ready to host:
+        while let Some(item) = to_host.pop_ready(now.absolute_milliseconds()) {
+            let to_client_datagrams_result =
+                host.update(connection_id, now, item.data.as_slice(), state_provider);
+
+            // Push to client
             if let Ok(to_client_datagrams) = to_client_datagrams_result {
                 for to_client_datagram in to_client_datagrams {
-                    let result = client.receive(to_client_datagram.as_slice());
-                    if let Err(err) = result {
-                        log_err(&err);
-                    }
+                    to_client.push(now.absolute_milliseconds(), &to_client_datagram);
                 }
             } else {
                 warn!("received: {:?}", to_client_datagrams_result.err());
             }
         }
 
-        now += MillisDuration::from_millis(16);
+        // Pop everything that is ready for client
+        while let Some(item) = to_client.pop_ready(now.absolute_milliseconds()) {
+            let result = client.receive(item.data.as_slice());
+            if let Err(err) = result {
+                log_err(&err);
+            }
+        }
+
+        now += MillisDuration::from_millis(16 * 5);
     }
 }
 
@@ -118,7 +153,7 @@ fn client_to_host() -> Result<(), ClientFrontError> {
         &state_provider,
         connection_id,
         &mut client,
-        3,
+        25,
     );
 
     client.update();
