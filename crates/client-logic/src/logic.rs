@@ -223,8 +223,12 @@ impl<StateT: BufferDeserializer, StepT: Clone + Deserialize + Serialize + Debug>
     ///
     /// # Returns
     /// An `Option` containing a reference to the received game state, if available.
-    pub fn state(&self) -> Option<&StateT> {
+    pub fn game_state(&self) -> Option<&StateT> {
         self.state.as_ref()
+    }
+
+    pub fn game_state_mut(&mut self) -> Option<&mut StateT> {
+        self.state.as_mut()
     }
 
     /// Processes the game step response header received from the host.

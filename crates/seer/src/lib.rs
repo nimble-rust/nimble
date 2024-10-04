@@ -5,6 +5,7 @@
 pub mod prelude;
 
 use log::trace;
+use std::fmt::Debug;
 use std::marker::PhantomData;
 
 use nimble_steps::Steps;
@@ -19,7 +20,7 @@ pub trait SeerCallback<CombinedStepT> {
 }
 
 // Define the Assent struct
-impl<Callback, CombinedStepT: Clone> Default for Seer<Callback, CombinedStepT>
+impl<Callback, CombinedStepT: Clone + Debug> Default for Seer<Callback, CombinedStepT>
 where
     Callback: SeerCallback<CombinedStepT>,
 {
@@ -41,7 +42,7 @@ where
 impl<Callback, CombinedStepT> Seer<Callback, CombinedStepT>
 where
     Callback: SeerCallback<CombinedStepT>,
-    CombinedStepT: std::clone::Clone,
+    CombinedStepT: std::clone::Clone + std::fmt::Debug,
 {
     pub fn new() -> Self {
         Seer {
@@ -58,8 +59,10 @@ where
     pub fn update(&mut self, callback: &mut Callback) {
         callback.on_pre_ticks();
 
-        trace!("combined steps len:{}", self.combined_steps.len());
+        trace!("seer: combined steps len:{}", self.combined_steps.len());
         for combined_step_info in self.combined_steps.iter() {
+            trace!("seer tick {:?}", combined_step_info);
+
             callback.on_tick(&combined_step_info.step);
         }
 

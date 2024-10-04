@@ -108,7 +108,7 @@ fn join_game() -> Result<(), HostFrontError> {
     #[rustfmt::skip]
     let expected_join_response: &[u8] = &[
         // Header
-        0x00, 0x00, // Datagram Sequence
+        0x00, 0x01, // Datagram Sequence
         0xF0, 0x0D, // Client Time
     
         // Commands
@@ -152,7 +152,7 @@ fn game_step() -> Result<(), HostFrontError> {
     #[rustfmt::skip]
     let expected_game_step_response = &[
         // Header
-        0x00, 0x00, // Datagram Sequence
+        0x00, 0x01, // Datagram Sequence
         0xF0, 0x0D, // Client Time
     
         // Commands

@@ -7,6 +7,7 @@ use datagram_chunker::{serialize_to_chunker, DatagramChunkerError};
 use err_rs::{ErrorLevel, ErrorLevelProvider};
 use flood_rs::prelude::OctetRefReader;
 use flood_rs::{BufferDeserializer, Deserialize, ReadOctetStream};
+use hexify::format_hex;
 use log::{debug, trace};
 use nimble_client_connecting::ConnectingClient;
 use nimble_client_logic::err::ClientError;
@@ -26,7 +27,8 @@ pub enum ClientStreamError {
     ClientConnectingErr(nimble_client_connecting::ClientError),
     PredictedStepsError(StepsError),
     DatagramChunkError(DatagramChunkerError),
-    WrongPhase,
+    CommandNeedsConnectedPhase,
+    CommandNeedsConnectingPhase,
 }
 
 impl ErrorLevelProvider for ClientStreamError {
@@ -36,7 +38,8 @@ impl ErrorLevelProvider for ClientStreamError {
             Self::IoErr(_) => ErrorLevel::Info,
             Self::ClientErr(_) => ErrorLevel::Info,
             Self::ClientConnectingErr(_) => ErrorLevel::Info,
-            Self::WrongPhase => ErrorLevel::Info,
+            Self::CommandNeedsConnectingPhase => ErrorLevel::Info,
+            Self::CommandNeedsConnectedPhase => ErrorLevel::Info,
             Self::PredictedStepsError(_) => ErrorLevel::Warning,
             Self::DatagramChunkError(_) => ErrorLevel::Warning,
         }
@@ -70,6 +73,8 @@ pub enum ClientPhase<
     Connecting(ConnectingClient),
     Connected(ClientLogic<StateT, StepT>),
 }
+
+#[derive(Debug)]
 pub struct ClientStream<
     StateT: BufferDeserializer,
     StepT: Clone + flood_rs::Deserialize + flood_rs::Serialize + std::fmt::Debug,
@@ -78,7 +83,7 @@ pub struct ClientStream<
 }
 
 impl<
-        StateT: BufferDeserializer,
+        StateT: BufferDeserializer + std::fmt::Debug,
         StepT: Clone + flood_rs::Deserialize + flood_rs::Serialize + std::fmt::Debug,
     > ClientStream<StateT, StepT>
 {
@@ -104,8 +109,13 @@ impl<
     ) -> Result<(), ClientStreamError> {
         let connecting_client = match self.phase {
             ClientPhase::Connecting(ref mut connecting_client) => connecting_client,
-            _ => Err(ClientStreamError::WrongPhase)?,
+            _ => Err(ClientStreamError::CommandNeedsConnectingPhase)?,
         };
+
+        // TODO: Do not allow empty datagrams in the future
+        if in_octet_stream.has_reached_end() {
+            return Ok(());
+        }
 
         let command = HostToClientOobCommands::deserialize(in_octet_stream)?;
         connecting_client
@@ -129,11 +139,11 @@ impl<
     ) -> Result<(), ClientStreamError> {
         let logic = match self.phase {
             ClientPhase::Connected(ref mut logic) => logic,
-            _ => Err(ClientStreamError::WrongPhase)?,
+            _ => Err(ClientStreamError::CommandNeedsConnectedPhase)?,
         };
         while !in_stream.has_reached_end() {
             let cmd = HostToClientCommands::deserialize(in_stream)?;
-            trace!("connected_receive {cmd:?}");
+            trace!("client-stream: connected_receive {cmd:?}");
             logic
                 .receive_cmd(&cmd)
                 .map_err(|err| ClientStreamError::ClientErr(ClientError::Single(err)))?;
@@ -142,8 +152,6 @@ impl<
     }
 
     fn connected_receive_front(&mut self, payload: &[u8]) -> Result<(), ClientStreamError> {
-        trace!("connected receive payload length: {}", payload.len());
-
         let mut in_stream = OctetRefReader::new(payload);
         self.connected_receive(&mut in_stream)
     }
@@ -153,11 +161,16 @@ impl<
     ) -> Result<Vec<AuthoritativeStep<StepT>>, ClientStreamError> {
         match self.phase {
             ClientPhase::Connected(ref mut logic) => Ok(logic.pop_all_authoritative_steps()),
-            _ => Err(ClientStreamError::WrongPhase)?,
+            _ => Err(ClientStreamError::CommandNeedsConnectedPhase)?,
         }
     }
 
     pub fn receive(&mut self, payload: &[u8]) -> Result<(), ClientStreamError> {
+        trace!(
+            "client-stream receive payload phase: {:?}\n{}",
+            self.phase,
+            format_hex(payload)
+        );
         match &mut self.phase {
             ClientPhase::Connecting(_) => self.connecting_receive_front(payload),
             ClientPhase::Connected(_) => self.connected_receive_front(payload),
@@ -167,7 +180,7 @@ impl<
     fn connecting_send_front(&mut self) -> Result<Vec<Vec<u8>>, ClientStreamError> {
         let connecting_client = match &mut self.phase {
             ClientPhase::Connecting(ref mut connecting_client) => connecting_client,
-            _ => Err(ClientStreamError::WrongPhase)?,
+            _ => Err(ClientStreamError::CommandNeedsConnectingPhase)?,
         };
         let request = connecting_client.send();
         Ok(serialize_to_chunker([request], Self::DATAGRAM_MAX_SIZE)?)
@@ -177,7 +190,7 @@ impl<
     fn connected_send_front(&mut self) -> Result<Vec<Vec<u8>>, ClientStreamError> {
         let client_logic = match &mut self.phase {
             ClientPhase::Connected(ref mut client_logic) => client_logic,
-            _ => Err(ClientStreamError::WrongPhase)?,
+            _ => Err(ClientStreamError::CommandNeedsConnectedPhase)?,
         };
         let commands = client_logic.send();
         Ok(serialize_to_chunker(commands, Self::DATAGRAM_MAX_SIZE)?)
@@ -190,9 +203,16 @@ impl<
         }
     }
 
-    pub fn state(&self) -> Option<&StateT> {
+    pub fn game_state(&self) -> Option<&StateT> {
         match &self.phase {
-            ClientPhase::Connected(ref client) => client.state(),
+            ClientPhase::Connected(ref client) => client.game_state(),
+            _ => None,
+        }
+    }
+
+    pub fn game_state_mut(&mut self) -> Option<&mut StateT> {
+        match &mut self.phase {
+            ClientPhase::Connected(ref mut client) => client.game_state_mut(),
             _ => None,
         }
     }
@@ -208,7 +228,7 @@ impl<
     ) -> Result<(), ClientStreamError> {
         match &mut self.phase {
             Connected(ref mut client_logic) => Ok(client_logic.push_predicted_step(tick_id, step)?),
-            _ => Err(ClientStreamError::WrongPhase)?,
+            _ => Err(ClientStreamError::CommandNeedsConnectedPhase)?,
         }
     }
 

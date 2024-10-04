@@ -6,7 +6,8 @@
 use flood_rs::in_stream::InOctetStream;
 use flood_rs::prelude::OutOctetStream;
 use flood_rs::{Deserialize, Serialize, WriteOctetStream};
-use log::debug;
+use hexify::format_hex;
+use log::{debug, trace};
 use monotonic_time_rs::Millis;
 use nimble_host_logic::logic::{GameSession, GameStateProvider};
 use nimble_host_stream::{HostStream, HostStreamConnection, HostStreamError};
@@ -101,6 +102,11 @@ impl<StepT: Clone + Deserialize + Serialize + Eq + Debug> HostFront<StepT> {
         datagram: &[u8],
         state_provider: &impl GameStateProvider,
     ) -> Result<Vec<Vec<u8>>, HostFrontError> {
+        trace!(
+            "host received for connection:{} payload:\n{}",
+            connection_id.0,
+            format_hex(datagram)
+        );
         let mut in_stream = InOctetStream::new(datagram);
         let found_connection = self
             .connections
@@ -132,6 +138,15 @@ impl<StepT: Clone + Deserialize + Serialize + Eq + Debug> HostFront<StepT> {
             out_stream.write(datagram.as_slice())?;
 
             out_datagrams.push(out_stream.octets_ref().to_vec());
+            found_connection.ordered_datagram_out.commit();
+        }
+
+        for (index, datagram) in out_datagrams.iter().enumerate() {
+            trace!(
+                "host sending index {} payload:\n{}",
+                index,
+                format_hex(datagram)
+            );
         }
 
         Ok(out_datagrams)

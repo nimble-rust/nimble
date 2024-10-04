@@ -21,7 +21,7 @@ impl GameStateProvider for TestStateProvider {
 }
 
 #[test_log::test]
-fn join_game() -> Result<(), HostStreamError> {
+fn join_game2() -> Result<(), HostStreamError> {
     let application_version = app_version::Version {
         major: 0,
         minor: 1,

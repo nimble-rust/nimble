@@ -39,7 +39,11 @@ impl DatagramId {
     }
 
     pub fn next(self) -> Self {
-        Self(self.0 + 1)
+        Self(self.0.wrapping_add(1))
+    }
+
+    pub fn next_mut(&mut self) {
+        self.0 = self.0.wrapping_add(1);
     }
 
     fn to_stream(self, stream: &mut impl WriteOctetStream) -> io::Result<()> {
@@ -90,7 +94,7 @@ impl OrderedOut {
     }
 
     pub fn commit(&mut self) {
-        self.sequence_to_send = DatagramId(self.sequence_to_send.0 + 1);
+        self.sequence_to_send.next_mut();
     }
 }
 

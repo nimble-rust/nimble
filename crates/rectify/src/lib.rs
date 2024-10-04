@@ -6,6 +6,7 @@ pub mod prelude;
 
 use nimble_assent::{Assent, AssentCallback, UpdateState};
 use nimble_seer::{Seer, SeerCallback};
+use std::fmt::Debug;
 use tick_id::TickId;
 
 /// A callback trait that allows a game to handle the event when the authoritative state
@@ -26,18 +27,18 @@ impl<T, StepT> RectifyCallbacks<StepT> for T where
 /// The `Rectify` struct coordinates between the [`Assent`] and [`Seer`] components, managing
 /// authoritative and predicted game states.
 #[derive(Debug)]
-pub struct Rectify<Game: RectifyCallbacks<StepT>, StepT: Clone> {
+pub struct Rectify<Game: RectifyCallbacks<StepT>, StepT: Clone + Debug> {
     assent: Assent<Game, StepT>,
     seer: Seer<Game, StepT>,
 }
 
-impl<Game: RectifyCallbacks<StepT>, StepT: Clone> Default for Rectify<Game, StepT> {
+impl<Game: RectifyCallbacks<StepT>, StepT: Clone + Debug> Default for Rectify<Game, StepT> {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl<Game: RectifyCallbacks<StepT>, StepT: Clone> Rectify<Game, StepT> {
+impl<Game: RectifyCallbacks<StepT>, StepT: Clone + std::fmt::Debug> Rectify<Game, StepT> {
     /// Creates a new `Rectify` instance, initializing both [`Assent`] and [`Seer`] components.
     ///
     /// # Returns

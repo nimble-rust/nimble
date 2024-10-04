@@ -5,6 +5,8 @@
 use datagram_chunker::{serialize_to_chunker, DatagramChunkerError};
 use flood_rs::prelude::InOctetStream;
 use flood_rs::{Deserialize, Serialize};
+use hexify::format_hex;
+use log::{debug, trace};
 use monotonic_time_rs::Millis;
 use nimble_host_logic::logic::{
     GameSession, GameStateProvider, HostConnectionId, HostLogic, HostLogicError,
@@ -25,6 +27,7 @@ pub enum HostStreamError {
     IoError(io::Error),
     ConnectionNotFound,
     WrongApplicationVersion,
+    MustBeConnectedFirst,
 }
 
 impl From<DatagramChunkerError> for HostStreamError {
@@ -100,39 +103,49 @@ impl<StepT: Clone + Eq + Debug + Deserialize + Serialize> HostStream<StepT> {
         state_provider: &impl GameStateProvider,
     ) -> Result<Vec<Vec<u8>>, HostStreamError> {
         let mut in_stream = InOctetStream::new(datagram);
+        trace!(
+            "host-stream received from connection {}. payload:\n{}",
+            connection_id.0,
+            format_hex(datagram)
+        );
 
         if let Some(ref mut connection) = self.connections.get_mut(&connection_id.0) {
-            match connection.phase {
-                HostStreamConnectionPhase::Connecting => {
-                    let request = ClientToHostOobCommands::deserialize(&mut in_stream)?;
-                    match request {
-                        ClientToHostOobCommands::ConnectType(connect_request) => {
-                            let connect_version = app_version::Version {
-                                major: connect_request.application_version.major,
-                                minor: connect_request.application_version.minor,
-                                patch: connect_request.application_version.patch,
-                            };
-                            if connect_version != self.application_version {
-                                return Err(HostStreamError::WrongApplicationVersion);
-                            }
-                            connection.phase = HostStreamConnectionPhase::Connected;
-
-                            let response = ConnectionAccepted {
-                                flags: 0,
-                                response_to_request: connect_request.client_request_id,
-                            };
-
-                            let commands = [HostToClientOobCommands::ConnectType(response)];
-                            Ok(serialize_to_chunker(commands, Self::DATAGRAM_MAX_SIZE)?)
+            let oob_result = ClientToHostOobCommands::deserialize(&mut in_stream);
+            if let Ok(oob_command) = oob_result {
+                match oob_command {
+                    ClientToHostOobCommands::ConnectType(connect_request) => {
+                        let connect_version = app_version::Version {
+                            major: connect_request.application_version.major,
+                            minor: connect_request.application_version.minor,
+                            patch: connect_request.application_version.patch,
+                        };
+                        if connect_version != self.application_version {
+                            return Err(HostStreamError::WrongApplicationVersion);
                         }
+                        connection.phase = HostStreamConnectionPhase::Connected;
+
+                        let response = ConnectionAccepted {
+                            flags: 0,
+                            response_to_request: connect_request.client_request_id,
+                        };
+                        debug!("host-stream received connect request {:?}", connect_request);
+
+                        let commands = [HostToClientOobCommands::ConnectType(response)];
+                        connection.phase = HostStreamConnectionPhase::Connected;
+                        Ok(serialize_to_chunker(commands, Self::DATAGRAM_MAX_SIZE)?)
                     }
                 }
-                HostStreamConnectionPhase::Connected => {
-                    let request = ClientToHostCommands::<StepT>::deserialize(&mut in_stream)?;
-                    let commands =
-                        self.host_logic
-                            .update(connection_id, now, &request, state_provider)?;
-                    Ok(serialize_to_chunker(commands, Self::DATAGRAM_MAX_SIZE)?)
+            } else {
+                let mut in_stream = InOctetStream::new(datagram);
+                match connection.phase {
+                    HostStreamConnectionPhase::Connected => {
+                        let request = ClientToHostCommands::<StepT>::deserialize(&mut in_stream)?;
+                        let commands =
+                            self.host_logic
+                                .update(connection_id, now, &request, state_provider)?;
+                        Ok(serialize_to_chunker(commands, Self::DATAGRAM_MAX_SIZE)?)
+                    }
+                    _ => Err(HostStreamError::MustBeConnectedFirst),
                 }
             }
         } else {

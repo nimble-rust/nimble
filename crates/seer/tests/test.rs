@@ -11,7 +11,7 @@ pub struct TestGame {
     pub position_x: i32,
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub enum TestGameStep {
     MoveLeft,
     MoveRight,

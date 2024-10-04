@@ -25,8 +25,10 @@ impl<T, StepT> GameCallbacks<StepT> for T where
 {
 }
 
-impl<StepT: Clone + Deserialize + Serialize + Debug, GameT: GameCallbacks<StepT>> Default
-    for Client<GameT, StepT>
+impl<
+        StepT: Clone + Deserialize + Serialize + Debug,
+        GameT: GameCallbacks<StepT> + std::fmt::Debug,
+    > Default for Client<GameT, StepT>
 {
     fn default() -> Self {
         Self::new()
@@ -43,15 +45,20 @@ impl From<ClientFrontError> for ClientError {
     }
 }
 
-pub struct Client<GameT: GameCallbacks<StepT>, StepT: Clone + Deserialize + Serialize + Debug> {
+pub struct Client<
+    GameT: GameCallbacks<StepT> + std::fmt::Debug,
+    StepT: Clone + Deserialize + Serialize + Debug,
+> {
     client: ClientFront<GameT, StepT>,
     tick_duration_ms: u64,
     #[allow(unused)]
     rectify: Rectify<GameT, AuthoritativeStep<Step<StepT>>>,
 }
 
-impl<StepT: Clone + Deserialize + Serialize + Debug, GameT: GameCallbacks<StepT>>
-    Client<GameT, StepT>
+impl<
+        StepT: Clone + Deserialize + Serialize + Debug,
+        GameT: GameCallbacks<StepT> + std::fmt::Debug,
+    > Client<GameT, StepT>
 {
     pub fn new() -> Self {
         let clock = Rc::new(RefCell::new(InstantMonotonicClock::new()));
@@ -85,9 +92,11 @@ impl<StepT: Clone + Deserialize + Serialize + Debug, GameT: GameCallbacks<StepT>
         Ok(())
     }
 
-    pub fn update(&mut self, game: &mut GameT) {
+    pub fn update(&mut self) {
         self.client.update();
-        self.rectify.update(game);
+        if let Some(game_state) = self.client.game_state_mut() {
+            self.rectify.update(game_state);
+        }
     }
 
     pub fn want_predicted_step(&self) -> bool {
@@ -140,5 +149,9 @@ impl<StepT: Clone + Deserialize + Serialize + Debug, GameT: GameCallbacks<StepT>
         } else {
             2
         }
+    }
+
+    pub fn game_state(&self) -> Option<&GameT> {
+        self.client.game_state()
     }
 }

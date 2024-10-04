@@ -11,8 +11,10 @@ datagram-chunker = { path = "../datagram-chunker", version = "0.0.1" }
 nimble-protocol = { path = "../protocol", version = "0.0.12-dev" }
 monotonic-time-rs = "0.0.3"
 app-version = { path = "../app-version", version = "0.0.1" }
+log = "0.4.22"
+hexify = "^0.0.3"
+
 
 [dev-dependencies]
 test-log = "^0.2.16"
 nimble-sample-step = { path = "../sample-step", version = "0.0.12-dev" }
-hexify = "^0.0.3"

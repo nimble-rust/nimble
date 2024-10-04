@@ -38,7 +38,7 @@ use std::io;
 ///
 /// In this example, `ParticipantSteps` is used to track the actions of two participants in a single tick.
 /// Each participant has a unique `ParticipantId` and a `Step` that describes their action for the tick.
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct ParticipantSteps<T> {
     pub steps: HashMap<ParticipantId, Step<T>>,
 }

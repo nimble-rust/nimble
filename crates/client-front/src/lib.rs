@@ -2,8 +2,11 @@
  * Copyright (c) Peter Bjorklund. All rights reserved. https://github.com/nimble-rust/nimble
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
+use err_rs::{ErrorLevel, ErrorLevelProvider};
 use flood_rs::prelude::{InOctetStream, OutOctetStream};
 use flood_rs::{BufferDeserializer, Deserialize, Serialize};
+use hexify::format_hex;
+use log::trace;
 use metricator::{AggregateMetric, RateMetric};
 use monotonic_time_rs::{MillisLow16, MonotonicClock};
 use nimble_client_stream::client::{ClientStream, ClientStreamError};
@@ -24,6 +27,17 @@ pub enum ClientFrontError {
     IoError(io::Error),
 }
 
+impl ErrorLevelProvider for ClientFrontError {
+    fn error_level(&self) -> ErrorLevel {
+        match self {
+            &Self::Unexpected(_) => ErrorLevel::Warning,
+            &Self::DatagramOrderInError(_) | &Self::ClientStreamError(_) | &Self::IoError(_) => {
+                ErrorLevel::Info
+            }
+        }
+    }
+}
+
 impl From<DatagramOrderInError> for ClientFrontError {
     fn from(err: DatagramOrderInError) -> ClientFrontError {
         ClientFrontError::DatagramOrderInError(err)
@@ -42,7 +56,10 @@ impl From<io::Error> for ClientFrontError {
     }
 }
 
-pub struct ClientFront<StateT: BufferDeserializer, StepT: Clone + Deserialize + Serialize + Debug> {
+pub struct ClientFront<
+    StateT: BufferDeserializer + Debug,
+    StepT: Clone + Deserialize + Serialize + Debug,
+> {
     pub client: ClientStream<StateT, StepT>,
     clock: Rc<RefCell<dyn MonotonicClock>>, //pub clock: InstantMonotonicClock,
     ordered_datagram_out: OrderedOut,
@@ -55,7 +72,7 @@ pub struct ClientFront<StateT: BufferDeserializer, StepT: Clone + Deserialize + 
     out_octets_per_second: RateMetric,
 }
 
-impl<StateT: BufferDeserializer, StepT: Clone + Deserialize + Serialize + Debug>
+impl<StateT: BufferDeserializer + Debug, StepT: Clone + Deserialize + Serialize + Debug>
     ClientFront<StateT, StepT>
 {
     pub fn new(
@@ -132,6 +149,7 @@ impl<StateT: BufferDeserializer, StepT: Clone + Deserialize + Serialize + Debug>
     }
 
     pub fn receive(&mut self, datagram: &[u8]) -> Result<(), ClientFrontError> {
+        trace!("client-front received\n{}", format_hex(datagram));
         let mut in_stream = InOctetStream::new(datagram);
         let dropped_packets = self.ordered_in.read_and_verify(&mut in_stream)?;
         self.datagram_drops.add(dropped_packets.inner());
@@ -152,6 +170,8 @@ impl<StateT: BufferDeserializer, StepT: Clone + Deserialize + Serialize + Debug>
             .ok_or_else(|| ClientFrontError::Unexpected("earlier".to_string()))?;
 
         self.latency.add(duration_ms.as_millis() as u16);
+
+        self.client.receive(&datagram[4..])?;
 
         Ok(())
     }
@@ -186,5 +206,13 @@ impl<StateT: BufferDeserializer, StepT: Clone + Deserialize + Serialize + Debug>
     /// An optional average server buffer delta tick.
     pub fn server_buffer_delta_ticks(&self) -> Option<i16> {
         self.client.server_buffer_delta_ticks()
+    }
+
+    pub fn game_state(&self) -> Option<&StateT> {
+        self.client.game_state()
+    }
+
+    pub fn game_state_mut(&mut self) -> Option<&mut StateT> {
+        self.client.game_state_mut()
     }
 }

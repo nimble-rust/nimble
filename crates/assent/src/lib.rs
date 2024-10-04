@@ -6,6 +6,7 @@ pub mod prelude;
 
 use std::marker::PhantomData;
 
+use log::trace;
 use nimble_steps::Steps;
 use tick_id::TickId;
 
@@ -36,7 +37,7 @@ where
 impl<C, CombinedStepT> Default for Assent<C, CombinedStepT>
 where
     C: AssentCallback<CombinedStepT>,
-    CombinedStepT: Clone,
+    CombinedStepT: Clone + std::fmt::Debug,
 {
     fn default() -> Self {
         Assent::new()
@@ -46,7 +47,7 @@ where
 impl<C, CombinedStepT> Assent<C, CombinedStepT>
 where
     C: AssentCallback<CombinedStepT>,
-    CombinedStepT: std::clone::Clone,
+    CombinedStepT: std::clone::Clone + std::fmt::Debug,
 {
     pub fn new() -> Self {
         Assent {
@@ -69,7 +70,9 @@ where
 
     pub fn update(&mut self, callback: &mut C) -> UpdateState {
         callback.on_pre_ticks();
+        trace!("assent tick start. len {}", self.steps.len());
         for combined_step_info in self.steps.iter() {
+            trace!("assent tick: {:?}", &combined_step_info);
             callback.on_tick(&combined_step_info.step);
         }
 

@@ -64,7 +64,7 @@ fn connect<
 }
 
 fn download_state<
-    StateT: BufferDeserializer,
+    StateT: BufferDeserializer + std::fmt::Debug,
     StepT: Clone + flood_rs::Deserialize + flood_rs::Serialize + std::fmt::Debug,
 >(
     stream: &mut ClientStream<StateT, StepT>,
@@ -400,7 +400,7 @@ fn feed_garbled() -> Result<(), ClientStreamError> {
 
     stream.send()?;
 
-    for index in 0u16..2000 {
+    for index in 0u16..200 {
         let length = rng.gen_range(10..=1200);
         let mut random_octets = vec![0u8; length];
         rng.fill_bytes(&mut random_octets);

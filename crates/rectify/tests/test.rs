@@ -34,7 +34,7 @@ impl TestGame {
     }
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub enum TestGameStep {
     MoveLeft,
     MoveRight,

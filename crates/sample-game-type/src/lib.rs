@@ -50,12 +50,15 @@ impl SampleGameState {
     }
 
     #[allow(unused)]
-    pub fn from_octets(payload: &[u8]) -> io::Result<Self> {
+    pub fn from_octets(payload: &[u8]) -> io::Result<(Self, usize)> {
         let mut in_stream = InOctetStream::new(payload);
-        Ok(Self {
-            x: in_stream.read_i32()?,
-            y: in_stream.read_i32()?,
-        })
+        Ok((
+            Self {
+                x: in_stream.read_i32()?,
+                y: in_stream.read_i32()?,
+            },
+            in_stream.cursor.position() as usize,
+        ))
     }
 }
 
@@ -96,8 +99,15 @@ impl SampleGame {
 }
 
 impl BufferDeserializer for SampleGame {
-    fn deserialize(_: &[u8]) -> io::Result<(Self, usize)> {
-        todo!()
+    fn deserialize(octets: &[u8]) -> io::Result<(Self, usize)> {
+        let (sample_state, size) = SampleGameState::from_octets(octets)?;
+        Ok((
+            Self {
+                predicted: SampleGameState::default(),
+                authoritative: sample_state,
+            },
+            size,
+        ))
     }
 }
 
