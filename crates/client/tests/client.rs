@@ -59,7 +59,7 @@ fn communicate<
         },
     };
     let rng = StdRng::seed_from_u64(0x01);
-    let mut to_client = Direction::new(config, rng);
+    let mut to_client = Direction::new(config, rng).expect("config should be valid");
 
     let config2 = DirectionConfig {
         decider: DeciderConfig {
@@ -71,7 +71,7 @@ fn communicate<
         },
     };
     let rng2 = StdRng::seed_from_u64(0x01);
-    let mut to_host = Direction::new(config2, rng2);
+    let mut to_host = Direction::new(config2, rng2).expect("config should be valid");
 
     for _ in 0..count {
         // Push to host
