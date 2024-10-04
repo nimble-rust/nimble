@@ -153,7 +153,7 @@ fn client_to_host() -> Result<(), ClientFrontError> {
         &state_provider,
         connection_id,
         &mut client,
-        25,
+        21,
     );
 
     client.update();
