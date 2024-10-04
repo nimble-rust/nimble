@@ -2,11 +2,10 @@
  * Copyright (c) Peter Bjorklund. All rights reserved. https://github.com/nimble-rust/nimble
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
-use crate::client::ClientPhase::Connected;
 use datagram_chunker::{serialize_to_chunker, DatagramChunkerError};
 use err_rs::{ErrorLevel, ErrorLevelProvider};
 use flood_rs::prelude::OctetRefReader;
-use flood_rs::{BufferDeserializer, Deserialize, ReadOctetStream};
+use flood_rs::{BufferDeserializer, Deserialize, ReadOctetStream, Serialize};
 use hexify::format_hex;
 use log::{debug, trace};
 use nimble_client_connecting::ConnectingClient;
@@ -16,19 +15,21 @@ use nimble_protocol::prelude::{HostToClientCommands, HostToClientOobCommands};
 use nimble_protocol::{ClientRequestId, Version};
 use nimble_step_types::{AuthoritativeStep, PredictedStep};
 use nimble_steps::StepsError;
+use std::fmt::Debug;
 use std::io;
 use tick_id::TickId;
 
 #[derive(Debug)]
 pub enum ClientStreamError {
     Unexpected(String),
-    IoErr(std::io::Error),
+    IoErr(io::Error),
     ClientErr(ClientError),
     ClientConnectingErr(nimble_client_connecting::ClientError),
     PredictedStepsError(StepsError),
     DatagramChunkError(DatagramChunkerError),
     CommandNeedsConnectedPhase,
     CommandNeedsConnectingPhase,
+    CanOnlyPushPredictedStepsIfConnected,
 }
 
 impl ErrorLevelProvider for ClientStreamError {
@@ -42,6 +43,7 @@ impl ErrorLevelProvider for ClientStreamError {
             Self::CommandNeedsConnectedPhase => ErrorLevel::Info,
             Self::PredictedStepsError(_) => ErrorLevel::Warning,
             Self::DatagramChunkError(_) => ErrorLevel::Warning,
+            Self::CanOnlyPushPredictedStepsIfConnected => ErrorLevel::Warning,
         }
     }
 }
@@ -66,26 +68,19 @@ impl From<StepsError> for ClientStreamError {
 
 #[allow(clippy::large_enum_variant)]
 #[derive(Debug)]
-pub enum ClientPhase<
-    StateT: BufferDeserializer,
-    StepT: Clone + flood_rs::Deserialize + flood_rs::Serialize + std::fmt::Debug,
-> {
+pub enum ClientPhase<StateT: BufferDeserializer, StepT: Clone + Deserialize + Serialize + Debug> {
     Connecting(ConnectingClient),
     Connected(ClientLogic<StateT, StepT>),
 }
 
 #[derive(Debug)]
-pub struct ClientStream<
-    StateT: BufferDeserializer,
-    StepT: Clone + flood_rs::Deserialize + flood_rs::Serialize + std::fmt::Debug,
-> {
+pub struct ClientStream<StateT: BufferDeserializer, StepT: Clone + Deserialize + Serialize + Debug>
+{
     phase: ClientPhase<StateT, StepT>,
 }
 
-impl<
-        StateT: BufferDeserializer + std::fmt::Debug,
-        StepT: Clone + flood_rs::Deserialize + flood_rs::Serialize + std::fmt::Debug,
-    > ClientStream<StateT, StepT>
+impl<StateT: BufferDeserializer + Debug, StepT: Clone + Deserialize + Serialize + Debug>
+    ClientStream<StateT, StepT>
 {
     pub fn new(application_version: &app_version::Version) -> Self {
         let nimble_protocol_version = Version {
@@ -221,14 +216,24 @@ impl<
         &self.phase
     }
 
+    pub fn is_connected(&self) -> bool {
+        matches!(self.phase, ClientPhase::Connected(_))
+    }
+
+    pub fn can_push_predicted_step(&self) -> bool {
+        self.is_connected() && self.game_state().is_some()
+    }
+
     pub fn push_predicted_step(
         &mut self,
         tick_id: TickId,
         step: PredictedStep<StepT>,
     ) -> Result<(), ClientStreamError> {
         match &mut self.phase {
-            Connected(ref mut client_logic) => Ok(client_logic.push_predicted_step(tick_id, step)?),
-            _ => Err(ClientStreamError::CommandNeedsConnectedPhase)?,
+            ClientPhase::Connected(ref mut client_logic) => {
+                Ok(client_logic.push_predicted_step(tick_id, step)?)
+            }
+            _ => Err(ClientStreamError::CanOnlyPushPredictedStepsIfConnected)?,
         }
     }
 
@@ -238,7 +243,7 @@ impl<
     /// An optional average server buffer delta tick.
     pub fn server_buffer_delta_ticks(&self) -> Option<i16> {
         match &self.phase {
-            Connected(ref client_logic) => client_logic.server_buffer_delta_ticks(),
+            ClientPhase::Connected(ref client_logic) => client_logic.server_buffer_delta_ticks(),
             _ => None,
         }
     }

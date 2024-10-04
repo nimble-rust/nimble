@@ -29,3 +29,4 @@ nimble-host-logic = { path = "../host-logic", version = "0.0.12-dev" }
 tick-id = "^0.0.7"
 hazy-transport = "^0.0.3"
 rand = "^0.8.4"
+seq-map = "^0.0.1"

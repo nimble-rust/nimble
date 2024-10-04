@@ -35,8 +35,16 @@ impl<
     }
 }
 
+#[derive(Debug)]
 pub enum ClientError {
     ClientFrontError(ClientFrontError),
+    IoError(std::io::Error),
+}
+
+impl From<std::io::Error> for ClientError {
+    fn from(err: std::io::Error) -> Self {
+        Self::IoError(err)
+    }
 }
 
 impl From<ClientFrontError> for ClientError {
@@ -100,7 +108,7 @@ impl<
     }
 
     pub fn want_predicted_step(&self) -> bool {
-        true
+        self.client.can_push_predicted_step()
     }
 
     pub fn push_predicted_step(

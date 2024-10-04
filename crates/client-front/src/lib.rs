@@ -133,6 +133,10 @@ impl<StateT: BufferDeserializer + Debug, StepT: Clone + Deserialize + Serialize 
         self.out_octets_per_second.update(now);
     }
 
+    pub fn can_push_predicted_step(&self) -> bool {
+        self.client.can_push_predicted_step()
+    }
+
     pub fn push_predicted_step(
         &mut self,
         tick_id: TickId,

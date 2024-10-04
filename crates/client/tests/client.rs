@@ -4,16 +4,15 @@
  */
 use app_version::VersionProvider;
 use err_rs::{ErrorLevel, ErrorLevelProvider};
-use flood_rs::{Deserialize, Serialize};
 use hazy_transport::{DeciderConfig, Direction, DirectionConfig};
-use log::{error, info, warn};
+use log::{debug, error, info, warn};
 use monotonic_time_rs::{Millis, MillisDuration};
-use nimble_client::{Client, GameCallbacks};
-use nimble_client_front::ClientFrontError;
+use nimble_client::{Client, ClientError, GameCallbacks};
 use nimble_host_front::HostFront;
 use nimble_host_logic::logic::{GameStateProvider, HostConnectionId};
 use nimble_sample_game::{SampleGame, SampleGameState};
 use nimble_sample_step::SampleStep;
+use nimble_step_types::PredictedStep;
 use rand::prelude::StdRng;
 use rand::SeedableRng;
 use std::fmt::Debug;
@@ -39,16 +38,17 @@ fn log_err<T: ErrorLevelProvider + Debug>(error: &T) {
 }
 
 fn communicate<
-    GameT: GameCallbacks<StepT> + std::fmt::Debug,
-    StepT: Clone + Deserialize + Serialize + Debug + Eq,
+    GameT: GameCallbacks<SampleStep> + std::fmt::Debug,
+    //    SampleStep: Clone + Deserialize + Serialize + Debug + Eq,
 >(
-    host: &mut HostFront<StepT>,
+    host: &mut HostFront<SampleStep>,
     state_provider: &impl GameStateProvider,
     connection_id: HostConnectionId,
-    client: &mut Client<GameT, StepT>,
+    client: &mut Client<GameT, SampleStep>,
     count: usize,
 ) {
     let mut now = Millis::new(0);
+    let mut tick_id = TickId::default();
     let config = DirectionConfig {
         decider: DeciderConfig {
             unaffected: 90,
@@ -74,6 +74,20 @@ fn communicate<
     let mut to_host = Direction::new(config2, rng2).expect("config should be valid");
 
     for _ in 0..count {
+        if client.want_predicted_step() {
+            debug!("pushing predicted step for {tick_id}");
+            let mut map = SeqMap::new();
+            map.insert(0, SampleStep::MoveLeft(-1))
+                .expect("should insert map");
+            let predicted_step = PredictedStep::<SampleStep> {
+                predicted_players: map,
+            };
+            client
+                .push_predicted_step(tick_id, predicted_step)
+                .expect("should push predicted step");
+            tick_id += 1;
+        }
+
         // Push to host
         let to_host_datagrams = client.send().expect("send should work");
         for to_host_datagram in to_host_datagrams {
@@ -107,8 +121,10 @@ fn communicate<
     }
 }
 
+use seq_map::SeqMap;
+
 #[test_log::test]
-fn client_to_host() -> Result<(), ClientFrontError> {
+fn client_to_host() -> Result<(), ClientError> {
     let mut client = Client::<SampleGame, SampleStep>::new();
 
     let to_host = client.send()?;
@@ -148,13 +164,7 @@ fn client_to_host() -> Result<(), ClientFrontError> {
         &nimble_host_stream::HostStreamConnectionPhase::Connected
     );
 
-    communicate::<SampleGame, SampleStep>(
-        &mut host,
-        &state_provider,
-        connection_id,
-        &mut client,
-        21,
-    );
+    communicate::<SampleGame>(&mut host, &state_provider, connection_id, &mut client, 23);
 
     client.update();
 

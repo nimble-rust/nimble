@@ -156,7 +156,10 @@ pub const TICK_ID_MAX: u32 = u32::MAX;
 
 #[derive(Debug)]
 pub enum StepsError {
-    WrongTickId,
+    WrongTickId {
+        expected: TickId,
+        encountered: TickId,
+    },
     CanNotPushEmptyPredictedSteps,
 }
 
@@ -185,7 +188,10 @@ impl<StepType: Clone> Steps<StepType> {
 
     pub fn push_with_check(&mut self, tick_id: TickId, step: StepType) -> Result<(), StepsError> {
         if self.expected_write_id != tick_id {
-            Err(StepsError::WrongTickId)?;
+            Err(StepsError::WrongTickId {
+                expected: self.expected_write_id,
+                encountered: tick_id,
+            })?;
         }
 
         self.push(step);
