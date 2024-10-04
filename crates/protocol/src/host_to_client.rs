@@ -32,10 +32,10 @@ impl TryFrom<u8> for HostToClientCommand {
 
     fn try_from(value: u8) -> io::Result<Self> {
         match value {
-            0x09 => Ok(HostToClientCommand::JoinGame),
-            0x08 => Ok(HostToClientCommand::GameStep),
-            0x0B => Ok(HostToClientCommand::DownloadGameState),
-            0x0C => Ok(HostToClientCommand::BlobStreamChannel),
+            0x09 => Ok(Self::JoinGame),
+            0x08 => Ok(Self::GameStep),
+            0x0B => Ok(Self::DownloadGameState),
+            0x0C => Ok(Self::BlobStreamChannel),
             _ => Err(io::Error::new(
                 ErrorKind::InvalidData,
                 format!("Unknown host to client command {:X}", value),
@@ -118,18 +118,12 @@ impl<StepT: Clone + Debug + Serialize + Deserialize> Serialize for HostToClientC
     fn serialize(&self, stream: &mut impl WriteOctetStream) -> io::Result<()> {
         stream.write_u8(self.to_octet())?;
         match self {
-            HostToClientCommands::JoinGame(join_game_response) => {
-                join_game_response.to_stream(stream)
-            }
-            HostToClientCommands::GameStep(game_step_response) => {
-                game_step_response.to_stream(stream)
-            }
-            HostToClientCommands::DownloadGameState(download_game_state_response) => {
+            Self::JoinGame(join_game_response) => join_game_response.to_stream(stream),
+            Self::GameStep(game_step_response) => game_step_response.to_stream(stream),
+            Self::DownloadGameState(download_game_state_response) => {
                 download_game_state_response.to_stream(stream)
             }
-            HostToClientCommands::BlobStreamChannel(blob_stream_command) => {
-                blob_stream_command.to_stream(stream)
-            }
+            Self::BlobStreamChannel(blob_stream_command) => blob_stream_command.to_stream(stream),
         }
     }
 }
@@ -139,12 +133,8 @@ impl<StepT: Clone + Debug + Serialize + Deserialize> Deserialize for HostToClien
         let command_value = stream.read_u8()?;
         let command = HostToClientCommand::try_from(command_value)?;
         let x = match command {
-            HostToClientCommand::JoinGame => {
-                HostToClientCommands::JoinGame(JoinGameAccepted::from_stream(stream)?)
-            }
-            HostToClientCommand::GameStep => {
-                HostToClientCommands::GameStep(GameStepResponse::from_stream(stream)?)
-            } /*
+            HostToClientCommand::JoinGame => Self::JoinGame(JoinGameAccepted::from_stream(stream)?),
+            HostToClientCommand::GameStep => Self::GameStep(GameStepResponse::from_stream(stream)?), /*
             => {
             return Err(io::Error::new(
             ErrorKind::InvalidData,
@@ -153,12 +143,12 @@ impl<StepT: Clone + Debug + Serialize + Deserialize> Deserialize for HostToClien
             }
 
             */
-            HostToClientCommand::DownloadGameState => HostToClientCommands::DownloadGameState(
-                DownloadGameStateResponse::from_stream(stream)?,
-            ),
-            HostToClientCommand::BlobStreamChannel => HostToClientCommands::BlobStreamChannel(
-                SenderToReceiverFrontCommands::from_stream(stream)?,
-            ),
+            HostToClientCommand::DownloadGameState => {
+                Self::DownloadGameState(DownloadGameStateResponse::from_stream(stream)?)
+            }
+            HostToClientCommand::BlobStreamChannel => {
+                Self::BlobStreamChannel(SenderToReceiverFrontCommands::from_stream(stream)?)
+            }
         };
         Ok(x)
     }
@@ -167,14 +157,10 @@ impl<StepT: Clone + Debug + Serialize + Deserialize> Deserialize for HostToClien
 impl<StepT: Deserialize + Serialize + Debug + Clone> HostToClientCommands<StepT> {
     pub fn to_octet(&self) -> u8 {
         match self {
-            HostToClientCommands::JoinGame(_) => HostToClientCommand::JoinGame as u8,
-            HostToClientCommands::GameStep(_) => HostToClientCommand::GameStep as u8,
-            HostToClientCommands::DownloadGameState(_) => {
-                HostToClientCommand::DownloadGameState as u8
-            }
-            HostToClientCommands::BlobStreamChannel(_) => {
-                HostToClientCommand::BlobStreamChannel as u8
-            }
+            Self::JoinGame(_) => HostToClientCommand::JoinGame as u8,
+            Self::GameStep(_) => HostToClientCommand::GameStep as u8,
+            Self::DownloadGameState(_) => HostToClientCommand::DownloadGameState as u8,
+            Self::BlobStreamChannel(_) => HostToClientCommand::BlobStreamChannel as u8,
         }
     }
 }

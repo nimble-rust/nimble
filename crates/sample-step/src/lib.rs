@@ -31,16 +31,16 @@ pub enum SampleStep {
 impl Serialize for SampleStep {
     fn serialize(&self, stream: &mut impl WriteOctetStream) -> io::Result<()> {
         match self {
-            SampleStep::Nothing => stream.write_u8(0x00),
-            SampleStep::MoveLeft(amount) => {
+            Self::Nothing => stream.write_u8(0x00),
+            Self::MoveLeft(amount) => {
                 stream.write_u8(0x01)?;
                 stream.write_i16(*amount)
             }
-            SampleStep::MoveRight(amount) => {
+            Self::MoveRight(amount) => {
                 stream.write_u8(0x02)?;
                 stream.write_i16(*amount)
             }
-            SampleStep::Jump => stream.write_u8(0x03),
+            Self::Jump => stream.write_u8(0x03),
         }
     }
 }
@@ -49,10 +49,10 @@ impl Deserialize for SampleStep {
     fn deserialize(stream: &mut impl ReadOctetStream) -> io::Result<Self> {
         let octet = stream.read_u8()?;
         let value = match octet {
-            0x00 => SampleStep::Nothing,
-            0x01 => SampleStep::MoveLeft(stream.read_i16()?),
-            0x02 => SampleStep::MoveRight(stream.read_i16()?),
-            0x03 => SampleStep::Jump,
+            0x00 => Self::Nothing,
+            0x01 => Self::MoveLeft(stream.read_i16()?),
+            0x02 => Self::MoveRight(stream.read_i16()?),
+            0x03 => Self::Jump,
             _ => Err(io::Error::new(io::ErrorKind::InvalidInput, "invalid input"))?,
         };
         Ok(value)

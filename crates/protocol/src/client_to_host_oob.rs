@@ -17,7 +17,7 @@ impl TryFrom<u8> for ClientToHostOobCommand {
 
     fn try_from(value: u8) -> io::Result<Self> {
         match value {
-            0x05 => Ok(ClientToHostOobCommand::Connect),
+            0x05 => Ok(Self::Connect),
             _ => Err(io::Error::new(
                 ErrorKind::InvalidData,
                 format!("Unknown client to host oob command {}", value),
@@ -61,7 +61,7 @@ pub enum ClientToHostOobCommands {
 impl ClientToHostOobCommands {
     pub fn to_octet(&self) -> u8 {
         match self {
-            ClientToHostOobCommands::ConnectType(_) => ClientToHostOobCommand::Connect as u8,
+            Self::ConnectType(_) => ClientToHostOobCommand::Connect as u8,
         }
     }
 }
@@ -83,7 +83,7 @@ impl Deserialize for ClientToHostOobCommands {
         let command = ClientToHostOobCommand::try_from(command_value)?;
         let x = match command {
             ClientToHostOobCommand::Connect => {
-                ClientToHostOobCommands::ConnectType(ConnectRequest::from_stream(stream)?)
+                Self::ConnectType(ConnectRequest::from_stream(stream)?)
             }
         };
         Ok(x)
@@ -93,7 +93,7 @@ impl Deserialize for ClientToHostOobCommands {
 impl fmt::Display for ClientToHostOobCommands {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            ClientToHostOobCommands::ConnectType(connect) => write!(f, "connect {:?}", connect),
+            Self::ConnectType(connect) => write!(f, "connect {:?}", connect),
         }
     }
 }

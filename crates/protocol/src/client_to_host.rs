@@ -28,10 +28,10 @@ impl TryFrom<u8> for ClientToHostCommand {
 
     fn try_from(value: u8) -> io::Result<Self> {
         match value {
-            0x01 => Ok(ClientToHostCommand::JoinGame),
-            0x02 => Ok(ClientToHostCommand::Steps),
-            0x03 => Ok(ClientToHostCommand::DownloadGameState),
-            0x04 => Ok(ClientToHostCommand::BlobStreamChannel),
+            0x01 => Ok(Self::JoinGame),
+            0x02 => Ok(Self::Steps),
+            0x03 => Ok(Self::DownloadGameState),
+            0x04 => Ok(Self::BlobStreamChannel),
             _ => Err(io::Error::new(
                 ErrorKind::InvalidData,
                 format!("Unknown ClientToHostCommand {}", value),
@@ -69,18 +69,10 @@ impl<StepT: Clone + Debug + Serialize + Deserialize> Serialize for ClientToHostC
     fn serialize(&self, stream: &mut impl WriteOctetStream) -> io::Result<()> {
         stream.write_u8(self.to_octet())?;
         match self {
-            ClientToHostCommands::Steps(predicted_steps_and_ack) => {
-                predicted_steps_and_ack.to_stream(stream)
-            }
-            ClientToHostCommands::JoinGameType(join_game_request) => {
-                join_game_request.to_stream(stream)
-            }
-            ClientToHostCommands::DownloadGameState(download_game_state) => {
-                download_game_state.to_stream(stream)
-            }
-            ClientToHostCommands::BlobStreamChannel(blob_stream_command) => {
-                blob_stream_command.to_stream(stream)
-            }
+            Self::Steps(predicted_steps_and_ack) => predicted_steps_and_ack.to_stream(stream),
+            Self::JoinGameType(join_game_request) => join_game_request.to_stream(stream),
+            Self::DownloadGameState(download_game_state) => download_game_state.to_stream(stream),
+            Self::BlobStreamChannel(blob_stream_command) => blob_stream_command.to_stream(stream),
         }
     }
 }
@@ -91,17 +83,15 @@ impl<StepT: Clone + Debug + Serialize + Deserialize> Deserialize for ClientToHos
         let command = ClientToHostCommand::try_from(command_value)?;
         let x = match command {
             ClientToHostCommand::JoinGame => {
-                ClientToHostCommands::JoinGameType(JoinGameRequest::from_stream(stream)?)
+                Self::JoinGameType(JoinGameRequest::from_stream(stream)?)
             }
-            ClientToHostCommand::Steps => {
-                ClientToHostCommands::Steps(StepsRequest::from_stream(stream)?)
+            ClientToHostCommand::Steps => Self::Steps(StepsRequest::from_stream(stream)?),
+            ClientToHostCommand::DownloadGameState => {
+                Self::DownloadGameState(DownloadGameStateRequest::from_stream(stream)?)
             }
-            ClientToHostCommand::DownloadGameState => ClientToHostCommands::DownloadGameState(
-                DownloadGameStateRequest::from_stream(stream)?,
-            ),
-            ClientToHostCommand::BlobStreamChannel => ClientToHostCommands::BlobStreamChannel(
-                ReceiverToSenderFrontCommands::from_stream(stream)?,
-            ),
+            ClientToHostCommand::BlobStreamChannel => {
+                Self::BlobStreamChannel(ReceiverToSenderFrontCommands::from_stream(stream)?)
+            }
         };
         Ok(x)
     }
@@ -110,14 +100,10 @@ impl<StepT: Clone + Debug + Serialize + Deserialize> Deserialize for ClientToHos
 impl<StepT: Clone + Debug + Serialize + Deserialize> ClientToHostCommands<StepT> {
     pub fn to_octet(&self) -> u8 {
         match self {
-            ClientToHostCommands::Steps(_) => ClientToHostCommand::Steps as u8,
-            ClientToHostCommands::JoinGameType(_) => ClientToHostCommand::JoinGame as u8,
-            ClientToHostCommands::DownloadGameState(_) => {
-                ClientToHostCommand::DownloadGameState as u8
-            }
-            ClientToHostCommands::BlobStreamChannel(_) => {
-                ClientToHostCommand::BlobStreamChannel as u8
-            }
+            Self::Steps(_) => ClientToHostCommand::Steps as u8,
+            Self::JoinGameType(_) => ClientToHostCommand::JoinGame as u8,
+            Self::DownloadGameState(_) => ClientToHostCommand::DownloadGameState as u8,
+            Self::BlobStreamChannel(_) => ClientToHostCommand::BlobStreamChannel as u8,
         }
     }
 }
@@ -127,14 +113,14 @@ impl<StepT: Clone + Debug + Eq + PartialEq + Serialize + Deserialize> fmt::Displ
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            ClientToHostCommands::JoinGameType(join) => write!(f, "join {:?}", join),
-            ClientToHostCommands::Steps(predicted_steps_and_ack) => {
+            Self::JoinGameType(join) => write!(f, "join {:?}", join),
+            Self::Steps(predicted_steps_and_ack) => {
                 write!(f, "steps {:?}", predicted_steps_and_ack)
             }
-            ClientToHostCommands::DownloadGameState(download_game_state) => {
+            Self::DownloadGameState(download_game_state) => {
                 write!(f, "download game state {:?}", download_game_state)
             }
-            ClientToHostCommands::BlobStreamChannel(blob_command) => {
+            Self::BlobStreamChannel(blob_command) => {
                 write!(f, "blob stream channel {:?}", blob_command)
             }
         }
@@ -153,11 +139,9 @@ pub enum JoinGameTypeValue {
 impl JoinGameTypeValue {
     pub fn to_octet(&self) -> u8 {
         match self {
-            JoinGameTypeValue::NoSecret => JoinGameTypeValue::NoSecret as u8,
-            JoinGameTypeValue::SessionSecret => JoinGameTypeValue::SessionSecret as u8,
-            JoinGameTypeValue::HostMigrationParticipantId => {
-                JoinGameTypeValue::HostMigrationParticipantId as u8
-            }
+            Self::NoSecret => Self::NoSecret as u8,
+            Self::SessionSecret => Self::SessionSecret as u8,
+            Self::HostMigrationParticipantId => Self::HostMigrationParticipantId as u8,
         }
     }
     pub fn to_stream(self, stream: &mut impl WriteOctetStream) -> io::Result<()> {
@@ -183,9 +167,9 @@ impl TryFrom<u8> for JoinGameTypeValue {
 
     fn try_from(value: u8) -> io::Result<Self> {
         match value {
-            0x00 => Ok(JoinGameTypeValue::NoSecret),
-            0x01 => Ok(JoinGameTypeValue::SessionSecret),
-            0x02 => Ok(JoinGameTypeValue::HostMigrationParticipantId),
+            0x00 => Ok(Self::NoSecret),
+            0x01 => Ok(Self::SessionSecret),
+            0x02 => Ok(Self::HostMigrationParticipantId),
             _ => Err(io::Error::new(
                 ErrorKind::InvalidData,
                 format!("Unknown join game type {}", value),
@@ -197,9 +181,9 @@ impl TryFrom<u8> for JoinGameTypeValue {
 impl JoinGameType {
     pub fn to_octet(&self) -> u8 {
         match self {
-            JoinGameType::NoSecret => JoinGameTypeValue::NoSecret as u8,
-            JoinGameType::UseSessionSecret(_) => JoinGameTypeValue::SessionSecret as u8,
-            JoinGameType::HostMigrationParticipantId(_) => {
+            Self::NoSecret => JoinGameTypeValue::NoSecret as u8,
+            Self::UseSessionSecret(_) => JoinGameTypeValue::SessionSecret as u8,
+            Self::HostMigrationParticipantId(_) => {
                 JoinGameTypeValue::HostMigrationParticipantId as u8
             }
         }
@@ -208,11 +192,9 @@ impl JoinGameType {
     pub fn to_stream(&self, stream: &mut impl WriteOctetStream) -> io::Result<()> {
         stream.write_u8(self.to_octet())?;
         match self {
-            JoinGameType::NoSecret => {}
-            JoinGameType::UseSessionSecret(session_secret) => session_secret.to_stream(stream)?,
-            JoinGameType::HostMigrationParticipantId(participant_id) => {
-                participant_id.to_stream(stream)?
-            }
+            Self::NoSecret => {}
+            Self::UseSessionSecret(session_secret) => session_secret.to_stream(stream)?,
+            Self::HostMigrationParticipantId(participant_id) => participant_id.to_stream(stream)?,
         }
         Ok(())
     }
@@ -221,12 +203,12 @@ impl JoinGameType {
         let join_game_type_value_raw = stream.read_u8()?;
         let value = JoinGameTypeValue::try_from(join_game_type_value_raw)?;
         let join_game_type = match value {
-            JoinGameTypeValue::NoSecret => JoinGameType::NoSecret,
+            JoinGameTypeValue::NoSecret => Self::NoSecret,
             JoinGameTypeValue::SessionSecret => {
-                JoinGameType::UseSessionSecret(SessionConnectionSecret::from_stream(stream)?)
+                Self::UseSessionSecret(SessionConnectionSecret::from_stream(stream)?)
             }
             JoinGameTypeValue::HostMigrationParticipantId => {
-                JoinGameType::HostMigrationParticipantId(ParticipantId::from_stream(stream)?)
+                Self::HostMigrationParticipantId(ParticipantId::from_stream(stream)?)
             }
         };
         Ok(join_game_type)

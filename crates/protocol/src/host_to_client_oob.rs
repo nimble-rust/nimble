@@ -16,7 +16,7 @@ impl TryFrom<u8> for HostToClientOobCommand {
 
     fn try_from(value: u8) -> io::Result<Self> {
         match value {
-            0x0D => Ok(HostToClientOobCommand::Connect),
+            0x0D => Ok(Self::Connect),
             _ => Err(io::Error::new(
                 ErrorKind::InvalidData,
                 format!("Unknown host to client oob command {}", value),
@@ -55,9 +55,7 @@ impl Serialize for HostToClientOobCommands {
     fn serialize(&self, stream: &mut impl WriteOctetStream) -> io::Result<()> {
         stream.write_u8(self.to_octet())?;
         match self {
-            HostToClientOobCommands::ConnectType(connect_command) => {
-                connect_command.to_stream(stream)
-            }
+            Self::ConnectType(connect_command) => connect_command.to_stream(stream),
         }
     }
 }
@@ -68,7 +66,7 @@ impl Deserialize for HostToClientOobCommands {
         let command = HostToClientOobCommand::try_from(command_value)?;
         let x = match command {
             HostToClientOobCommand::Connect => {
-                HostToClientOobCommands::ConnectType(ConnectionAccepted::from_stream(stream)?)
+                Self::ConnectType(ConnectionAccepted::from_stream(stream)?)
             }
         };
         Ok(x)
@@ -78,7 +76,7 @@ impl Deserialize for HostToClientOobCommands {
 impl HostToClientOobCommands {
     pub fn to_octet(&self) -> u8 {
         match self {
-            HostToClientOobCommands::ConnectType(_) => HostToClientOobCommand::Connect as u8,
+            Self::ConnectType(_) => HostToClientOobCommand::Connect as u8,
         }
     }
 }
