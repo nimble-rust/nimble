@@ -6,7 +6,7 @@ use flood_rs::prelude::*;
 use nimble_steps::Step;
 use std::io;
 
-mod types;
+mod steps_test_types;
 
 #[derive(Debug, PartialEq, Eq)] // Debug is needed for asserts in tests
 pub enum SerializableGameInput {

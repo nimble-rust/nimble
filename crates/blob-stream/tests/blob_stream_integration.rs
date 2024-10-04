@@ -14,7 +14,7 @@ use std::time::Duration;
 pub mod helper;
 
 #[test_log::test]
-fn test_blob_stream() {
+fn blob_stream() {
     let seed = 12345678;
     let blob_to_transfer = generate_deterministic_blob_array(OCTET_COUNT, seed);
     const CHUNK_SIZE: usize = 4;

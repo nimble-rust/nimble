@@ -15,7 +15,7 @@ use std::time::Duration;
 pub mod helper;
 
 #[test_log::test]
-fn test_blob_stream_front() {
+fn blob_stream_front() {
     let seed = 12345678;
     let blob_to_transfer = generate_deterministic_blob_array(OCTET_COUNT, seed);
     let mut drop_rng = StdRng::seed_from_u64(seed);

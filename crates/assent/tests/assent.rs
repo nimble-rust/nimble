@@ -24,7 +24,7 @@ impl AssentCallback<TestGameStep> for TestGame {
 }
 
 #[test_log::test]
-fn test_assent() {
+fn one_step() {
     let mut game = TestGame { position_x: -44 };
     let mut assent: Assent<TestGame, TestGameStep> = Assent::new();
     let step = TestGameStep::MoveLeft;
@@ -34,7 +34,7 @@ fn test_assent() {
 }
 
 #[test_log::test]
-fn test_assent_right() {
+fn multiple_steps() {
     let mut game = TestGame { position_x: -44 };
     let mut assent: Assent<TestGame, TestGameStep> = Assent::new();
     let step = TestGameStep::MoveRight;

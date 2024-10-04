@@ -55,7 +55,7 @@ impl SeerCallback<TestGameStep> for TestGame {
 }
 
 #[test_log::test]
-fn test_seer() {
+fn one_predicted_step() {
     let mut game = TestGame { position_x: -44 };
     let mut seer: Seer<TestGame, TestGameStep> = Seer::new();
     seer.push(TestGameStep::MoveRight);

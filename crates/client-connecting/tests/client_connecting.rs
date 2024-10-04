@@ -24,7 +24,7 @@ fn create_connecting_client(
 }
 
 #[test_log::test]
-fn test_send_connect_command() {
+fn send_connect_command() {
     let mut client = create_connecting_client(None, None);
     let commands = client.send();
 

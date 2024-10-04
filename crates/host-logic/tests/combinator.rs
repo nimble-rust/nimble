@@ -14,7 +14,7 @@ enum TestStep {
 }
 
 #[test_log::test]
-fn test_combinator_add() {
+fn combinator_add() {
     let mut combinator = Combinator::<TestStep>::new(TickId(0));
     combinator.create_buffer(ParticipantId(1));
     combinator.create_buffer(ParticipantId(2));
