@@ -8,4 +8,4 @@ repository = "https://github.com/nimble-rust/nimble"
 
 [dependencies]
 nimble-participant = { path = "../participant", version = "0.0.12-dev" }
-seq-map = "^0.0.1"
+seq-map = "0.0.1"

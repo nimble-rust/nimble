@@ -10,9 +10,9 @@ repository = "https://github.com/nimble-rust/seer"
 
 [dependencies]
 nimble-steps = { path = "../steps", version = "0.0.12-dev" }
-tick-id = "^0.0.7"
-log = "^0.4.22"
-flood-rs = "^0.0.11"
+tick-id = "0.0.7"
+log = "0.4.22"
+flood-rs = "0.0.11"
 
 [dev-dependencies]
-test-log = "^0.2.16"
+test-log = "0.2.16"

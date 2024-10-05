@@ -8,15 +8,15 @@ nimble-ordered-datagram = { path = "../ordered-datagram", version = "0.0.12-dev"
 nimble-protocol-header = { path = "../protocol-header", version = "0.0.12-dev" }
 nimble-host-stream = { path = "../host-stream", version = "0.0.12-dev" }
 nimble-host-logic = { path = "../host-logic", version = "0.0.12-dev" }
-flood-rs = "^0.0.11"
-tick-id = "^0.0.7"
-monotonic-time-rs = "^0.0.3"
-test-log = "^0.2.16"
+flood-rs = "0.0.11"
+tick-id = "0.0.7"
+monotonic-time-rs = "0.0.3"
+test-log = "0.2.16"
 app-version = { path = "../app-version", version = "0.0.1" }
 log = "0.4.22"
-hexify = "^0.0.3"
+hexify = "0.0.3"
 
 [dev-dependencies]
-test-log = "^0.2.16"
+test-log = "0.2.16"
 nimble-sample-step = { path = "../sample-step", version = "0.0.12-dev" }
 nimble-participant = { path = "../participant", version = "0.0.12-dev" }

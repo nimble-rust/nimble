@@ -9,4 +9,4 @@ repository = "https://github.com/nimble-rust/participant"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-flood-rs = "^0.0.11"
+flood-rs = "0.0.11"
