@@ -9,10 +9,15 @@ use flood_rs::{Deserialize, Serialize};
 use log::{debug, trace};
 use metricator::AggregateMetric;
 use nimble_blob_stream::prelude::{FrontLogic, SenderToReceiverFrontCommands};
-use nimble_protocol::client_to_host::{CombinedPredictedSteps, DownloadGameStateRequest};
+use nimble_participant::ParticipantId;
+use nimble_protocol::client_to_host::{
+    CombinedPredictedSteps, DownloadGameStateRequest, JoinGameType, JoinPlayerRequest,
+    JoinPlayerRequests,
+};
 use nimble_protocol::host_to_client::{DownloadGameStateResponse, GameStepResponseHeader};
 use nimble_protocol::prelude::*;
-use nimble_step_types::{AuthoritativeStep, PredictedStep};
+use nimble_protocol::ClientRequestId;
+use nimble_step_types::{AuthoritativeStep, LocalIndex, PredictedStep};
 use nimble_steps::{Steps, StepsError};
 use std::fmt::Debug;
 use tick_id::TickId;
@@ -30,6 +35,12 @@ pub enum ClientLogicPhase {
     SendPredictedSteps,
 }
 
+#[derive(Debug, Clone)]
+pub struct LocalPlayer {
+    pub index: LocalIndex,
+    pub participant_id: ParticipantId,
+}
+
 /// `ClientLogic` manages the client's state and communication logic
 /// with the host in a multiplayer game session.
 ///
@@ -39,7 +50,7 @@ pub enum ClientLogicPhase {
 #[derive(Debug)]
 pub struct ClientLogic<StateT: BufferDeserializer, StepT: Clone + Deserialize + Serialize + Debug> {
     /// Represents the player's join game request, if available.
-    joining_player: Option<JoinGameRequest>,
+    joining_player: Option<Vec<LocalIndex>>,
 
     /// Holds the current game state.
     state: Option<StateT>,
@@ -62,6 +73,9 @@ pub struct ClientLogic<StateT: BufferDeserializer, StepT: Clone + Deserialize + 
 
     /// Tracks the buffer step count on the server.
     server_buffer_count: AggregateMetric<u8>,
+    joining_request_id: ClientRequestId,
+
+    local_players: Vec<LocalPlayer>,
 }
 
 impl<StateT: BufferDeserializer, StepT: Clone + Deserialize + Serialize + Debug> Default
@@ -80,6 +94,7 @@ impl<StateT: BufferDeserializer, StepT: Clone + Deserialize + Serialize + Debug>
     pub fn new() -> ClientLogic<StateT, StepT> {
         Self {
             joining_player: None,
+            joining_request_id: ClientRequestId(0),
             blob_stream_client: FrontLogic::new(),
             outgoing_predicted_steps: Steps::new(),
             incoming_authoritative_steps: Steps::new(),
@@ -89,6 +104,7 @@ impl<StateT: BufferDeserializer, StepT: Clone + Deserialize + Serialize + Debug>
             phase: ClientLogicPhase::RequestDownloadState {
                 download_state_request_id: 0x99,
             },
+            local_players: Vec::new(),
         }
     }
 
@@ -107,8 +123,8 @@ impl<StateT: BufferDeserializer, StepT: Clone + Deserialize + Serialize + Debug>
     ///
     /// # Arguments
     /// * `join_game_request`: The join game request to send to the host.
-    pub fn set_joining_player(&mut self, join_game_request: JoinGameRequest) {
-        self.joining_player = Some(join_game_request);
+    pub fn set_joining_player(&mut self, local_players: Vec<LocalIndex>) {
+        self.joining_player = Some(local_players);
     }
 
     /// Generates a download state request command to send to the host.
@@ -180,9 +196,22 @@ impl<StateT: BufferDeserializer, StepT: Clone + Deserialize + Serialize + Debug>
 
         commands.extend(normal_commands);
 
-        if let Some(joining_game) = &self.joining_player {
-            debug!("connected. send join_game_request {:?}", joining_game);
-            commands.push(ClientToHostCommands::JoinGameType(joining_game.clone()));
+        if let Some(joining_players) = &self.joining_player {
+            debug!("connected. send join_game_request {:?}", joining_players);
+
+            let player_requests = joining_players
+                .iter()
+                .map(|local_index| JoinPlayerRequest {
+                    local_index: *local_index,
+                })
+                .collect();
+            commands.push(ClientToHostCommands::JoinGameType(JoinGameRequest {
+                client_request_id: self.joining_request_id,
+                join_game_type: JoinGameType::NoSecret,
+                player_requests: JoinPlayerRequests {
+                    players: player_requests,
+                },
+            }));
         }
 
         commands
@@ -216,6 +245,16 @@ impl<StateT: BufferDeserializer, StepT: Clone + Deserialize + Serialize + Debug>
     /// Returns a [`ClientErrorKind`] if the join game process encounters an error.
     fn on_join_game(&mut self, cmd: &JoinGameAccepted) -> Result<(), ClientErrorKind> {
         debug!("join game accepted: {:?}", cmd);
+
+        self.local_players.clear();
+
+        for participant in &cmd.participants.0 {
+            self.local_players.push(LocalPlayer {
+                index: participant.local_index,
+                participant_id: participant.participant_id,
+            })
+        }
+
         Ok(())
     }
 
@@ -418,5 +457,9 @@ impl<StateT: BufferDeserializer, StepT: Clone + Deserialize + Serialize + Debug>
         self.server_buffer_delta_tick_id
             .average()
             .map(|value| value.round() as i16)
+    }
+
+    pub fn local_players(&self) -> Vec<LocalPlayer> {
+        self.local_players.clone()
     }
 }

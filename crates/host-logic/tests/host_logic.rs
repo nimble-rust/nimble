@@ -2,26 +2,18 @@
  * Copyright (c) Peter Bjorklund. All rights reserved. https://github.com/nimble-rust/nimble
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
+use crate::test_types::TestStateProvider;
 use log::debug;
 use monotonic_time_rs::Millis;
 use nimble_blob_stream::in_logic_front::FrontLogic;
 use nimble_blob_stream::prelude::{ReceiverToSenderFrontCommands, SenderToReceiverFrontCommands};
-use nimble_host_logic::logic::{GameStateProvider, HostLogic};
+use nimble_host_logic::logic::HostLogic;
 use nimble_protocol::client_to_host::DownloadGameStateRequest;
 use nimble_protocol::prelude::{ClientToHostCommands, HostToClientCommands};
 use nimble_sample_step::SampleStep;
 use tick_id::TickId;
 
-pub struct TestStateProvider {
-    pub tick_id: TickId,
-    pub payload: Vec<u8>,
-}
-
-impl GameStateProvider for TestStateProvider {
-    fn state(&self, _: TickId) -> (TickId, Vec<u8>) {
-        (self.tick_id, self.payload.clone())
-    }
-}
+mod test_types;
 
 #[test_log::test]
 fn game_state_download() {

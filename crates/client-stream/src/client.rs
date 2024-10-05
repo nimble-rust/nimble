@@ -10,10 +10,10 @@ use hexify::format_hex;
 use log::{debug, trace};
 use nimble_client_connecting::ConnectingClient;
 use nimble_client_logic::err::ClientError;
-use nimble_client_logic::logic::ClientLogic;
+use nimble_client_logic::logic::{ClientLogic, LocalPlayer};
 use nimble_protocol::prelude::{HostToClientCommands, HostToClientOobCommands};
 use nimble_protocol::{ClientRequestId, Version};
-use nimble_step_types::{AuthoritativeStep, PredictedStep};
+use nimble_step_types::{AuthoritativeStep, LocalIndex, PredictedStep};
 use nimble_steps::StepsError;
 use std::fmt::Debug;
 use std::io;
@@ -245,6 +245,27 @@ impl<StateT: BufferDeserializer + Debug, StepT: Clone + Deserialize + Serialize 
         match &self.phase {
             ClientPhase::Connected(ref client_logic) => client_logic.server_buffer_delta_ticks(),
             _ => None,
+        }
+    }
+
+    pub fn request_join_player(
+        &mut self,
+        local_players: Vec<LocalIndex>,
+    ) -> Result<(), ClientStreamError> {
+        match &mut self.phase {
+            ClientPhase::Connected(ref mut connected_client) => {
+                connected_client.set_joining_player(local_players)
+            }
+            _ => Err(ClientStreamError::CommandNeedsConnectingPhase)?,
+        };
+
+        Ok(())
+    }
+
+    pub fn local_players(&self) -> Vec<LocalPlayer> {
+        match &self.phase {
+            ClientPhase::Connected(ref connected_client) => connected_client.local_players(),
+            _ => vec![],
         }
     }
 }

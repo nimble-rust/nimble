@@ -7,10 +7,6 @@ use log::trace;
 use monotonic_time_rs::Millis;
 use nimble_client_logic::logic::ClientLogic;
 use nimble_host_logic::logic::{GameStateProvider, HostConnectionId, HostLogic};
-use nimble_protocol::client_to_host::JoinGameType;
-use nimble_protocol::client_to_host::{JoinPlayerRequest, JoinPlayerRequests};
-use nimble_protocol::prelude::*;
-use nimble_protocol::ClientRequestId;
 use nimble_sample_game::{SampleGame, SampleGameState, SampleStep};
 use nimble_steps::Step;
 use std::fmt::Debug;
@@ -77,16 +73,8 @@ fn client_host_integration() {
     let connection = host.create_connection().expect("should create connection");
 
     let mut client = ClientLogic::<SampleGameState, Step<SampleStep>>::new();
-    let joining_player = JoinPlayerRequest { local_index: 0 };
 
-    let join_game_request = JoinGameRequest {
-        client_request_id: ClientRequestId(0),
-        join_game_type: JoinGameType::NoSecret,
-        player_requests: JoinPlayerRequests {
-            players: vec![joining_player],
-        },
-    };
-    client.set_joining_player(join_game_request);
+    client.set_joining_player([0].into());
 
     communicate(&mut host, &game_state_provider, connection, &mut client);
 }

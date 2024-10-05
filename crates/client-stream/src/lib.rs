@@ -4,6 +4,9 @@
  */
 pub mod client;
 mod datagram_build;
+
+pub use nimble_client_logic::logic::LocalPlayer;
+
 /*
     pub fn send(&mut self) -> io::Result<Vec<Vec<u8>>> {
         let mut out_stream = OutOctetStream::new();

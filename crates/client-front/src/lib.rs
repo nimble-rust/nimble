@@ -12,12 +12,14 @@ use monotonic_time_rs::{MillisLow16, MonotonicClock};
 use nimble_client_stream::client::{ClientStream, ClientStreamError};
 use nimble_ordered_datagram::{DatagramOrderInError, OrderedIn, OrderedOut};
 use nimble_protocol_header::ClientTime;
-use nimble_step_types::{AuthoritativeStep, PredictedStep};
+use nimble_step_types::{AuthoritativeStep, LocalIndex, PredictedStep};
 use std::cell::RefCell;
 use std::fmt::Debug;
 use std::io;
 use std::rc::Rc;
 use tick_id::TickId;
+
+pub use nimble_client_stream::LocalPlayer;
 
 #[derive(Debug)]
 pub enum ClientFrontError {
@@ -218,5 +220,13 @@ impl<StateT: BufferDeserializer + Debug, StepT: Clone + Deserialize + Serialize 
 
     pub fn game_state_mut(&mut self) -> Option<&mut StateT> {
         self.client.game_state_mut()
+    }
+
+    pub fn request_join_player(
+        &mut self,
+        local_players: Vec<LocalIndex>,
+    ) -> Result<(), ClientFrontError> {
+        self.client.request_join_player(local_players)?;
+        Ok(())
     }
 }

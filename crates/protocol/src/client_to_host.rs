@@ -381,14 +381,46 @@ pub struct CombinedPredictedSteps<StepT> {
 }
 
 impl<StepT: Serialize + Deserialize + Clone> Deserialize for CombinedPredictedSteps<StepT> {
-    fn deserialize(_: &mut impl ReadOctetStream) -> io::Result<Self>
+    fn deserialize(stream: &mut impl ReadOctetStream) -> io::Result<Self>
     where
         Self: Sized,
     {
-        // TODO: Deserialize
+        let all = SerializePredictedStepsForAllPlayers::<StepT>::from_stream(stream)?;
+        let maximum_number_of_steps = all
+            .predicted_players
+            .into_iter()
+            .map(|(_, vec)| vec.predicted_steps.len())
+            .max()
+            .unwrap_or(0);
+
+        let mut predicted_steps = Vec::with_capacity(maximum_number_of_steps);
+        let mut first_tick_id = None;
+
+        for i in 0..maximum_number_of_steps {
+            let mut predicted_step_for_one_tick = SeqMap::new();
+
+            for (local_index, predicted_step_vec_for_one_player) in &all.predicted_players {
+                let maybe_step = predicted_step_vec_for_one_player.predicted_steps.get(i);
+                if let Some(step) = maybe_step {
+                    if first_tick_id.is_none() {
+                        first_tick_id = Some(predicted_step_vec_for_one_player.first_tick_id);
+                    }
+                    predicted_step_for_one_tick
+                        .insert(*local_index, step.clone())
+                        .map_err(|err| io::Error::new(io::ErrorKind::Other, err))?;
+                }
+            }
+
+            let predicted_step = PredictedStep {
+                predicted_players: predicted_step_for_one_tick,
+            };
+
+            predicted_steps.push(predicted_step);
+        }
+
         Ok(Self {
-            first_tick: Default::default(),
-            steps: vec![],
+            first_tick: first_tick_id.unwrap_or(TickId(0)),
+            steps: predicted_steps,
         })
     }
 }
@@ -467,9 +499,9 @@ impl<StepT: Serialize + Deserialize> SerializePredictedStepsForAllPlayers<StepT>
         let mut players_vector = SeqMap::new();
 
         for _ in 0..player_count {
+            let index = stream.read_u8()?;
             let predicted_steps_for_one_player =
                 SerializePredictedStepsVectorForOnePlayer::from_stream(stream)?;
-            let index = stream.read_u8()?;
             players_vector
                 .insert(index, predicted_steps_for_one_player)
                 .map_err(|err| io::Error::new(io::ErrorKind::Other, err))?;

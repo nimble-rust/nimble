@@ -6,9 +6,9 @@ use app_version::{Version, VersionProvider};
 use flood_rs::{BufferDeserializer, Deserialize, Serialize};
 use log::trace;
 use monotonic_time_rs::InstantMonotonicClock;
-use nimble_client_front::{ClientFront, ClientFrontError};
+use nimble_client_front::{ClientFront, ClientFrontError, LocalPlayer};
 use nimble_rectify::{Rectify, RectifyCallbacks};
-use nimble_step_types::{AuthoritativeStep, PredictedStep};
+use nimble_step_types::{AuthoritativeStep, LocalIndex, PredictedStep};
 use nimble_steps::Step;
 use std::cell::RefCell;
 use std::fmt::Debug;
@@ -111,6 +111,14 @@ impl<
         self.client.can_push_predicted_step()
     }
 
+    pub fn can_join_player(&self) -> bool {
+        self.client.client.game_state().is_some()
+    }
+
+    pub fn local_players(&self) -> Vec<LocalPlayer> {
+        self.client.client.local_players()
+    }
+
     pub fn push_predicted_step(
         &mut self,
         tick_id: TickId,
@@ -161,5 +169,13 @@ impl<
 
     pub fn game_state(&self) -> Option<&GameT> {
         self.client.game_state()
+    }
+
+    pub fn request_join_player(
+        &mut self,
+        local_players: Vec<LocalIndex>,
+    ) -> Result<(), ClientError> {
+        self.client.request_join_player(local_players)?;
+        Ok(())
     }
 }

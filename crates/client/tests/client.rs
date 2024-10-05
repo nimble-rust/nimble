@@ -88,6 +88,13 @@ fn communicate<
             tick_id += 1;
         }
 
+        if client.can_join_player() && client.local_players().is_empty() {
+            debug!("join player {tick_id}");
+            client
+                .request_join_player([0].into())
+                .expect("should request join player");
+        }
+
         // Push to host
         let to_host_datagrams = client.send().expect("send should work");
         for to_host_datagram in to_host_datagrams {
@@ -164,7 +171,7 @@ fn client_to_host() -> Result<(), ClientError> {
         &nimble_host_stream::HostStreamConnectionPhase::Connected
     );
 
-    communicate::<SampleGame>(&mut host, &state_provider, connection_id, &mut client, 23);
+    communicate::<SampleGame>(&mut host, &state_provider, connection_id, &mut client, 33);
 
     client.update();
 
