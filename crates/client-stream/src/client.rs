@@ -13,7 +13,7 @@ use nimble_client_logic::err::ClientError;
 use nimble_client_logic::logic::{ClientLogic, LocalPlayer};
 use nimble_protocol::prelude::{HostToClientCommands, HostToClientOobCommands};
 use nimble_protocol::{ClientRequestId, Version};
-use nimble_step_types::{AuthoritativeStep, LocalIndex, PredictedStep};
+use nimble_step_types::{LocalIndex, StepForParticipants};
 use nimble_steps::StepsError;
 use std::fmt::Debug;
 use std::io;
@@ -153,7 +153,7 @@ impl<StateT: BufferDeserializer + Debug, StepT: Clone + Deserialize + Serialize 
 
     pub fn pop_all_authoritative_steps(
         &mut self,
-    ) -> Result<Vec<AuthoritativeStep<StepT>>, ClientStreamError> {
+    ) -> Result<Vec<StepForParticipants<StepT>>, ClientStreamError> {
         match self.phase {
             ClientPhase::Connected(ref mut logic) => Ok(logic.pop_all_authoritative_steps()),
             _ => Err(ClientStreamError::CommandNeedsConnectedPhase)?,
@@ -227,7 +227,7 @@ impl<StateT: BufferDeserializer + Debug, StepT: Clone + Deserialize + Serialize 
     pub fn push_predicted_step(
         &mut self,
         tick_id: TickId,
-        step: PredictedStep<StepT>,
+        step: StepForParticipants<StepT>,
     ) -> Result<(), ClientStreamError> {
         match &mut self.phase {
             ClientPhase::Connected(ref mut client_logic) => {

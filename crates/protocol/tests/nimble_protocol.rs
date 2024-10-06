@@ -4,19 +4,18 @@
  */
 use flood_rs::prelude::*;
 use nimble_participant::ParticipantId;
-use nimble_protocol::client_to_host::{
-    SerializeAuthoritativeStepRangeForAllParticipants,
-    SerializeAuthoritativeStepVectorForOneParticipants,
-};
+
 use nimble_protocol::client_to_host_oob::ConnectRequest;
-use nimble_protocol::host_to_client::{
-    AuthoritativeStepRange, AuthoritativeStepRanges, SerializeAuthoritativeStepRange,
-    SerializeAuthoritativeStepRanges,
+use nimble_protocol::host_to_client::{AuthoritativeStepRanges, InternalAuthoritativeStepRanges};
+
+use nimble_protocol::serialize::{
+    CombinedSteps, InternalAllParticipantVectors, InternalAuthoritativeStepRange,
+    InternalStepVectorForOneParticipant,
 };
 use nimble_protocol::{ClientRequestId, Version};
 
 use nimble_sample_step::SampleStep;
-use nimble_step_types::AuthoritativeStep;
+use nimble_step_types::StepForParticipants;
 use seq_map::SeqMap;
 use std::io;
 use tick_id::TickId;
@@ -63,10 +62,8 @@ fn check_connect() {
 #[test_log::test]
 fn check_authoritative() -> io::Result<()> {
     // Prepare all steps
-    let mut range_for_all_participants = SeqMap::<
-        ParticipantId,
-        SerializeAuthoritativeStepVectorForOneParticipants<SampleStep>,
-    >::new();
+    let mut range_for_all_participants =
+        SeqMap::<ParticipantId, InternalStepVectorForOneParticipant<SampleStep>>::new();
 
     const PARTICIPANT_COUNT: usize = 2;
     let first_steps = vec![
@@ -75,8 +72,8 @@ fn check_authoritative() -> io::Result<()> {
         SampleStep::MoveRight(32000),
     ];
     let first_participant_id = ParticipantId(255);
-    let first_vector = SerializeAuthoritativeStepVectorForOneParticipants::<SampleStep> {
-        delta_tick_id_from_range: 0,
+    let first_vector = InternalStepVectorForOneParticipant::<SampleStep> {
+        delta_tick_id: 0,
         steps: first_steps.clone(),
     };
 
@@ -86,8 +83,8 @@ fn check_authoritative() -> io::Result<()> {
 
     let second_steps = vec![SampleStep::MoveLeft(40), SampleStep::Jump, SampleStep::Jump];
     let second_participant_id = ParticipantId(1);
-    let second_vector = SerializeAuthoritativeStepVectorForOneParticipants::<SampleStep> {
-        delta_tick_id_from_range: 0,
+    let second_vector = InternalStepVectorForOneParticipant::<SampleStep> {
+        delta_tick_id: 0,
         steps: second_steps.clone(),
     };
 
@@ -95,15 +92,15 @@ fn check_authoritative() -> io::Result<()> {
         .insert(second_participant_id, second_vector)
         .expect("second participant should be unique");
 
-    let range_to_send = SerializeAuthoritativeStepRange::<SampleStep> {
-        delta_steps_from_previous: 0,
-        authoritative_steps: SerializeAuthoritativeStepRangeForAllParticipants {
-            authoritative_participants: range_for_all_participants,
+    let range_to_send = InternalAuthoritativeStepRange::<SampleStep> {
+        delta_tick_id_from_previous: 0,
+        authoritative_steps: InternalAllParticipantVectors {
+            participant_step_vectors: range_for_all_participants,
         },
     };
 
     const EXPECTED_TICK_ID: TickId = TickId(909);
-    let ranges_to_send = SerializeAuthoritativeStepRanges {
+    let ranges_to_send = InternalAuthoritativeStepRanges {
         root_tick_id: EXPECTED_TICK_ID,
         ranges: vec![range_to_send],
     };
@@ -116,25 +113,25 @@ fn check_authoritative() -> io::Result<()> {
     // Read back the stream
     let mut in_stream = OctetRefReader::new(out_stream.octets_ref());
     let received_ranges =
-        SerializeAuthoritativeStepRanges::<SampleStep>::from_stream(&mut in_stream)?;
+        InternalAuthoritativeStepRanges::<SampleStep>::from_stream(&mut in_stream)?;
 
     // Verify the deserialized data
     assert_eq!(received_ranges.ranges.len(), ranges_to_send.ranges.len());
     assert_eq!(received_ranges.root_tick_id, EXPECTED_TICK_ID);
 
     let first_and_only_range = &received_ranges.ranges[0];
-    assert_eq!(first_and_only_range.delta_steps_from_previous, 0);
+    assert_eq!(first_and_only_range.delta_tick_id_from_previous, 0);
     assert_eq!(
         first_and_only_range
             .authoritative_steps
-            .authoritative_participants
+            .participant_step_vectors
             .len(),
         2
     );
 
     let hash_map = &first_and_only_range
         .authoritative_steps
-        .authoritative_participants;
+        .participant_step_vectors;
 
     assert_eq!(hash_map.len(), PARTICIPANT_COUNT);
 
@@ -155,7 +152,7 @@ fn check_authoritative() -> io::Result<()> {
     Ok(())
 }
 
-fn create_authoritative_step_range() -> AuthoritativeStepRange<SampleStep> {
+fn create_authoritative_step_range() -> CombinedSteps<SampleStep> {
     const PARTICIPANT_COUNT: usize = 2;
     let steps_per_participant = vec![
         [
@@ -175,14 +172,14 @@ fn create_authoritative_step_range() -> AuthoritativeStepRange<SampleStep> {
                 .insert(ParticipantId(participant_index as u8), sample_step.clone())
                 .expect("should be unique participants ids");
         }
-        authoritative_steps.push(AuthoritativeStep {
-            authoritative_participants,
+        authoritative_steps.push(StepForParticipants {
+            combined_step: authoritative_participants,
         })
     }
 
-    AuthoritativeStepRange {
+    CombinedSteps {
         tick_id: TickId(1),
-        authoritative_steps,
+        steps: authoritative_steps,
     }
 }
 

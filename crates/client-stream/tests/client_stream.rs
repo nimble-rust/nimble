@@ -6,8 +6,9 @@ use flood_rs::BufferDeserializer;
 use hexify::assert_eq_slices;
 use log::{info, trace};
 use nimble_client_stream::client::{ClientPhase, ClientStream, ClientStreamError};
+use nimble_participant::ParticipantId;
 use nimble_sample_step::{SampleState, SampleStep};
-use nimble_step_types::{LocalIndex, PredictedStep};
+use nimble_step_types::{LocalIndex, StepForParticipants};
 use nimble_steps::Step;
 use rand::prelude::StdRng;
 use rand::{Rng, RngCore, SeedableRng};
@@ -350,7 +351,7 @@ fn predicted_steps() -> Result<(), ClientStreamError> {
 
 fn create_predicted_steps<StepT: Clone>(
     predicted_steps_for_all_players: &[(LocalIndex, &[StepT])],
-) -> Vec<PredictedStep<StepT>> {
+) -> Vec<StepForParticipants<StepT>> {
     let unique_indexes: HashSet<u8> = predicted_steps_for_all_players
         .iter()
         .map(|(local_index, _)| *local_index)
@@ -369,7 +370,7 @@ fn create_predicted_steps<StepT: Clone>(
 
     let mut predicted_steps_vector = Vec::with_capacity(longest_steps_vector);
     for result_index in 0..longest_steps_vector {
-        let mut predicted_players: SeqMap<LocalIndex, StepT> = SeqMap::new();
+        let mut predicted_players: SeqMap<ParticipantId, StepT> = SeqMap::new();
         for (local_index, steps_vector) in predicted_steps_for_all_players.iter() {
             if result_index >= steps_vector.len() {
                 continue;
@@ -377,10 +378,15 @@ fn create_predicted_steps<StepT: Clone>(
 
             info!("adding {local_index:?} to predicted_steps");
             predicted_players
-                .insert(*local_index as u8, steps_vector[result_index].clone())
+                .insert(
+                    ParticipantId(*local_index as u8),
+                    steps_vector[result_index].clone(),
+                )
                 .expect("in the test, it should work to insert");
         }
-        predicted_steps_vector.push(PredictedStep { predicted_players });
+        predicted_steps_vector.push(StepForParticipants {
+            combined_step: predicted_players,
+        });
     }
 
     predicted_steps_vector

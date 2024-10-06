@@ -108,7 +108,7 @@ impl GameSession {
 #[derive(Debug)]
 #[allow(clippy::new_without_default)]
 pub struct Connection<StepT: Clone + Eq + Debug + Deserialize + Serialize> {
-    pub participant_lookup: HashMap<u8, Rc<RefCell<Participant>>>,
+    pub participant_lookup: HashMap<ParticipantId, Rc<RefCell<Participant>>>,
     pub out_blob_stream: Option<OutLogicFront>,
     pub blob_stream_for_client_request: Option<u8>,
     last_transfer_id: u16,
@@ -183,10 +183,8 @@ impl<StepT: Clone + Eq + Debug + Deserialize + Serialize> Connection<StepT> {
             .ok_or(HostLogicError::NoFreeParticipantIds)?;
 
         for participant in &participants {
-            self.participant_lookup.insert(
-                request.player_requests.players[0].local_index,
-                participant.clone(),
-            );
+            self.participant_lookup
+                .insert(participant.borrow().id, participant.clone());
         }
 
         let join_game_participants = participants
@@ -278,13 +276,13 @@ impl<StepT: Clone + Eq + Debug + Deserialize + Serialize> Connection<StepT> {
         */
 
         for combined_predicted_step in &request.combined_predicted_steps.steps {
-            for local_index in combined_predicted_step.predicted_players.keys() {
+            for participant_id in combined_predicted_step.combined_step.keys() {
                 // TODO:
-                if let Some(participant) = self.participant_lookup.get(local_index) {
+                if let Some(participant) = self.participant_lookup.get(participant_id) {
                     // TODO: ADD to participant queue
                     info!("participant {participant:?}");
                 } else {
-                    return Err(HostLogicError::UnknownPartyMemberIndex(*local_index));
+                    return Err(HostLogicError::UnknownPartyMember(*participant_id));
                 }
             }
         }
@@ -308,7 +306,7 @@ pub enum HostLogicError {
         connection_id: HostConnectionId,
         message: FreeListError,
     },
-    UnknownPartyMemberIndex(u8),
+    UnknownPartyMember(ParticipantId),
     NoFreeParticipantIds,
     BlobStreamErr(OutStreamError),
     NoDownloadNow,

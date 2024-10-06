@@ -3,14 +3,12 @@
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
 use crate::host_to_client::TickIdUtil;
+use crate::serialize::CombinedSteps;
 use crate::{ClientRequestId, SessionConnectionSecret};
 use flood_rs::{Deserialize, ReadOctetStream, Serialize, WriteOctetStream};
 use io::ErrorKind;
 use nimble_blob_stream::prelude::ReceiverToSenderFrontCommands;
 use nimble_participant::ParticipantId;
-use nimble_step_types::{LocalIndex, PredictedStep};
-use seq_map::SeqMap;
-use std::collections::HashSet;
 use std::fmt::Debug;
 use std::{fmt, io};
 use tick_id::TickId;
@@ -303,82 +301,7 @@ impl StepsAck {
     }
 }
 
-#[derive(Debug, PartialEq, Clone)]
-pub struct SerializeAuthoritativeStepVectorForOneParticipants<StepT: Serialize + Deserialize> {
-    pub delta_tick_id_from_range: u8,
-    pub steps: Vec<StepT>,
-}
-
-#[derive(Debug, PartialEq, Clone)]
-pub struct SerializeAuthoritativeStepRangeForAllParticipants<StepT: Serialize + Deserialize> {
-    pub authoritative_participants:
-        SeqMap<ParticipantId, SerializeAuthoritativeStepVectorForOneParticipants<StepT>>,
-}
-
-impl<StepT: Serialize + Deserialize + std::fmt::Debug>
-    SerializeAuthoritativeStepRangeForAllParticipants<StepT>
-{
-    pub fn serialize(&self, stream: &mut impl WriteOctetStream) -> io::Result<()>
-    where
-        Self: Sized,
-    {
-        // How many participants streams follows
-        stream.write_u8(self.authoritative_participants.len() as u8)?;
-
-        for (participant_id, authoritative_steps_for_one_player_vector) in
-            &self.authoritative_participants
-        {
-            participant_id.to_stream(stream)?;
-            stream.write_u8(authoritative_steps_for_one_player_vector.delta_tick_id_from_range)?;
-            stream.write_u8(authoritative_steps_for_one_player_vector.steps.len() as u8)?;
-
-            for authoritative_step_for_one_player in
-                &authoritative_steps_for_one_player_vector.steps
-            {
-                authoritative_step_for_one_player.serialize(stream)?;
-            }
-        }
-        Ok(())
-    }
-
-    pub fn deserialize(stream: &mut impl ReadOctetStream) -> io::Result<Self> {
-        let required_participant_count_in_range = stream.read_u8()?;
-        let mut authoritative_participants = SeqMap::new();
-        for _ in 0..required_participant_count_in_range {
-            let participant_id = ParticipantId::from_stream(stream)?;
-            let delta_tick_id_from_range = stream.read_u8()?;
-            let number_of_steps_that_follows = stream.read_u8()? as usize;
-
-            let mut authoritative_steps_for_one_participant =
-                Vec::with_capacity(number_of_steps_that_follows);
-
-            for _ in 0..number_of_steps_that_follows {
-                let authoritative_step = StepT::deserialize(stream)?;
-                authoritative_steps_for_one_participant.push(authoritative_step);
-            }
-
-            authoritative_participants
-                .insert(
-                    participant_id,
-                    SerializeAuthoritativeStepVectorForOneParticipants {
-                        delta_tick_id_from_range,
-                        steps: authoritative_steps_for_one_participant,
-                    },
-                )
-                .map_err(|err| io::Error::new(io::ErrorKind::Other, err))?;
-        }
-
-        Ok(Self {
-            authoritative_participants,
-        })
-    }
-}
-
-#[derive(Clone, Debug)]
-pub struct CombinedPredictedSteps<StepT> {
-    pub first_tick: TickId,
-    pub steps: Vec<PredictedStep<StepT>>,
-}
+/*
 
 impl<StepT: Serialize + Deserialize + Clone> Deserialize for CombinedPredictedSteps<StepT> {
     fn deserialize(stream: &mut impl ReadOctetStream) -> io::Result<Self>
@@ -478,7 +401,7 @@ impl<StepT: Serialize + Deserialize + Clone> Serialize for CombinedPredictedStep
 
 #[derive(Debug, Clone)]
 pub struct SerializePredictedStepsForAllPlayers<StepT: Serialize + Deserialize> {
-    pub predicted_players: SeqMap<LocalIndex, SerializePredictedStepsVectorForOnePlayer<StepT>>,
+    pub predicted_players: SeqMap<LocalIndex, SerializePredictedStepsVectorForOneParticipant<StepT>>,
 }
 
 impl<StepT: Serialize + Deserialize> SerializePredictedStepsForAllPlayers<StepT> {
@@ -501,7 +424,7 @@ impl<StepT: Serialize + Deserialize> SerializePredictedStepsForAllPlayers<StepT>
         for _ in 0..player_count {
             let index = stream.read_u8()?;
             let predicted_steps_for_one_player =
-                SerializePredictedStepsVectorForOnePlayer::from_stream(stream)?;
+                SerializePredictedStepsVectorForOneParticipant::from_stream(stream)?;
             players_vector
                 .insert(index, predicted_steps_for_one_player)
                 .map_err(|err| io::Error::new(io::ErrorKind::Other, err))?;
@@ -513,13 +436,14 @@ impl<StepT: Serialize + Deserialize> SerializePredictedStepsForAllPlayers<StepT>
     }
 }
 
+
 #[derive(Debug, Clone)]
-pub struct SerializePredictedStepsVectorForOnePlayer<StepT: Serialize + Deserialize> {
+pub struct SerializePredictedStepsVectorForOneParticipant<StepT: Serialize + Deserialize> {
     pub first_tick_id: TickId,
     pub predicted_steps: Vec<StepT>,
 }
 
-impl<StepT: Serialize + Deserialize> SerializePredictedStepsVectorForOnePlayer<StepT> {
+impl<StepT: Serialize + Deserialize> SerializePredictedStepsVectorForOneParticipant<StepT> {
     pub fn to_stream(&self, stream: &mut impl WriteOctetStream) -> io::Result<()> {
         TickIdUtil::to_stream(self.first_tick_id, stream)?;
         stream.write_u8(self.predicted_steps.len() as u8)?;
@@ -547,11 +471,12 @@ impl<StepT: Serialize + Deserialize> SerializePredictedStepsVectorForOnePlayer<S
         })
     }
 }
+ */
 
 #[derive(Debug, Clone)]
 pub struct StepsRequest<StepT: Clone + Serialize + Deserialize + Debug> {
     pub ack: StepsAck,
-    pub combined_predicted_steps: CombinedPredictedSteps<StepT>,
+    pub combined_predicted_steps: CombinedSteps<StepT>,
 }
 
 impl<StepT: Clone + Serialize + Deserialize + Debug> StepsRequest<StepT> {
@@ -564,7 +489,7 @@ impl<StepT: Clone + Serialize + Deserialize + Debug> StepsRequest<StepT> {
     pub fn from_stream(stream: &mut impl ReadOctetStream) -> io::Result<Self> {
         Ok(Self {
             ack: StepsAck::from_stream(stream)?,
-            combined_predicted_steps: CombinedPredictedSteps::deserialize(stream)?,
+            combined_predicted_steps: CombinedSteps::deserialize(stream)?,
         })
     }
 }

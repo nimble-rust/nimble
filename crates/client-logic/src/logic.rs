@@ -11,13 +11,12 @@ use metricator::AggregateMetric;
 use nimble_blob_stream::prelude::{FrontLogic, SenderToReceiverFrontCommands};
 use nimble_participant::ParticipantId;
 use nimble_protocol::client_to_host::{
-    CombinedPredictedSteps, DownloadGameStateRequest, JoinGameType, JoinPlayerRequest,
-    JoinPlayerRequests,
+    DownloadGameStateRequest, JoinGameType, JoinPlayerRequest, JoinPlayerRequests,
 };
 use nimble_protocol::host_to_client::{DownloadGameStateResponse, GameStepResponseHeader};
 use nimble_protocol::prelude::*;
 use nimble_protocol::ClientRequestId;
-use nimble_step_types::{AuthoritativeStep, LocalIndex, PredictedStep};
+use nimble_step_types::{LocalIndex, StepForParticipants};
 use nimble_steps::{Steps, StepsError};
 use std::fmt::Debug;
 use tick_id::TickId;
@@ -59,10 +58,10 @@ pub struct ClientLogic<StateT: BufferDeserializer, StepT: Clone + Deserialize + 
     blob_stream_client: FrontLogic,
 
     /// Stores the outgoing predicted steps from the client.
-    outgoing_predicted_steps: Steps<PredictedStep<StepT>>,
+    outgoing_predicted_steps: Steps<StepForParticipants<StepT>>,
 
     /// Stores the incoming authoritative steps from the host.
-    incoming_authoritative_steps: Steps<AuthoritativeStep<StepT>>,
+    incoming_authoritative_steps: Steps<StepForParticipants<StepT>>,
 
     /// Represents the current phase of the client's logic.
     #[allow(unused)]
@@ -109,11 +108,11 @@ impl<StateT: BufferDeserializer, StepT: Clone + Deserialize + Serialize + Debug>
     }
 
     /// Returns a reference to the incoming authoritative steps.
-    pub fn debug_authoritative_steps(&self) -> &Steps<AuthoritativeStep<StepT>> {
+    pub fn debug_authoritative_steps(&self) -> &Steps<StepForParticipants<StepT>> {
         &self.incoming_authoritative_steps
     }
 
-    pub fn pop_all_authoritative_steps(&mut self) -> Vec<AuthoritativeStep<StepT>> {
+    pub fn pop_all_authoritative_steps(&mut self) -> Vec<StepForParticipants<StepT>> {
         let vec = self.incoming_authoritative_steps.to_vec();
         self.incoming_authoritative_steps.clear();
         vec
@@ -161,8 +160,8 @@ impl<StateT: BufferDeserializer, StepT: Clone + Deserialize + Serialize + Debug>
                 waiting_for_tick_id: self.incoming_authoritative_steps.expected_write_tick_id(),
                 lost_steps_mask_after_last_received: 0,
             },
-            combined_predicted_steps: CombinedPredictedSteps {
-                first_tick: self
+            combined_predicted_steps: CombinedSteps::<StepT> {
+                tick_id: self
                     .outgoing_predicted_steps
                     .front_tick_id()
                     .unwrap_or_default(),
@@ -228,7 +227,7 @@ impl<StateT: BufferDeserializer, StepT: Clone + Deserialize + Serialize + Debug>
     pub fn push_predicted_step(
         &mut self,
         tick_id: TickId,
-        step: PredictedStep<StepT>,
+        step: StepForParticipants<StepT>,
     ) -> Result<(), StepsError> {
         if step.is_empty() {
             Err(StepsError::CanNotPushEmptyPredictedSteps)?;
@@ -304,7 +303,7 @@ impl<StateT: BufferDeserializer, StepT: Clone + Deserialize + Serialize + Debug>
 
         for range in &cmd.authoritative_steps.ranges {
             let mut current_authoritative_tick_id = range.tick_id;
-            for combined_auth_step in &range.authoritative_steps {
+            for combined_auth_step in &range.steps {
                 if current_authoritative_tick_id
                     == self.incoming_authoritative_steps.expected_write_tick_id()
                 {
@@ -316,7 +315,7 @@ impl<StateT: BufferDeserializer, StepT: Clone + Deserialize + Serialize + Debug>
                 current_authoritative_tick_id += 1;
             }
 
-            current_authoritative_tick_id += range.authoritative_steps.len() as u32;
+            current_authoritative_tick_id += range.steps.len() as u32;
         }
 
         if accepted_count > 0 {

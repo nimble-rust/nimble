@@ -30,3 +30,4 @@ tick-id = "0.0.7"
 hazy-transport = "0.0.3"
 rand = "0.8.5"
 seq-map = "0.0.1"
+nimble-participant = { path = "../participant", version = "0.0.12-dev" }

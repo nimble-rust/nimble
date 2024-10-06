@@ -2,9 +2,9 @@
  * Copyright (c) Peter Bjorklund. All rights reserved. https://github.com/nimble-rust/nimble
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
-use crate::client_to_host::{
-    SerializeAuthoritativeStepRangeForAllParticipants,
-    SerializeAuthoritativeStepVectorForOneParticipants,
+
+use crate::serialize::{
+    CombinedSteps, InternalAllParticipantVectors, InternalAuthoritativeStepRange,
 };
 use crate::{ClientRequestId, SessionConnectionSecret};
 use flood_rs::{Deserialize, ReadOctetStream, Serialize, WriteOctetStream};
@@ -12,9 +12,6 @@ use io::ErrorKind;
 use log::trace;
 use nimble_blob_stream::prelude::SenderToReceiverFrontCommands;
 use nimble_participant::ParticipantId;
-use nimble_step_types::AuthoritativeStep;
-use seq_map::SeqMap;
-use std::collections::HashSet;
 use std::fmt::Debug;
 use std::io;
 use tick_id::TickId;
@@ -274,21 +271,9 @@ impl GameStepResponseHeader {
     }
 }
 
-#[derive(Debug, Eq, PartialEq)]
-pub struct AuthoritativeStepRange<StepT: Deserialize + Serialize + Debug + Clone> {
-    pub tick_id: TickId,
-    pub authoritative_steps: Vec<AuthoritativeStep<StepT>>,
-}
-
-#[derive(Debug)]
-pub struct SerializeAuthoritativeStepRange<StepT: Deserialize + Serialize + Debug + Clone> {
-    pub delta_steps_from_previous: u8,
-    pub authoritative_steps: SerializeAuthoritativeStepRangeForAllParticipants<StepT>,
-}
-
-impl<StepT: Deserialize + Serialize + Debug + Clone> SerializeAuthoritativeStepRange<StepT> {
+impl<StepT: Deserialize + Serialize + Debug + Clone> InternalAuthoritativeStepRange<StepT> {
     pub fn to_stream(&self, stream: &mut impl WriteOctetStream) -> io::Result<()> {
-        stream.write_u8(self.delta_steps_from_previous)?;
+        stream.write_u8(self.delta_tick_id_from_previous)?;
 
         self.authoritative_steps.serialize(stream)?;
 
@@ -298,18 +283,18 @@ impl<StepT: Deserialize + Serialize + Debug + Clone> SerializeAuthoritativeStepR
     pub fn from_stream(stream: &mut impl ReadOctetStream) -> io::Result<Self> {
         let delta_steps = stream.read_u8()?;
 
-        let authoritative_combined_step =
-            SerializeAuthoritativeStepRangeForAllParticipants::deserialize(stream)?;
+        let authoritative_combined_step = InternalAllParticipantVectors::deserialize(stream)?;
 
         Ok(Self {
-            delta_steps_from_previous: delta_steps,
+            delta_tick_id_from_previous: delta_steps,
             authoritative_steps: authoritative_combined_step,
         })
     }
 }
+
 #[derive(Debug)]
 pub struct AuthoritativeStepRanges<StepT: Deserialize + Serialize + Debug + Clone> {
-    pub ranges: Vec<AuthoritativeStepRange<StepT>>,
+    pub ranges: Vec<CombinedSteps<StepT>>,
 }
 
 impl<StepT: Deserialize + Serialize + Debug + Clone> Serialize for AuthoritativeStepRanges<StepT> {
@@ -333,63 +318,18 @@ impl<StepT: Deserialize + Serialize + Debug + Clone> Serialize for Authoritative
                 ))?;
             }
             let delta_ticks_from_previous = (auth_range.tick_id - tick_id) as u8;
-            tick_id = auth_range.tick_id + auth_range.authoritative_steps.len() as u32;
+            tick_id = auth_range.tick_id + auth_range.steps.len() as u32;
 
-            let mut hash_map = SeqMap::<
-                ParticipantId,
-                SerializeAuthoritativeStepVectorForOneParticipants<StepT>,
-            >::new();
+            let internal = auth_range.to_internal();
 
-            let mut unique_participant_ids: HashSet<ParticipantId> = HashSet::new();
-
-            for auth_step in &auth_range.authoritative_steps {
-                for key in auth_step.authoritative_participants.keys() {
-                    unique_participant_ids.insert(*key);
-                }
-            }
-
-            let mut sorted_unique_ids: Vec<ParticipantId> =
-                unique_participant_ids.into_iter().collect();
-            sorted_unique_ids.sort();
-
-            for participant_id in sorted_unique_ids {
-                hash_map
-                    .insert(
-                        participant_id,
-                        SerializeAuthoritativeStepVectorForOneParticipants::<StepT> {
-                            delta_tick_id_from_range: 0,
-                            steps: vec![],
-                        },
-                    )
-                    .expect("participant ids to be unique");
-            }
-
-            for (index_in_range, combined_auth_step) in
-                auth_range.authoritative_steps.iter().enumerate()
-            {
-                for (participant_id, auth_step_for_one_player) in
-                    &combined_auth_step.authoritative_participants
-                {
-                    let vector_for_one_person = hash_map.get_mut(participant_id).unwrap();
-                    if vector_for_one_person.steps.is_empty() {
-                        vector_for_one_person.delta_tick_id_from_range = index_in_range as u8;
-                    }
-                    vector_for_one_person
-                        .steps
-                        .push(auth_step_for_one_player.clone())
-                }
-            }
-
-            let range = SerializeAuthoritativeStepRange {
-                delta_steps_from_previous: delta_ticks_from_previous,
-                authoritative_steps: SerializeAuthoritativeStepRangeForAllParticipants::<StepT> {
-                    authoritative_participants: hash_map,
-                },
+            let range = InternalAuthoritativeStepRange {
+                delta_tick_id_from_previous: delta_ticks_from_previous,
+                authoritative_steps: internal,
             };
             converted_ranges.push(range);
         }
 
-        let all_ranges = SerializeAuthoritativeStepRanges {
+        let all_ranges = InternalAuthoritativeStepRanges {
             root_tick_id,
             ranges: converted_ranges,
         };
@@ -405,53 +345,18 @@ impl<StepT: Deserialize + Serialize + Debug + Clone> Deserialize
     where
         Self: Sized,
     {
-        let source_step_ranges = SerializeAuthoritativeStepRanges::<StepT>::from_stream(stream)?;
-        let mut tick_id = source_step_ranges.root_tick_id;
+        let internal_auth_step_ranges =
+            InternalAuthoritativeStepRanges::<StepT>::from_stream(stream)?;
+        let mut tick_id = internal_auth_step_ranges.root_tick_id;
 
         let mut converted_ranges = Vec::new();
-        for serialized_step_range in &source_step_ranges.ranges {
-            tick_id += serialized_step_range.delta_steps_from_previous as u32;
+        for internal_step_range in &internal_auth_step_ranges.ranges {
+            tick_id += internal_step_range.delta_tick_id_from_previous as u32;
 
-            let mut max_vector_length = 0;
+            let combined_steps =
+                CombinedSteps::from_internal(&internal_step_range.authoritative_steps, tick_id);
 
-            for serialized_step_vector in serialized_step_range
-                .authoritative_steps
-                .authoritative_participants
-                .values()
-            {
-                if serialized_step_vector.steps.len() > max_vector_length {
-                    max_vector_length = serialized_step_vector.steps.len();
-                }
-            }
-
-            let mut auth_step_range_vec = Vec::<AuthoritativeStep<StepT>>::new();
-            for _ in 0..max_vector_length {
-                auth_step_range_vec.push(AuthoritativeStep::<StepT> {
-                    authoritative_participants: SeqMap::new(),
-                })
-            }
-
-            for (participant_id, serialized_step_vector) in &serialized_step_range
-                .authoritative_steps
-                .authoritative_participants
-            {
-                for (index, serialized_step) in serialized_step_vector.steps.iter().enumerate() {
-                    let hash_map_for_auth_step = &mut auth_step_range_vec
-                        .get_mut(index)
-                        .unwrap()
-                        .authoritative_participants;
-                    hash_map_for_auth_step
-                        .insert(*participant_id, serialized_step.clone())
-                        .expect("expect unique participant_id");
-                }
-            }
-
-            let range = AuthoritativeStepRange::<StepT> {
-                tick_id,
-                authoritative_steps: auth_step_range_vec,
-            };
-
-            converted_ranges.push(range);
+            converted_ranges.push(combined_steps);
         }
 
         Ok(AuthoritativeStepRanges {
@@ -461,12 +366,12 @@ impl<StepT: Deserialize + Serialize + Debug + Clone> Deserialize
 }
 
 #[derive(Debug)]
-pub struct SerializeAuthoritativeStepRanges<StepT: Deserialize + Serialize + Debug + Clone> {
+pub struct InternalAuthoritativeStepRanges<StepT: Deserialize + Serialize + Debug + Clone> {
     pub root_tick_id: TickId,
-    pub ranges: Vec<SerializeAuthoritativeStepRange<StepT>>,
+    pub ranges: Vec<InternalAuthoritativeStepRange<StepT>>,
 }
 
-impl<StepT: Deserialize + Serialize + Debug + Clone> SerializeAuthoritativeStepRanges<StepT> {
+impl<StepT: Deserialize + Serialize + Debug + Clone> InternalAuthoritativeStepRanges<StepT> {
     pub fn to_stream(&self, stream: &mut impl WriteOctetStream) -> io::Result<()> {
         TickIdUtil::to_stream(self.root_tick_id, stream)?;
         stream.write_u8(self.ranges.len() as u8)?;
@@ -486,10 +391,10 @@ impl<StepT: Deserialize + Serialize + Debug + Clone> SerializeAuthoritativeStepR
         let range_count = stream.read_u8()?;
 
         let mut authoritative_step_ranges =
-            Vec::<SerializeAuthoritativeStepRange<StepT>>::with_capacity(range_count as usize);
+            Vec::<InternalAuthoritativeStepRange<StepT>>::with_capacity(range_count as usize);
 
         for _ in 0..range_count {
-            authoritative_step_ranges.push(SerializeAuthoritativeStepRange::from_stream(stream)?);
+            authoritative_step_ranges.push(InternalAuthoritativeStepRange::from_stream(stream)?);
         }
 
         Ok(Self {

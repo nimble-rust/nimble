@@ -12,7 +12,6 @@ use nimble_host_front::HostFront;
 use nimble_host_logic::logic::{GameStateProvider, HostConnectionId};
 use nimble_sample_game::{SampleGame, SampleGameState};
 use nimble_sample_step::SampleStep;
-use nimble_step_types::PredictedStep;
 use rand::prelude::StdRng;
 use rand::SeedableRng;
 use std::fmt::Debug;
@@ -77,11 +76,9 @@ fn communicate<
         if client.want_predicted_step() {
             debug!("pushing predicted step for {tick_id}");
             let mut map = SeqMap::new();
-            map.insert(0, SampleStep::MoveLeft(-1))
+            map.insert(ParticipantId(0), SampleStep::MoveLeft(-1))
                 .expect("should insert map");
-            let predicted_step = PredictedStep::<SampleStep> {
-                predicted_players: map,
-            };
+            let predicted_step = StepForParticipants::<SampleStep> { combined_step: map };
             client
                 .push_predicted_step(tick_id, predicted_step)
                 .expect("should push predicted step");
@@ -128,6 +125,8 @@ fn communicate<
     }
 }
 
+use nimble_participant::ParticipantId;
+use nimble_step_types::StepForParticipants;
 use seq_map::SeqMap;
 
 #[test_log::test]

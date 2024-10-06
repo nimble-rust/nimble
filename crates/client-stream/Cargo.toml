@@ -28,3 +28,4 @@ nimble-steps = { path = "../steps", version = "0.0.12-dev" }
 test-log = "0.2.16"
 tick-id = "0.0.7"
 rand = "0.8.5"
+nimble-participant = { path = "../participant", version = "0.0.12-dev" }

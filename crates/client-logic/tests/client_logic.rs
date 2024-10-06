@@ -8,11 +8,11 @@ use nimble_client_logic::logic::ClientLogic;
 use nimble_participant::ParticipantId;
 use nimble_protocol::client_to_host::DownloadGameStateRequest;
 use nimble_protocol::host_to_client::{
-    AuthoritativeStepRange, AuthoritativeStepRanges, GameStepResponse, GameStepResponseHeader,
+    AuthoritativeStepRanges, GameStepResponse, GameStepResponseHeader,
 };
-use nimble_protocol::prelude::{ClientToHostCommands, HostToClientCommands};
+use nimble_protocol::prelude::{ClientToHostCommands, CombinedSteps, HostToClientCommands};
 use nimble_sample_step::{SampleState, SampleStep};
-use nimble_step_types::{AuthoritativeStep, PredictedStep};
+use nimble_step_types::StepForParticipants;
 use nimble_steps::Step::{Custom, Forced};
 use nimble_steps::{Step, StepInfo, StepsError};
 use seq_map::SeqMap;
@@ -47,8 +47,10 @@ fn send_steps() -> Result<(), StepsError> {
 
     client_logic.push_predicted_step(
         TickId(0),
-        PredictedStep {
-            predicted_players: [(0u8, Custom(SampleStep::MoveRight(3)))].as_slice().into(),
+        StepForParticipants {
+            combined_step: [(ParticipantId(0), Custom(SampleStep::MoveRight(3)))]
+                .as_slice()
+                .into(),
         },
     )?;
 
@@ -82,7 +84,7 @@ fn setup_sample_steps() -> AuthoritativeStepRanges<Step<SampleStep>> {
     ];
     let second_participant_id = ParticipantId(1);
 
-    let mut auth_steps = Vec::<AuthoritativeStep<Step<SampleStep>>>::new();
+    let mut auth_steps = Vec::<StepForParticipants<Step<SampleStep>>>::new();
     for index in 0..3 {
         let mut hash_map = SeqMap::<ParticipantId, Step<SampleStep>>::new();
         hash_map
@@ -91,15 +93,15 @@ fn setup_sample_steps() -> AuthoritativeStepRanges<Step<SampleStep>> {
         hash_map
             .insert(second_participant_id, second_steps[index].clone())
             .expect("second_participant should be unique");
-        auth_steps.push(AuthoritativeStep {
-            authoritative_participants: hash_map,
+        auth_steps.push(StepForParticipants {
+            combined_step: hash_map,
         });
     }
 
     const EXPECTED_TICK_ID: TickId = TickId(0);
-    let range_to_send = AuthoritativeStepRange::<Step<SampleStep>> {
+    let range_to_send = CombinedSteps::<Step<SampleStep>> {
         tick_id: EXPECTED_TICK_ID,
-        authoritative_steps: auth_steps,
+        steps: auth_steps,
     };
 
     let ranges_to_send = AuthoritativeStepRanges {
@@ -147,11 +149,11 @@ fn receive_authoritative_steps() -> Result<(), ClientError> {
         .insert(second_participant_id, Forced)
         .expect("should be unique");
 
-    let expected_step = AuthoritativeStep::<Step<SampleStep>> {
-        authoritative_participants: expected_hash_map,
+    let expected_step = StepForParticipants::<Step<SampleStep>> {
+        combined_step: expected_hash_map,
     };
 
-    let expected_step_with_step_info = StepInfo::<AuthoritativeStep<Step<SampleStep>>> {
+    let expected_step_with_step_info = StepInfo::<StepForParticipants<Step<SampleStep>>> {
         step: expected_step,
         tick_id: TickId(1),
     };

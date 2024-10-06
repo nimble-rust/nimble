@@ -12,7 +12,7 @@ use monotonic_time_rs::{MillisLow16, MonotonicClock};
 use nimble_client_stream::client::{ClientStream, ClientStreamError};
 use nimble_ordered_datagram::{DatagramOrderInError, OrderedIn, OrderedOut};
 use nimble_protocol_header::ClientTime;
-use nimble_step_types::{AuthoritativeStep, LocalIndex, PredictedStep};
+use nimble_step_types::{LocalIndex, StepForParticipants};
 use std::cell::RefCell;
 use std::fmt::Debug;
 use std::io;
@@ -142,7 +142,7 @@ impl<StateT: BufferDeserializer + Debug, StepT: Clone + Deserialize + Serialize 
     pub fn push_predicted_step(
         &mut self,
         tick_id: TickId,
-        step: PredictedStep<StepT>,
+        step: StepForParticipants<StepT>,
     ) -> Result<(), ClientFrontError> {
         self.client.push_predicted_step(tick_id, step)?;
         Ok(())
@@ -150,7 +150,7 @@ impl<StateT: BufferDeserializer + Debug, StepT: Clone + Deserialize + Serialize 
 
     pub fn pop_all_authoritative_steps(
         &mut self,
-    ) -> Result<Vec<AuthoritativeStep<StepT>>, ClientFrontError> {
+    ) -> Result<Vec<StepForParticipants<StepT>>, ClientFrontError> {
         Ok(self.client.pop_all_authoritative_steps()?)
     }
 

@@ -13,6 +13,7 @@ pub mod client_to_host_oob;
 pub mod host_to_client;
 pub mod host_to_client_oob;
 pub mod prelude;
+pub mod serialize;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct ClientRequestId(pub u8);

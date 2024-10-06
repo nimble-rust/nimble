@@ -8,7 +8,7 @@ use log::trace;
 use monotonic_time_rs::InstantMonotonicClock;
 use nimble_client_front::{ClientFront, ClientFrontError, LocalPlayer};
 use nimble_rectify::{Rectify, RectifyCallbacks};
-use nimble_step_types::{AuthoritativeStep, LocalIndex, PredictedStep};
+use nimble_step_types::{LocalIndex, StepForParticipants};
 use nimble_steps::Step;
 use std::cell::RefCell;
 use std::fmt::Debug;
@@ -16,12 +16,12 @@ use std::rc::Rc;
 use tick_id::TickId;
 
 pub trait GameCallbacks<StepT>:
-    RectifyCallbacks<AuthoritativeStep<Step<StepT>>> + VersionProvider + BufferDeserializer
+    RectifyCallbacks<StepForParticipants<Step<StepT>>> + VersionProvider + BufferDeserializer
 {
 }
 
 impl<T, StepT> GameCallbacks<StepT> for T where
-    T: RectifyCallbacks<AuthoritativeStep<Step<StepT>>> + VersionProvider + BufferDeserializer
+    T: RectifyCallbacks<StepForParticipants<Step<StepT>>> + VersionProvider + BufferDeserializer
 {
 }
 
@@ -60,7 +60,7 @@ pub struct Client<
     client: ClientFront<GameT, StepT>,
     tick_duration_ms: u64,
     #[allow(unused)]
-    rectify: Rectify<GameT, AuthoritativeStep<Step<StepT>>>,
+    rectify: Rectify<GameT, StepForParticipants<Step<StepT>>>,
 }
 
 impl<
@@ -122,7 +122,7 @@ impl<
     pub fn push_predicted_step(
         &mut self,
         tick_id: TickId,
-        step: PredictedStep<StepT>,
+        step: StepForParticipants<StepT>,
     ) -> Result<(), ClientError> {
         /*
             // create authoritative step from predicted step
