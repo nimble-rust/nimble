@@ -77,7 +77,7 @@ impl<StepT: Clone + Deserialize + Serialize + Eq + Debug> HostFront<StepT> {
         }
     }
 
-    pub fn session(&self) -> &GameSession {
+    pub fn session(&self) -> &GameSession<StepT> {
         self.host_stream.session()
     }
 

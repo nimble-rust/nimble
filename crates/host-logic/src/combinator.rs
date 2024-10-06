@@ -18,6 +18,7 @@ pub enum CombinatorError {
     },
     OtherError,
     SeqMapError(SeqMapError),
+    NoBufferForParticipant,
 }
 
 impl From<SeqMapError> for CombinatorError {
@@ -32,7 +33,7 @@ pub struct Combinator<T: Clone> {
     pub tick_id_to_produce: TickId,
 }
 
-impl<T: std::clone::Clone> Combinator<T> {
+impl<T: Clone> Combinator<T> {
     pub fn new(tick_id_to_produce: TickId) -> Self {
         Combinator {
             in_buffers: HashMap::new(),
@@ -44,9 +45,12 @@ impl<T: std::clone::Clone> Combinator<T> {
         self.in_buffers.insert(id, Steps::new());
     }
 
-    pub fn add(&mut self, id: ParticipantId, step: T) {
+    pub fn add(&mut self, id: ParticipantId, step: T) -> Result<(), CombinatorError> {
         if let Some(buffer) = self.in_buffers.get_mut(&id) {
             buffer.push(step);
+            Ok(())
+        } else {
+            Err(CombinatorError::NoBufferForParticipant)
         }
     }
 

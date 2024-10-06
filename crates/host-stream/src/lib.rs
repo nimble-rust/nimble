@@ -169,7 +169,7 @@ impl<StepT: Clone + Eq + Debug + Deserialize + Serialize> HostStream<StepT> {
         Ok(())
     }
 
-    pub fn session(&self) -> &GameSession {
+    pub fn session(&self) -> &GameSession<StepT> {
         self.host_logic.session()
     }
 }

@@ -10,7 +10,7 @@ use nimble_steps::Step;
 use tick_id::TickId;
 
 #[allow(unused)]
-pub struct HostCombinator<T: std::clone::Clone> {
+pub struct HostCombinator<T: Clone> {
     combinator: Combinator<T>,
     authoritative_steps: Vec<StepForParticipants<Step<T>>>,
 }

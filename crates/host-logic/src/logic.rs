@@ -2,7 +2,7 @@
  * Copyright (c) Peter Bjorklund. All rights reserved. https://github.com/nimble-rust/nimble
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
-use crate::combinator::Combinator;
+use crate::combinator::{Combinator, CombinatorError};
 use flood_rs::{Deserialize, Serialize};
 use freelist_rs::{FreeList, FreeListError};
 use log::{debug, info, trace};
@@ -33,14 +33,15 @@ pub struct Participant {
     pub client_local_index: u8,
 }
 
-pub struct GameSession {
+pub struct GameSession<StepT: Clone> {
     pub participants: HashMap<ParticipantId, Rc<RefCell<Participant>>>,
     pub participant_ids: FreeList<u8>,
+    combinator: Combinator<StepT>,
 }
 
-impl Default for GameSession {
+impl<StepT: Clone> Default for GameSession<StepT> {
     fn default() -> Self {
-        Self::new()
+        Self::new(TickId(0))
     }
 }
 
@@ -48,11 +49,12 @@ pub trait GameStateProvider {
     fn state(&self, tick_id: TickId) -> (TickId, Vec<u8>);
 }
 
-impl GameSession {
-    pub fn new() -> Self {
+impl<StepT: Clone> GameSession<StepT> {
+    pub fn new(tick_id: TickId) -> Self {
         Self {
             participants: HashMap::new(),
             participant_ids: FreeList::new(0xff),
+            combinator: Combinator::<StepT>::new(tick_id),
         }
     }
 
@@ -162,7 +164,7 @@ impl<StepT: Clone + Eq + Debug + Deserialize + Serialize> Connection<StepT> {
 
     fn on_join(
         &mut self,
-        session: &mut GameSession,
+        session: &mut GameSession<StepT>,
         request: &JoinGameRequest,
     ) -> Result<HostToClientCommands<StepT>, HostLogicError> {
         debug!("on_join {:?}", request);
@@ -267,13 +269,6 @@ impl<StepT: Clone + Eq + Debug + Deserialize + Serialize> Connection<StepT> {
         request: &StepsRequest<StepT>,
     ) -> Result<HostToClientCommands<StepT>, HostLogicError> {
         trace!("on_step {:?}", request);
-        /*
-               for participant in request.combined_predicted_steps.predicted_steps_for_players {
-                   self.combinator.receive_step(participant.participant_party_index)
-
-               }
-
-        */
 
         for combined_predicted_step in &request.combined_predicted_steps.steps {
             for participant_id in combined_predicted_step.combined_step.keys() {
@@ -310,6 +305,13 @@ pub enum HostLogicError {
     NoFreeParticipantIds,
     BlobStreamErr(OutStreamError),
     NoDownloadNow,
+    CombinatorError(CombinatorError),
+}
+
+impl From<CombinatorError> for HostLogicError {
+    fn from(err: CombinatorError) -> Self {
+        Self::CombinatorError(err)
+    }
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -319,18 +321,16 @@ pub struct HostLogic<
     StepT: Clone + std::cmp::Eq + std::fmt::Debug + flood_rs::Deserialize + flood_rs::Serialize,
 > {
     #[allow(unused)]
-    combinator: Combinator<StepT>,
     connections: HashMap<u8, Connection<StepT>>,
-    session: GameSession,
+    session: GameSession<StepT>,
     free_list: FreeList<u8>,
 }
 
 impl<StepT: Clone + Eq + Debug + Deserialize + Serialize> HostLogic<StepT> {
     pub fn new(tick_id: TickId) -> Self {
         Self {
-            combinator: Combinator::<StepT>::new(tick_id),
             connections: HashMap::new(),
-            session: GameSession::new(),
+            session: GameSession::new(tick_id),
             free_list: FreeList::<u8>::new(0xff),
         }
     }
@@ -367,7 +367,7 @@ impl<StepT: Clone + Eq + Debug + Deserialize + Serialize> HostLogic<StepT> {
         }
     }
 
-    pub fn session(&self) -> &GameSession {
+    pub fn session(&self) -> &GameSession<StepT> {
         &self.session
     }
 
@@ -384,11 +384,19 @@ impl<StepT: Clone + Eq + Debug + Deserialize + Serialize> HostLogic<StepT> {
                     connection.on_join(&mut self.session, join_game_request)?
                 ]),
                 ClientToHostCommands::Steps(add_steps_request) => {
+                    for combined_step in &add_steps_request.combined_predicted_steps.steps {
+                        for (participant_id, step) in combined_step.combined_step.into_iter() {
+                            if !connection.participant_lookup.contains_key(participant_id) {
+                                Err(HostLogicError::UnknownPartyMember(*participant_id))?;
+                            }
+                            self.session.combinator.add(*participant_id, step.clone())?;
+                        }
+                    }
                     Ok(vec![connection.on_steps(add_steps_request)?])
                 }
                 ClientToHostCommands::DownloadGameState(download_game_state_request) => {
                     Ok(connection.on_download(
-                        self.combinator.tick_id_to_produce,
+                        self.session.combinator.tick_id_to_produce,
                         now,
                         download_game_state_request,
                         state_provider,

@@ -172,6 +172,9 @@ fn client_to_host() -> Result<(), ClientError> {
 
     communicate::<SampleGame>(&mut host, &state_provider, connection_id, &mut client, 33);
 
+    // let host_connection = host.get_stream(connection_id).expect("should find connection");
+    // let x = host.session().participants.get(&ParticipantId(0)).expect("should find participant");
+
     client.update();
 
     assert_eq!(
