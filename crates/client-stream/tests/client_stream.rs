@@ -177,6 +177,7 @@ fn predicted_steps() -> Result<(), ClientStreamError> {
         0x02, // Send Predicted steps
         0x00, 0x00, 0x00, 0x00, // Waiting for Tick ID
         0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Receive Mask for steps
+        0x00, 0x00, 0x00, 0x00, // Base Tick ID
         0x00, // number of player streams following
     ];
     assert_eq_slices(
@@ -215,11 +216,12 @@ fn predicted_steps() -> Result<(), ClientStreamError> {
         0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Receive Mask for steps
 
         // Predicted steps Header
+        0x00, 0x00, 0x00, 0x00, // Base TickId
+
         0x02, // number of player streams following
 
         0x01, // Local Player ID
-        0x00, 0x00, 0x00, 0x00, // Start TickId
-
+        0x00, // Tick ID Offset
         0x02, // Predicted Step Count following
 
         // Predicted Steps
@@ -231,7 +233,7 @@ fn predicted_steps() -> Result<(), ClientStreamError> {
         0xFF, 0xF6, // FFF6 = -10 (signed 16-bit two’s complement notation)
     
         0x02, // Local Player ID
-        0x00, 0x00, 0x00, 0x00, // Start TickId for Local Player 2 (usually the same as for player 1)
+        0x00, // Tick ID Offset for Local Player 2 (usually the same as for player 1)
         0x01, // Predicted Step Count following
         0x05, // Step::Custom
         0x02, // SampleStep::Move Right
@@ -268,11 +270,13 @@ fn predicted_steps() -> Result<(), ClientStreamError> {
         0x00, 0x00, 0x00, 0x00, // Waiting for authoritative step for Tick ID
         0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Receive Mask for steps
 
+        0x00, 0x00, 0x00, 0x01, // Base TickId
+
         // Predicted steps Header
         0x01, // number of player streams following
 
         0x01, // Local Player 1 ID
-        0x00, 0x00, 0x00, 0x01, // Start TickId
+        0x00, // Tick ID Offset
 
         0x01, // Predicted Step Count following
 
@@ -328,10 +332,11 @@ fn predicted_steps() -> Result<(), ClientStreamError> {
         0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Receive Mask for steps
 
         // Predicted steps Header
+        0x00, 0x00, 0x00, 0x01, // Start TickId
         0x01, // number of player streams following
 
         0x01, // Local Player 1 ID
-        0x00, 0x00, 0x00, 0x01, // Start TickId
+        0x00, // TickID offset
 
         0x01, // Predicted Step Count following
 

@@ -482,6 +482,7 @@ pub struct StepsRequest<StepT: Clone + Serialize + Deserialize + Debug> {
 impl<StepT: Clone + Serialize + Deserialize + Debug> StepsRequest<StepT> {
     pub fn to_stream(&self, stream: &mut impl WriteOctetStream) -> io::Result<()> {
         self.ack.to_stream(stream)?;
+
         self.combined_predicted_steps.serialize(stream)?;
         Ok(())
     }

@@ -1,3 +1,4 @@
+use crate::host_to_client::TickIdUtil;
 use flood_rs::{Deserialize, ReadOctetStream, Serialize, WriteOctetStream};
 use nimble_participant::ParticipantId;
 use nimble_step_types::StepForParticipants;
@@ -15,14 +16,16 @@ pub struct CombinedSteps<StepT: Deserialize + Serialize + Debug + Clone> {
 
 impl<StepT: Deserialize + Serialize + Debug + Clone> Serialize for CombinedSteps<StepT> {
     fn serialize(&self, stream: &mut impl WriteOctetStream) -> io::Result<()> {
+        TickIdUtil::to_stream(self.tick_id, stream)?;
         self.to_internal().serialize(stream)
     }
 }
 
 impl<StepT: Deserialize + Serialize + Debug + Clone> Deserialize for CombinedSteps<StepT> {
     fn deserialize(stream: &mut impl ReadOctetStream) -> io::Result<Self> {
+        let start_tick_id = TickIdUtil::from_stream(stream)?;
         let internal = InternalAllParticipantVectors::deserialize(stream)?;
-        Ok(Self::from_internal(&internal, TickId(Default::default())))
+        Ok(Self::from_internal(&internal, start_tick_id))
     }
 }
 
