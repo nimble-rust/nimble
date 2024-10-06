@@ -1,4 +1,4 @@
-on: [push]
+on: [ push ]
 
 name: Rust Build
 
@@ -22,3 +22,18 @@ jobs:
           cargo test --color=always -- --nocapture --color=always
           cargo test --color=always -- --nocapture --color=always
           cargo test --color=always -- --nocapture --color=always
+      - run: rustup install nightly
+
+      # - run: cargo +nightly update -Zminimal-versions
+      # - run: cargo +nightly test
+
+      - run: cargo +nightly update -Zdirect-minimal-versions
+      - run: cargo +nightly test
+
+      - run: cargo install cargo-llvm-cov
+      - run: cargo llvm-cov --locked --all-features --lcov --output-path lcov.info
+      - name: Upload to codecov.io
+        uses: codecov/codecov-action@v4
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          fail_ci_if_error: true
