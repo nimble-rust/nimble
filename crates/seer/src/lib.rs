@@ -42,7 +42,7 @@ where
 impl<Callback, CombinedStepT> Seer<Callback, CombinedStepT>
 where
     Callback: SeerCallback<CombinedStepT>,
-    CombinedStepT: std::clone::Clone + std::fmt::Debug,
+    CombinedStepT: Clone + Debug,
 {
     pub fn new() -> Self {
         Seer {

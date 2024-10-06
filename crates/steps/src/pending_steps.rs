@@ -60,7 +60,6 @@ impl<T: Clone> PendingSteps<T> {
     pub fn set(&mut self, tick_id: TickId, step: T) -> Result<(), String> {
         let index_in_discoid = tick_id.value() - self.front_tick_id.value();
         if index_in_discoid >= self.capacity as u32 {
-            // self.steps.capacity()
             return Err("pending_steps: out of scope".to_string());
         }
 

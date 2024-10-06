@@ -5,4 +5,3 @@
 pub mod combinator;
 mod combine;
 pub mod logic;
-pub mod state;

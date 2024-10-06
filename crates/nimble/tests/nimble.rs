@@ -12,8 +12,6 @@ use nimble_steps::Step;
 use std::fmt::Debug;
 use tick_id::TickId;
 
-mod types;
-
 fn communicate<
     SampleState: BufferDeserializer,
     SampleStep: Clone + Deserialize + Debug + Eq + PartialEq,
