@@ -6,9 +6,9 @@ use flood_rs::prelude::*;
 use log::info;
 use nimble_assent::AssentCallback;
 use nimble_participant::ParticipantId;
-use nimble_participant_steps::ParticipantSteps;
 use nimble_rectify::{Rectify, RectifyCallback};
 use nimble_seer::SeerCallback;
+use nimble_step_types::StepForParticipants;
 use nimble_steps::Step;
 use nimble_steps::Step::Custom;
 use std::io;
@@ -20,9 +20,9 @@ pub struct TestGame {
 }
 
 impl TestGame {
-    pub fn on_tick(&mut self, steps: &ParticipantSteps<TestGameStep>) {
+    pub fn on_tick(&mut self, steps: &StepForParticipants<Step<TestGameStep>>) {
         info!("sim tick!");
-        for (_, step) in steps.steps.iter() {
+        for (_, step) in &steps.combined_step {
             match step {
                 Custom(TestGameStep::MoveLeft) => self.position_x -= 1,
                 Custom(TestGameStep::MoveRight) => self.position_x += 1,
@@ -73,16 +73,16 @@ impl RectifyCallback for CombinedGame {
     }
 }
 
-impl SeerCallback<ParticipantSteps<TestGameStep>> for CombinedGame {
-    fn on_tick(&mut self, combined_step: &ParticipantSteps<TestGameStep>) {
+impl SeerCallback<StepForParticipants<Step<TestGameStep>>> for CombinedGame {
+    fn on_tick(&mut self, combined_step: &StepForParticipants<Step<TestGameStep>>) {
         info!("predict tick!");
 
         self.predicted_game.on_tick(combined_step);
     }
 }
 
-impl AssentCallback<ParticipantSteps<TestGameStep>> for CombinedGame {
-    fn on_tick(&mut self, combined_step: &ParticipantSteps<TestGameStep>) {
+impl AssentCallback<StepForParticipants<Step<TestGameStep>>> for CombinedGame {
+    fn on_tick(&mut self, combined_step: &StepForParticipants<Step<TestGameStep>>) {
         info!("authoritative tick!");
         self.authoritative_game.on_tick(combined_step);
     }
@@ -98,9 +98,12 @@ fn one_prediction() {
         predicted_game,
     };
 
-    let mut rectify = Rectify::<CombinedGame, ParticipantSteps<TestGameStep>>::new();
-    let mut participant_step_combined = ParticipantSteps::<TestGameStep>::new();
-    participant_step_combined.insert(ParticipantId(0), Custom(TestGameStep::MoveLeft));
+    let mut rectify = Rectify::<CombinedGame, StepForParticipants<Step<TestGameStep>>>::new();
+    let mut participant_step_combined = StepForParticipants::<Step<TestGameStep>>::new();
+    participant_step_combined
+        .combined_step
+        .insert(ParticipantId(0), Custom(TestGameStep::MoveLeft))
+        .expect("Should be able to move left");
 
     rectify.push_predicted(participant_step_combined);
 
@@ -120,16 +123,22 @@ fn one_authoritative_and_one_prediction() {
         predicted_game,
     };
 
-    let mut rectify = Rectify::<CombinedGame, ParticipantSteps<TestGameStep>>::new();
+    let mut rectify = Rectify::<CombinedGame, StepForParticipants<Step<TestGameStep>>>::new();
 
-    let mut authoritative_step_combined = ParticipantSteps::<TestGameStep>::new();
-    authoritative_step_combined.insert(ParticipantId(0), Custom(TestGameStep::MoveRight));
+    let mut authoritative_step_combined = StepForParticipants::<Step<TestGameStep>>::new();
+    authoritative_step_combined
+        .combined_step
+        .insert(ParticipantId(0), Custom(TestGameStep::MoveRight))
+        .expect("should work");
     rectify
         .push_authoritative_with_check(TickId(0), authoritative_step_combined)
         .expect("should work");
 
-    let mut predicted_step_combined = ParticipantSteps::<TestGameStep>::new();
-    predicted_step_combined.insert(ParticipantId(0), Custom(TestGameStep::MoveLeft));
+    let mut predicted_step_combined = StepForParticipants::<Step<TestGameStep>>::new();
+    predicted_step_combined
+        .combined_step
+        .insert(ParticipantId(0), Custom(TestGameStep::MoveLeft))
+        .expect("should work");
 
     rectify.push_predicted(predicted_step_combined);
     rectify.update(&mut callbacks);
@@ -148,17 +157,23 @@ fn one_authoritative_and_x_predictions() {
         predicted_game,
     };
 
-    let mut rectify = Rectify::<CombinedGame, ParticipantSteps<TestGameStep>>::new();
+    let mut rectify = Rectify::<CombinedGame, StepForParticipants<Step<TestGameStep>>>::new();
 
     assert_eq!(rectify.waiting_for_authoritative_tick_id(), None);
-    let mut authoritative_step_combined = ParticipantSteps::<TestGameStep>::new();
-    authoritative_step_combined.insert(ParticipantId(0), Custom(TestGameStep::MoveRight));
+    let mut authoritative_step_combined = StepForParticipants::<Step<TestGameStep>>::new();
+    authoritative_step_combined
+        .combined_step
+        .insert(ParticipantId(0), Custom(TestGameStep::MoveRight))
+        .expect("should work");
     rectify
         .push_authoritative_with_check(TickId(0), authoritative_step_combined)
         .expect("should work");
     assert_eq!(rectify.waiting_for_authoritative_tick_id(), Some(TickId(1)));
-    let mut predicted_step_combined = ParticipantSteps::<TestGameStep>::new();
-    predicted_step_combined.insert(ParticipantId(0), Custom(TestGameStep::MoveLeft));
+    let mut predicted_step_combined = StepForParticipants::<Step<TestGameStep>>::new();
+    predicted_step_combined
+        .combined_step
+        .insert(ParticipantId(0), Custom(TestGameStep::MoveLeft))
+        .expect("should work");
 
     rectify.push_predicted(predicted_step_combined.clone());
     rectify.push_predicted(predicted_step_combined.clone());

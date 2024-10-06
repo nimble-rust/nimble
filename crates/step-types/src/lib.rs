@@ -5,11 +5,17 @@
 use nimble_participant::ParticipantId;
 use seq_map::SeqMap;
 
-#[derive(Debug, Eq, PartialEq, Clone)]
+#[derive(Debug, Default, Eq, PartialEq, Clone)]
 pub struct StepForParticipants<StepT> {
     pub combined_step: SeqMap<ParticipantId, StepT>,
 }
 impl<StepT> StepForParticipants<StepT> {
+    pub fn new() -> Self {
+        Self {
+            combined_step: SeqMap::new(),
+        }
+    }
+
     pub fn is_empty(&self) -> bool {
         self.combined_step.is_empty()
     }

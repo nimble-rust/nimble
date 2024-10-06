@@ -4,22 +4,23 @@
  */
 use crate::combinator::Combinator;
 use nimble_participant::ParticipantId;
-use nimble_participant_steps::ParticipantSteps;
-use nimble_steps::Steps;
+
+use nimble_step_types::StepForParticipants;
+use nimble_steps::Step;
 use tick_id::TickId;
 
 #[allow(unused)]
 pub struct HostCombinator<T: std::clone::Clone> {
     combinator: Combinator<T>,
-    authoritative_steps: Steps<ParticipantSteps<T>>,
+    authoritative_steps: Vec<StepForParticipants<Step<T>>>,
 }
 
 #[allow(unused)]
-impl<T: std::clone::Clone> HostCombinator<T> {
+impl<T: Clone> HostCombinator<T> {
     pub fn new() -> Self {
         Self {
             combinator: Combinator::<T>::new(TickId(0)),
-            authoritative_steps: Steps::<ParticipantSteps<T>>::new(),
+            authoritative_steps: Vec::new(),
         }
     }
 
@@ -38,9 +39,5 @@ impl<T: std::clone::Clone> HostCombinator<T> {
                 break;
             }
         }
-    }
-
-    pub fn get_steps_from(&self, _: TickId) -> Vec<ParticipantSteps<T>> {
-        todo!()
     }
 }
