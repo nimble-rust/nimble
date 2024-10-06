@@ -5,7 +5,6 @@ members = [
     "crates/host-logic",
     "crates/blob-stream",
     "crates/participant",
-    "crates/participant-steps",
     "crates/steps",
     "crates/seer",
     "crates/rectify",
@@ -19,6 +18,10 @@ members = [
     "crates/sample-game-type",
     "crates/client-front",
     "crates/protocol-header",
-    "crates/client", "crates/host-stream", "crates/datagram-chunker", "crates/host-front", "crates/app-version",
+    "crates/client",
+    "crates/host-stream",
+    "crates/datagram-chunker",
+    "crates/host-front",
+    "crates/app-version",
 ]
 resolver = "2"
