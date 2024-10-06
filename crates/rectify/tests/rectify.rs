@@ -12,6 +12,7 @@ use nimble_seer::SeerCallback;
 use nimble_steps::Step;
 use nimble_steps::Step::Custom;
 use std::io;
+use tick_id::TickId;
 
 #[derive(Clone)]
 pub struct TestGame {
@@ -123,7 +124,9 @@ fn one_authoritative_and_one_prediction() {
 
     let mut authoritative_step_combined = ParticipantSteps::<TestGameStep>::new();
     authoritative_step_combined.insert(ParticipantId(0), Custom(TestGameStep::MoveRight));
-    rectify.push_authoritative(authoritative_step_combined);
+    rectify
+        .push_authoritative_with_check(TickId(0), authoritative_step_combined)
+        .expect("should work");
 
     let mut predicted_step_combined = ParticipantSteps::<TestGameStep>::new();
     predicted_step_combined.insert(ParticipantId(0), Custom(TestGameStep::MoveLeft));
@@ -147,10 +150,13 @@ fn one_authoritative_and_x_predictions() {
 
     let mut rectify = Rectify::<CombinedGame, ParticipantSteps<TestGameStep>>::new();
 
+    assert_eq!(rectify.waiting_for_authoritative_tick_id(), None);
     let mut authoritative_step_combined = ParticipantSteps::<TestGameStep>::new();
     authoritative_step_combined.insert(ParticipantId(0), Custom(TestGameStep::MoveRight));
-    rectify.push_authoritative(authoritative_step_combined);
-
+    rectify
+        .push_authoritative_with_check(TickId(0), authoritative_step_combined)
+        .expect("should work");
+    assert_eq!(rectify.waiting_for_authoritative_tick_id(), Some(TickId(1)));
     let mut predicted_step_combined = ParticipantSteps::<TestGameStep>::new();
     predicted_step_combined.insert(ParticipantId(0), Custom(TestGameStep::MoveLeft));
 

@@ -81,18 +81,6 @@ impl<Game: RectifyCallbacks<StepT>, StepT: Clone + std::fmt::Debug> Rectify<Game
     /// # Arguments
     ///
     /// * `step` - The authoritative step to be pushed.
-    pub fn push_authoritative(&mut self, step: StepT) {
-        self.assent.push(step);
-        self.seer
-            .received_authoritative(self.assent.end_tick_id().unwrap());
-    }
-
-    /// Pushes an authoritative step into the [`Assent`] component. This method is used to
-    /// add new steps that have been determined by the authoritative host.
-    ///
-    /// # Arguments
-    ///
-    /// * `step` - The authoritative step to be pushed.
     pub fn push_authoritative_with_check(
         &mut self,
         step_for_tick_id: TickId,
