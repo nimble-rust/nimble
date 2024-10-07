@@ -2,5 +2,8 @@
 name = "app-version"
 version = "0.0.1"
 edition = "2021"
+license = "MIT"
+description = "Application Version"
+repository = "https://github.com/nimble-rust/nimble"
 
 [dependencies]
