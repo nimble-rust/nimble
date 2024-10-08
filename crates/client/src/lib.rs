@@ -60,8 +60,15 @@ impl From<ClientFrontError> for ClientError {
     }
 }
 
+pub struct MinMaxValue<T> {
+    pub min: T,
+    pub avg: f32,
+    pub max: T,
+}
+
 pub struct MetricsInDirection {
     pub datagrams_per_second: f32,
+    pub octets_per_second: f32,
 }
 
 pub struct CombinedMetrics {
@@ -137,9 +144,11 @@ impl<
         CombinedMetrics {
             outgoing: MetricsInDirection {
                 datagrams_per_second: self.client.out_datagrams_per_second(),
+                octets_per_second: self.client.out_octets_per_second(),
             },
             incoming: MetricsInDirection {
                 datagrams_per_second: self.client.in_datagrams_per_second(),
+                octets_per_second: self.client.in_octets_per_second(),
             },
         }
     }

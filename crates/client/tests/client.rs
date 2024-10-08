@@ -223,7 +223,10 @@ fn client_to_host() -> Result<(), ClientError> {
     );
 
     assert_eq!(client.metrics().incoming.datagrams_per_second, 12.5);
+    assert_eq!(client.metrics().incoming.octets_per_second, 2050.0); // 16 kbps. (normal maximum is 120 Kbps, extreme is 575 Kbps)
+
     assert_eq!(client.metrics().outgoing.datagrams_per_second, 12.5);
+    assert_eq!(client.metrics().outgoing.octets_per_second, 350.0); // 2.8 Kbps
 
     Ok(())
 }
