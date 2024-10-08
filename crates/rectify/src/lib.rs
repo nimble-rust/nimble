@@ -66,19 +66,10 @@ impl<Game: RectifyCallbacks<StepT>, StepT: Clone + Debug + std::fmt::Display> De
     }
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Default, Debug, Copy, Clone)]
 pub struct Settings {
     pub assent: nimble_assent::Settings,
     pub seer: nimble_seer::Settings,
-}
-
-impl Default for Settings {
-    fn default() -> Self {
-        Self {
-            assent: nimble_assent::Settings::default(),
-            seer: nimble_seer::Settings::default(),
-        }
-    }
 }
 
 impl<Game: RectifyCallbacks<StepT>, StepT: Clone + std::fmt::Debug + std::fmt::Display>
@@ -90,8 +81,8 @@ impl<Game: RectifyCallbacks<StepT>, StepT: Clone + std::fmt::Debug + std::fmt::D
     ///
     /// A new `Rectify` instance.
     pub fn new(settings: Settings) -> Self {
-        let assent = Assent::new(settings.assent.clone());
-        let seer = Seer::new(settings.seer.clone());
+        let assent = Assent::new(settings.assent);
+        let seer = Seer::new(settings.seer);
 
         Self {
             settings,
