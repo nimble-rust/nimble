@@ -346,9 +346,10 @@ impl<StateT: BufferDeserializer, StepT: Clone + Deserialize + Serialize + Debug>
                 if current_authoritative_tick_id
                     == self.incoming_authoritative_steps.expected_write_tick_id()
                 {
-                    self.incoming_authoritative_steps
-                        .push_with_check(current_authoritative_tick_id, combined_auth_step.clone())
-                        .map_err(ClientErrorKind::StepsError)?;
+                    self.incoming_authoritative_steps.push_with_check(
+                        current_authoritative_tick_id,
+                        combined_auth_step.clone(),
+                    )?;
                     accepted_count += 1;
                 }
                 current_authoritative_tick_id += 1;
@@ -407,14 +408,11 @@ impl<StateT: BufferDeserializer, StepT: Clone + Deserialize + Serialize + Debug>
     ) -> Result<(), ClientErrorKind> {
         match self.phase {
             ClientLogicPhase::DownloadingState(_) => {
-                self.blob_stream_client
-                    .receive(blob_stream_command)
-                    .map_err(ClientErrorKind::FrontLogicErr)?;
+                self.blob_stream_client.receive(blob_stream_command)?;
                 if let Some(blob_ready) = self.blob_stream_client.blob() {
                     debug!("blob stream received, phase is set to SendPredictedSteps");
                     self.phase = ClientLogicPhase::SendPredictedSteps;
-                    let (deserialized, _) =
-                        StateT::deserialize(blob_ready).map_err(ClientErrorKind::IoErr)?;
+                    let (deserialized, _) = StateT::deserialize(blob_ready)?;
                     self.state = Some(deserialized);
                 }
             }

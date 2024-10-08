@@ -168,12 +168,8 @@ impl<StepT: Clone + Eq + Debug + Deserialize + Serialize> Connection<StepT> {
             .out_blob_stream
             .as_mut()
             .ok_or(HostLogicError::NoDownloadNow)?;
-        blob_stream
-            .receive(blob_stream_command)
-            .map_err(HostLogicError::BlobStreamErr)?;
-        let blob_commands = blob_stream
-            .send(now)
-            .map_err(HostLogicError::BlobStreamErr)?;
+        blob_stream.receive(blob_stream_command)?;
+        let blob_commands = blob_stream.send(now)?;
 
         let converted_commands: Vec<_> = blob_commands
             .into_iter()
@@ -271,12 +267,7 @@ impl<StepT: Clone + Eq + Debug + Deserialize + Serialize> Connection<StepT> {
         // Since most datagram transports have a very low packet drop rate,
         // this implementation is optimized for the high likelihood of datagram delivery.
         // So we start including the first blob commands right away
-        let blob_commands = self
-            .out_blob_stream
-            .as_mut()
-            .unwrap()
-            .send(now)
-            .map_err(HostLogicError::BlobStreamErr)?;
+        let blob_commands = self.out_blob_stream.as_mut().unwrap().send(now)?;
         let converted_blob_commands: Vec<_> = blob_commands
             .into_iter()
             .map(HostToClientCommands::BlobStreamChannel)
@@ -335,6 +326,12 @@ pub enum HostLogicError {
 impl From<CombinatorError> for HostLogicError {
     fn from(err: CombinatorError) -> Self {
         Self::CombinatorError(err)
+    }
+}
+
+impl From<OutStreamError> for HostLogicError {
+    fn from(err: OutStreamError) -> Self {
+        Self::BlobStreamErr(err)
     }
 }
 

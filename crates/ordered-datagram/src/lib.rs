@@ -107,6 +107,12 @@ pub enum DatagramOrderInError {
     },
 }
 
+impl From<io::Error> for DatagramOrderInError {
+    fn from(e: io::Error) -> Self {
+        DatagramOrderInError::IoError(e)
+    }
+}
+
 #[derive(Debug, Default, Clone, Copy)]
 pub struct OrderedIn {
     expected_sequence: DatagramId,
@@ -117,8 +123,7 @@ impl OrderedIn {
         &mut self,
         stream: &mut impl ReadOctetStream,
     ) -> Result<DatagramIdDiff, DatagramOrderInError> {
-        let potential_expected_or_successor =
-            DatagramId::from_stream(stream).map_err(DatagramOrderInError::IoError)?;
+        let potential_expected_or_successor = DatagramId::from_stream(stream)?;
 
         let diff = self.expected_sequence.sub(potential_expected_or_successor);
         if diff.is_equal_or_successor() {

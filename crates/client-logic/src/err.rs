@@ -4,6 +4,7 @@
  */
 use err_rs::{most_severe_error, ErrorLevel, ErrorLevelProvider};
 use nimble_blob_stream::in_logic_front::FrontLogicError;
+use nimble_blob_stream::prelude::BlobError;
 use nimble_protocol::ClientRequestId;
 use nimble_steps::StepsError;
 use std::{fmt, io};
@@ -47,9 +48,34 @@ pub enum ClientErrorKind {
     WrongDownloadRequestId,
     DownloadResponseWasUnexpected,
     UnexpectedBlobChannelCommand,
+    BlobError(BlobError),
     FrontLogicErr(FrontLogicError),
     StepsError(StepsError),
     ReceivedConnectResponseWhenNotConnecting,
+}
+
+impl From<BlobError> for ClientErrorKind {
+    fn from(err: BlobError) -> Self {
+        Self::BlobError(err)
+    }
+}
+
+impl From<StepsError> for ClientErrorKind {
+    fn from(err: StepsError) -> Self {
+        Self::StepsError(err)
+    }
+}
+
+impl From<FrontLogicError> for ClientErrorKind {
+    fn from(err: FrontLogicError) -> Self {
+        Self::FrontLogicErr(err)
+    }
+}
+
+impl From<io::Error> for ClientErrorKind {
+    fn from(err: io::Error) -> Self {
+        Self::IoErr(err)
+    }
 }
 
 impl ErrorLevelProvider for ClientErrorKind {
@@ -63,6 +89,7 @@ impl ErrorLevelProvider for ClientErrorKind {
             Self::FrontLogicErr(err) => err.error_level(),
             Self::StepsError(_) => ErrorLevel::Critical,
             Self::ReceivedConnectResponseWhenNotConnecting => ErrorLevel::Info,
+            Self::BlobError(_) => ErrorLevel::Warning,
         }
     }
 }
@@ -88,6 +115,7 @@ impl fmt::Display for ClientErrorKind {
             Self::ReceivedConnectResponseWhenNotConnecting => {
                 write!(f, "ReceivedConnectResponseWhenNotConnecting")
             }
+            Self::BlobError(_) => write!(f, "BlobError"),
         }
     }
 }

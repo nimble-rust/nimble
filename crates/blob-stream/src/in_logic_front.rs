@@ -32,6 +32,12 @@ impl ErrorLevelProvider for FrontLogicError {
     }
 }
 
+impl From<BlobError> for FrontLogicError {
+    fn from(err: BlobError) -> FrontLogicError {
+        FrontLogicError::BlobError(err)
+    }
+}
+
 pub struct Info {
     pub transfer_id: TransferId,
     pub fixed_chunk_size: usize,
@@ -160,10 +166,7 @@ impl FrontLogic {
                         chunk_data.data.chunk_index,
                         chunk_data.transfer_id.0
                     );
-                    state
-                        .logic
-                        .receive(&chunk_data.data)
-                        .map_err(FrontLogicError::BlobError)?;
+                    state.logic.receive(&chunk_data.data)?;
                     if state.logic.is_complete() {
                         trace!("received all chunks!")
                     }
