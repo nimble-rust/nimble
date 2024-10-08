@@ -116,8 +116,8 @@ impl<Game: RectifyCallbacks<StepT>, StepT: Clone + std::fmt::Debug + std::fmt::D
         Ok(())
     }
 
-    pub fn waiting_for_authoritative_tick_id(&self) -> Option<TickId> {
-        self.assent.end_tick_id().map(|end_tick_id| end_tick_id + 1)
+    pub fn waiting_for_authoritative_tick_id(&self) -> TickId {
+        self.assent.expecting_tick_id()
     }
 
     pub fn push_authoritatives_with_check(

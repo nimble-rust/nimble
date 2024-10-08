@@ -75,6 +75,10 @@ where
         self.steps.push(steps);
     }
 
+    pub fn expecting_tick_id(&self) -> TickId {
+        self.steps.expected_write_tick_id()
+    }
+
     pub fn end_tick_id(&self) -> Option<TickId> {
         self.steps.back_tick_id()
     }

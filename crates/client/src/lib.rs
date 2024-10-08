@@ -5,14 +5,12 @@
 use app_version::VersionProvider;
 use err_rs::{ErrorLevel, ErrorLevelProvider};
 use flood_rs::{BufferDeserializer, Deserialize, Serialize};
-use monotonic_time_rs::InstantMonotonicClock;
+use monotonic_time_rs::Millis;
 use nimble_client_front::{ClientFront, ClientFrontError, LocalPlayer};
 use nimble_rectify::{Rectify, RectifyCallbacks, RectifyError};
 use nimble_step::Step;
 use nimble_step_types::{LocalIndex, StepForParticipants};
-use std::cell::RefCell;
 use std::fmt::Debug;
-use std::rc::Rc;
 use tick_id::TickId;
 
 pub trait GameCallbacks<StepT: std::fmt::Display>:
@@ -25,16 +23,6 @@ where
     T: RectifyCallbacks<StepForParticipants<Step<StepT>>> + VersionProvider + BufferDeserializer,
     StepT: std::fmt::Display,
 {
-}
-
-impl<
-        StepT: Clone + Deserialize + Serialize + Debug + std::fmt::Display,
-        GameT: GameCallbacks<StepT> + std::fmt::Debug,
-    > Default for Client<GameT, StepT>
-{
-    fn default() -> Self {
-        Self::new()
-    }
 }
 
 #[derive(Debug)]
@@ -72,6 +60,15 @@ impl From<ClientFrontError> for ClientError {
     }
 }
 
+pub struct MetricsInDirection {
+    pub datagrams_per_second: f32,
+}
+
+pub struct CombinedMetrics {
+    pub outgoing: MetricsInDirection,
+    pub incoming: MetricsInDirection,
+}
+
 pub struct Client<
     GameT: GameCallbacks<StepT> + std::fmt::Debug,
     StepT: Clone + Deserialize + Serialize + Debug + std::fmt::Display,
@@ -87,12 +84,10 @@ impl<
         GameT: GameCallbacks<StepT> + std::fmt::Debug,
     > Client<GameT, StepT>
 {
-    pub fn new() -> Self {
-        let clock = Rc::new(RefCell::new(InstantMonotonicClock::new()));
-
+    pub fn new(now: Millis) -> Self {
         let deterministic_app_version = GameT::version();
         Self {
-            client: ClientFront::<GameT, StepT>::new(deterministic_app_version, clock),
+            client: ClientFront::<GameT, StepT>::new(deterministic_app_version, now),
             tick_duration_ms: 16,
             rectify: Rectify::default(),
         }
@@ -103,12 +98,12 @@ impl<
         self
     }
 
-    pub fn send(&mut self) -> Result<Vec<Vec<u8>>, ClientError> {
-        Ok(self.client.send()?)
+    pub fn send(&mut self, now: Millis) -> Result<Vec<Vec<u8>>, ClientError> {
+        Ok(self.client.send(now)?)
     }
 
-    pub fn receive(&mut self, datagram: &[u8]) -> Result<(), ClientError> {
-        self.client.receive(datagram)?;
+    pub fn receive(&mut self, millis: Millis, datagram: &[u8]) -> Result<(), ClientError> {
+        self.client.receive(millis, datagram)?;
         //let auth_steps = self.client.pop_all_authoritative_steps()?;
         //trace!("found auth_steps: {}", auth_steps);
         Ok(())
@@ -118,18 +113,35 @@ impl<
         &self.rectify
     }
 
-    pub fn update(&mut self) -> Result<(), ClientError> {
-        self.client.update();
+    pub fn update(&mut self, now: Millis) -> Result<(), ClientError> {
+        self.client.update(now);
 
-        let (tick_id, auth_steps) = self.client.pop_all_authoritative_steps()?;
+        let (first_tick_id_in_vector, auth_steps) = self.client.pop_all_authoritative_steps()?;
+        let mut current_tick_id = first_tick_id_in_vector;
+        for auth_step in auth_steps {
+            if current_tick_id == self.rectify.waiting_for_authoritative_tick_id() {
+                self.rectify
+                    .push_authoritative_with_check(current_tick_id, auth_step)?;
+            }
+            current_tick_id = TickId(current_tick_id.0 + 1);
+        }
 
-        self.rectify
-            .push_authoritatives_with_check(tick_id, auth_steps.as_slice())?;
         if let Some(game_state) = self.client.game_state_mut() {
             self.rectify.update(game_state);
         }
 
         Ok(())
+    }
+
+    pub fn metrics(&self) -> CombinedMetrics {
+        CombinedMetrics {
+            outgoing: MetricsInDirection {
+                datagrams_per_second: self.client.out_datagrams_per_second(),
+            },
+            incoming: MetricsInDirection {
+                datagrams_per_second: self.client.in_datagrams_per_second(),
+            },
+        }
     }
 
     pub fn game_state(&self) -> Option<&GameT> {

@@ -169,7 +169,7 @@ fn one_authoritative_and_x_predictions() {
 
     let mut rectify = Rectify::<CombinedGame, StepForParticipants<Step<TestGameStep>>>::default();
 
-    assert_eq!(rectify.waiting_for_authoritative_tick_id(), None);
+    assert_eq!(rectify.waiting_for_authoritative_tick_id(), TickId(0));
     let mut authoritative_step_combined = StepForParticipants::<Step<TestGameStep>>::new();
     authoritative_step_combined
         .combined_step
@@ -178,7 +178,7 @@ fn one_authoritative_and_x_predictions() {
     rectify
         .push_authoritative_with_check(TickId(0), authoritative_step_combined)
         .expect("should work");
-    assert_eq!(rectify.waiting_for_authoritative_tick_id(), Some(TickId(1)));
+    assert_eq!(rectify.waiting_for_authoritative_tick_id(), TickId(1));
     let mut predicted_step_combined = StepForParticipants::<Step<TestGameStep>>::new();
     predicted_step_combined
         .combined_step

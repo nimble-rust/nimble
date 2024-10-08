@@ -8,16 +8,14 @@ use flood_rs::{BufferDeserializer, Deserialize, Serialize};
 use hexify::format_hex;
 use log::trace;
 use metricator::{AggregateMetric, RateMetric};
-use monotonic_time_rs::{MillisLow16, MonotonicClock};
+use monotonic_time_rs::{Millis, MillisLow16};
 use nimble_client_stream::client::{AuthStepVec, ClientStream, ClientStreamError};
 pub use nimble_client_stream::LocalPlayer;
 use nimble_ordered_datagram::{DatagramOrderInError, OrderedIn, OrderedOut};
 use nimble_protocol_header::ClientTime;
 use nimble_step_types::{LocalIndex, StepForParticipants};
-use std::cell::RefCell;
 use std::fmt::Debug;
 use std::io;
-use std::rc::Rc;
 use tick_id::TickId;
 
 #[derive(Debug)]
@@ -63,7 +61,6 @@ pub struct ClientFront<
     StepT: Clone + Deserialize + Serialize + Debug + std::fmt::Display,
 > {
     pub client: ClientStream<StateT, StepT>,
-    clock: Rc<RefCell<dyn MonotonicClock>>, //pub clock: InstantMonotonicClock,
     ordered_datagram_out: OrderedOut,
     ordered_in: OrderedIn,
     latency: AggregateMetric<u16>,
@@ -79,13 +76,8 @@ impl<
         StepT: Clone + Deserialize + Serialize + Debug + std::fmt::Display,
     > ClientFront<StateT, StepT>
 {
-    pub fn new(
-        deterministic_simulation_version: app_version::Version,
-        clock: Rc<RefCell<dyn MonotonicClock>>,
-    ) -> Self {
-        let now = clock.borrow_mut().now();
+    pub fn new(deterministic_simulation_version: app_version::Version, now: Millis) -> Self {
         Self {
-            clock,
             client: ClientStream::<StateT, StepT>::new(deterministic_simulation_version),
             ordered_datagram_out: Default::default(),
             ordered_in: Default::default(),
@@ -100,7 +92,7 @@ impl<
         }
     }
 
-    pub fn send(&mut self) -> Result<Vec<Vec<u8>>, ClientFrontError> {
+    pub fn send(&mut self, now: Millis) -> Result<Vec<Vec<u8>>, ClientFrontError> {
         let mut packet = [0u8; 1200];
         let mut out_datagrams: Vec<Vec<u8>> = vec![];
 
@@ -110,7 +102,6 @@ impl<
 
             // Serialize
             self.ordered_datagram_out.to_stream(&mut stream)?; // Ordered datagrams
-            let now = self.clock.borrow_mut().now();
             let client_time = ClientTime::new(now.to_lower());
             client_time.serialize(&mut stream)?;
 
@@ -129,8 +120,7 @@ impl<
         Ok(out_datagrams)
     }
 
-    pub fn update(&mut self) {
-        let now = self.clock.borrow_mut().now();
+    pub fn update(&mut self, now: Millis) {
         self.in_datagrams_per_second.update(now);
         self.in_octets_per_second.update(now);
         self.out_datagrams_per_second.update(now);
@@ -156,7 +146,7 @@ impl<
         Ok(self.client.pop_all_authoritative_steps()?)
     }
 
-    pub fn receive(&mut self, datagram: &[u8]) -> Result<(), ClientFrontError> {
+    pub fn receive(&mut self, now: Millis, datagram: &[u8]) -> Result<(), ClientFrontError> {
         trace!("client-front received\n{}", format_hex(datagram));
         let mut in_stream = InOctetStream::new(datagram);
         let dropped_packets = self.ordered_in.read_and_verify(&mut in_stream)?;
@@ -169,7 +159,6 @@ impl<
 
         let low_16 = client_time.inner() as MillisLow16;
 
-        let now = self.clock.borrow_mut().now();
         let earlier = now
             .from_lower(low_16)
             .ok_or_else(|| ClientFrontError::Unexpected("from_lower_error".to_string()))?;

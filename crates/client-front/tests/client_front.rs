@@ -4,43 +4,18 @@
  */
 use hexify::{assert_eq_slices, format_hex};
 use log::info;
-use monotonic_time_rs::{Millis, MonotonicClock};
+use monotonic_time_rs::Millis;
 use nimble_client_front::{ClientFront, ClientFrontError};
 use nimble_sample_step::{SampleState, SampleStep};
-use std::cell::RefCell;
-use std::rc::Rc;
-
-#[derive(Clone)]
-pub struct FakeClock {
-    millis: Millis,
-}
-
-impl FakeClock {
-    pub fn set_time(&mut self, time: u64) {
-        self.millis = Millis::new(time);
-    }
-}
-
-impl MonotonicClock for FakeClock {
-    fn now(&self) -> Millis {
-        self.millis
-    }
-}
 
 #[test_log::test]
 pub fn client() -> Result<(), ClientFrontError> {
     let app_version = app_version::Version::new(0, 0, 0);
 
-    let fake_clock = FakeClock {
-        millis: Millis::new(0),
-    };
-    let concrete_clock: Rc<RefCell<FakeClock>> = Rc::new(RefCell::new(fake_clock));
-    let monotonic_clock = Rc::clone(&concrete_clock) as Rc<RefCell<dyn MonotonicClock>>;
+    let mut now = Millis::new(0);
+    let mut client = ClientFront::<SampleState, SampleStep>::new(app_version, now);
 
-    let mut client =
-        ClientFront::<SampleState, SampleStep>::new(app_version, Rc::clone(&monotonic_clock));
-
-    let datagrams = client.send()?;
+    let datagrams = client.send(now)?;
 
     let datagram = &datagrams[0];
 
@@ -59,9 +34,9 @@ pub fn client() -> Result<(), ClientFrontError> {
 
     assert_eq_slices(datagram, expected);
 
-    concrete_clock.borrow_mut().set_time(0xf000);
+    now = Millis::from(0xf000);
 
-    let datagrams_after = client.send()?;
+    let datagrams_after = client.send(now)?;
 
     info!("datagrams_after: {}", format_hex(&datagrams_after[0]));
 
@@ -90,11 +65,11 @@ pub fn client() -> Result<(), ClientFrontError> {
         ];
 
         let current_absolute_time = 0xf000 + 200u64 + index as u64 * 20;
-        concrete_clock.borrow_mut().set_time(current_absolute_time);
-        client.update();
-        client.receive(&feed)?;
+        now = Millis::new(current_absolute_time);
+        client.update(now);
+        client.receive(now, &feed)?;
         if index % 2 == 0 {
-            let _ = client.send()?;
+            let _ = client.send(now)?;
         }
     }
 

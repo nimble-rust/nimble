@@ -44,9 +44,9 @@ fn communicate<
     state_provider: &impl GameStateProvider,
     connection_id: HostConnectionId,
     client: &mut Client<GameT, SampleStep>,
+    now: &mut Millis,
     count: usize,
 ) -> Result<(), HostFrontError> {
-    let mut now = Millis::new(0);
     let mut tick_id = TickId::default();
     let config = DirectionConfig {
         decider: DeciderConfig {
@@ -93,7 +93,7 @@ fn communicate<
         }
 
         // Push to host
-        let to_host_datagrams = client.send().expect("send should work");
+        let to_host_datagrams = client.send(*now).expect("send should work");
         for to_host_datagram in to_host_datagrams {
             to_host.push(now.absolute_milliseconds(), &to_host_datagram);
         }
@@ -101,7 +101,7 @@ fn communicate<
         // Pop everything that is ready to host:
         while let Some(item) = to_host.pop_ready(now.absolute_milliseconds()) {
             let to_client_datagrams_result =
-                host.update(connection_id, now, item.data.as_slice(), state_provider);
+                host.update(connection_id, *now, item.data.as_slice(), state_provider);
 
             // Push to client
             if let Ok(to_client_datagrams) = to_client_datagrams_result {
@@ -122,13 +122,14 @@ fn communicate<
 
         // Pop everything that is ready for client
         while let Some(item) = to_client.pop_ready(now.absolute_milliseconds()) {
-            let result = client.receive(item.data.as_slice());
+            let result = client.receive(*now, item.data.as_slice());
             if let Err(err) = result {
                 log_err(&err);
             }
         }
 
-        now += MillisDuration::from_millis(16 * 5);
+        client.update(*now).expect("update should work");
+        *now += MillisDuration::from_millis(16 * 5);
     }
     Ok(())
 }
@@ -139,9 +140,10 @@ use seq_map::SeqMap;
 
 #[test_log::test]
 fn client_to_host() -> Result<(), ClientError> {
-    let mut client = Client::<SampleGame, SampleStep>::new();
+    let mut now = Millis::new(0);
+    let mut client = Client::<SampleGame, SampleStep>::new(now);
 
-    let to_host = client.send()?;
+    let to_host = client.send(now)?;
     assert_eq!(to_host.len(), 1);
 
     let application_version = SampleGame::version();
@@ -149,7 +151,6 @@ fn client_to_host() -> Result<(), ClientError> {
     let mut host = HostFront::<SampleStep>::new(application_version, TickId::new(0));
 
     let connection_id = host.create_connection().expect("should work");
-    let now = Millis::new(0);
 
     let initial_game_state = SampleGameState { x: -11, y: 42 };
 
@@ -175,23 +176,21 @@ fn client_to_host() -> Result<(), ClientError> {
         .expect("should find connection");
     assert_eq!(conn.phase(), &nimble_host_logic::logic::Phase::Connected);
 
-    communicate::<SampleGame>(&mut host, &state_provider, connection_id, &mut client, 31)
-        .expect("should communicate");
+    communicate::<SampleGame>(
+        &mut host,
+        &state_provider,
+        connection_id,
+        &mut client,
+        &mut now,
+        31,
+    )
+    .expect("should communicate");
 
     // let host_connection = host.get_stream(connection_id).expect("should find connection");
     // let x = host.session().participants.get(&ParticipantId(0)).expect("should find participant");
 
-    let rectify_settings = client.rectify().settings();
-
-    for _ in 0..2 {
-        client.update()?;
-    }
-
-    let expected_game_state = SampleGameState {
-        x: -11 + ((rectify_settings.assent.max_tick_count_per_update * 2) as i32),
-        y: 42,
-    };
-    let expected_predicted_state_with_no_prediction = initial_game_state;
+    let expected_game_state = SampleGameState { x: 15, y: 42 };
+    let expected_predicted_state_with_no_prediction = SampleGameState { x: -11 + 6, y: 42 };
 
     assert_eq!(
         client
@@ -210,7 +209,7 @@ fn client_to_host() -> Result<(), ClientError> {
     );
 
     for _ in 0..10 {
-        client.update()?;
+        client.update(now)?;
     }
 
     let expected_predicted_state_with_prediction = SampleGameState { x: 27, y: 42 };
@@ -222,6 +221,9 @@ fn client_to_host() -> Result<(), ClientError> {
             .predicted,
         expected_predicted_state_with_prediction
     );
+
+    assert_eq!(client.metrics().incoming.datagrams_per_second, 12.5);
+    assert_eq!(client.metrics().outgoing.datagrams_per_second, 12.5);
 
     Ok(())
 }
