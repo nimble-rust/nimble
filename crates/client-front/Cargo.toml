@@ -15,7 +15,7 @@ metricator = "0.0.2"
 app-version = "0.0.2"
 nimble-step-types = { path = "../step-types", version = "0.0.12-dev" }
 tick-id = "0.0.7"
-err-rs  = "0.0.2"
+err-rs = "0.0.4"
 hexify = { version = "0.0.3", features = ["log_equal"] }
 
 [dev-dependencies]

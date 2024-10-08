@@ -15,7 +15,7 @@ log = "0.4.22"
 nimble-steps = { path = "../steps", version = "0.0.12-dev" }
 nimble-protocol = { path = "../protocol", version = "0.0.12-dev" }
 nimble-blob-stream = { path = "../blob-stream", version = "0.0.12-dev" }
-err-rs = "0.0.2"
+err-rs = "0.0.4"
 nimble-step-types = { path = "../step-types", version = "0.0.12-dev" }
 metricator = "0.0.2"
 nimble-participant = { path = "../participant", version = "0.0.12-dev" }

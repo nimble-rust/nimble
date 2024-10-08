@@ -17,7 +17,7 @@ monotonic-time-rs = "0.0.3"
 metricator = "0.0.2"
 app-version = "0.0.2"
 tick-id = "0.0.7"
-err-rs = "0.0.2"
+err-rs = "0.0.4"
 
 [dev-dependencies]
 test-log = "0.2.16"

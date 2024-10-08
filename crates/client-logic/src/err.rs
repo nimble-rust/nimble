@@ -2,7 +2,7 @@
  * Copyright (c) Peter Bjorklund. All rights reserved. https://github.com/nimble-rust/nimble
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
-use err_rs::{ErrorLevel, ErrorLevelProvider};
+use err_rs::{most_severe_error, ErrorLevel, ErrorLevelProvider};
 use nimble_blob_stream::in_logic_front::FrontLogicError;
 use nimble_protocol::ClientRequestId;
 use nimble_steps::StepsError;
@@ -31,6 +31,15 @@ impl fmt::Display for ClientError {
     }
 }
 
+impl ErrorLevelProvider for ClientError {
+    fn error_level(&self) -> ErrorLevel {
+        match self {
+            ClientError::Single(err) => err.error_level(),
+            ClientError::Multiple(errors) => most_severe_error(errors).expect("REASON"),
+        }
+    }
+}
+
 #[derive(Debug)]
 pub enum ClientErrorKind {
     IoErr(io::Error),
@@ -52,8 +61,8 @@ impl ErrorLevelProvider for ClientErrorKind {
             Self::DownloadResponseWasUnexpected => ErrorLevel::Info,
             Self::UnexpectedBlobChannelCommand => ErrorLevel::Info,
             Self::FrontLogicErr(err) => err.error_level(),
-            Self::StepsError(_) => ErrorLevel::Warning,
-            &ClientErrorKind::ReceivedConnectResponseWhenNotConnecting => ErrorLevel::Info,
+            Self::StepsError(_) => ErrorLevel::Critical,
+            Self::ReceivedConnectResponseWhenNotConnecting => ErrorLevel::Info,
         }
     }
 }

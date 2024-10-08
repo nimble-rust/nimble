@@ -7,7 +7,7 @@ use err_rs::{ErrorLevel, ErrorLevelProvider};
 use flood_rs::prelude::OctetRefReader;
 use flood_rs::{BufferDeserializer, Deserialize, ReadOctetStream, Serialize};
 use log::trace;
-use nimble_client_logic::err::ClientError;
+use nimble_client_logic::err::{ClientError, ClientErrorKind};
 use nimble_client_logic::logic::{ClientLogic, ClientLogicPhase, LocalPlayer};
 use nimble_protocol::prelude::HostToClientCommands;
 use nimble_step_types::{LocalIndex, StepForParticipants};
@@ -21,6 +21,7 @@ pub enum ClientStreamError {
     Unexpected(String),
     IoErr(io::Error),
     ClientErr(ClientError),
+    ClientErrorKind(ClientErrorKind),
     PredictedStepsError(StepsError),
     DatagramChunkError(DatagramChunkerError),
     CommandNeedsConnectedPhase,
@@ -33,12 +34,13 @@ impl ErrorLevelProvider for ClientStreamError {
         match self {
             Self::Unexpected(_) => ErrorLevel::Info,
             Self::IoErr(_) => ErrorLevel::Info,
-            Self::ClientErr(_) => ErrorLevel::Info,
+            Self::ClientErr(err) => err.error_level(),
             Self::CommandNeedsConnectingPhase => ErrorLevel::Info,
             Self::CommandNeedsConnectedPhase => ErrorLevel::Info,
             Self::PredictedStepsError(_) => ErrorLevel::Warning,
             Self::DatagramChunkError(_) => ErrorLevel::Warning,
             Self::CanOnlyPushPredictedStepsIfConnected => ErrorLevel::Warning,
+            Self::ClientErrorKind(err) => err.error_level(),
         }
     }
 }
@@ -61,6 +63,17 @@ impl From<StepsError> for ClientStreamError {
     }
 }
 
+impl From<ClientError> for ClientStreamError {
+    fn from(err: ClientError) -> Self {
+        Self::ClientErr(err)
+    }
+}
+
+impl From<ClientErrorKind> for ClientStreamError {
+    fn from(err: ClientErrorKind) -> Self {
+        Self::ClientErrorKind(err)
+    }
+}
 #[derive(Debug)]
 pub struct ClientStream<StateT: BufferDeserializer, StepT: Clone + Deserialize + Serialize + Debug>
 {
@@ -87,9 +100,7 @@ impl<StateT: BufferDeserializer + Debug, StepT: Clone + Deserialize + Serialize 
         while !in_stream.has_reached_end() {
             let cmd = HostToClientCommands::deserialize(in_stream)?;
             trace!("client-stream: connected_receive {cmd:?}");
-            self.logic
-                .receive_cmd(&cmd)
-                .map_err(|err| ClientStreamError::ClientErr(ClientError::Single(err)))?;
+            self.logic.receive_cmd(&cmd)?;
         }
         Ok(())
     }

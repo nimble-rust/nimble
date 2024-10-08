@@ -32,10 +32,10 @@ pub enum ClientFrontError {
 impl ErrorLevelProvider for ClientFrontError {
     fn error_level(&self) -> ErrorLevel {
         match self {
-            &Self::Unexpected(_) => ErrorLevel::Warning,
-            &Self::DatagramOrderInError(_) | &Self::ClientStreamError(_) | &Self::IoError(_) => {
-                ErrorLevel::Info
-            }
+            Self::Unexpected(_) => ErrorLevel::Warning,
+            Self::DatagramOrderInError(_) => ErrorLevel::Info,
+            Self::IoError(_) => ErrorLevel::Warning,
+            Self::ClientStreamError(err) => err.error_level(),
         }
     }
 }

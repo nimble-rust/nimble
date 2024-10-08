@@ -48,13 +48,12 @@ impl Serialize for SampleStep {
 impl Deserialize for SampleStep {
     fn deserialize(stream: &mut impl ReadOctetStream) -> io::Result<Self> {
         let octet = stream.read_u8()?;
-        let value = match octet {
+        Ok(match octet {
             0x00 => Self::Nothing,
             0x01 => Self::MoveLeft(stream.read_i16()?),
             0x02 => Self::MoveRight(stream.read_i16()?),
             0x03 => Self::Jump,
             _ => Err(io::Error::new(io::ErrorKind::InvalidInput, "invalid input"))?,
-        };
-        Ok(value)
+        })
     }
 }
