@@ -9,17 +9,18 @@ use nimble_client_logic::logic::ClientLogicPhase;
 use nimble_client_stream::client::{ClientStream, ClientStreamError};
 use nimble_participant::ParticipantId;
 use nimble_sample_step::{SampleState, SampleStep};
+use nimble_step::Step;
 use nimble_step_types::{LocalIndex, StepForParticipants};
-use nimble_steps::Step;
 use rand::prelude::StdRng;
 use rand::{Rng, RngCore, SeedableRng};
 use seq_map::SeqMap;
 use std::collections::HashSet;
+use std::fmt::Display;
 use tick_id::TickId;
 
 fn connect<
     StateT: BufferDeserializer + std::fmt::Debug,
-    StepT: Clone + flood_rs::Deserialize + flood_rs::Serialize + std::fmt::Debug,
+    StepT: Clone + flood_rs::Deserialize + flood_rs::Serialize + std::fmt::Debug + std::fmt::Display,
 >(
     stream: &mut ClientStream<StateT, Step<StepT>>,
 ) -> Result<(), ClientStreamError> {
@@ -70,7 +71,7 @@ fn connect<
 
 fn download_state<
     StateT: BufferDeserializer + std::fmt::Debug,
-    StepT: Clone + flood_rs::Deserialize + flood_rs::Serialize + std::fmt::Debug,
+    StepT: Clone + flood_rs::Deserialize + flood_rs::Serialize + std::fmt::Debug + std::fmt::Display,
 >(
     stream: &mut ClientStream<StateT, StepT>,
 ) -> Result<(), ClientStreamError> {
@@ -350,7 +351,7 @@ fn predicted_steps() -> Result<(), ClientStreamError> {
     Ok(())
 }
 
-fn create_predicted_steps<StepT: Clone>(
+fn create_predicted_steps<StepT: Clone + Display>(
     predicted_steps_for_all_players: &[(LocalIndex, &[StepT])],
 ) -> Vec<StepForParticipants<StepT>> {
     let unique_indexes: HashSet<u8> = predicted_steps_for_all_players

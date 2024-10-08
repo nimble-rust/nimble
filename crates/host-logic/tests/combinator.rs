@@ -4,13 +4,21 @@
  */
 use nimble_host_logic::combinator::Combinator;
 use nimble_participant::ParticipantId;
-use nimble_steps::{Step, Steps};
+use nimble_step::Step;
+use nimble_steps::Steps;
+use std::fmt::{Display, Formatter};
 use tick_id::TickId;
 
 #[derive(Debug, Clone, PartialEq)]
 enum TestStep {
     InGame(i8),
     SelectTeam(u16),
+}
+
+impl Display for TestStep {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?}", self)
+    }
 }
 
 #[test_log::test]

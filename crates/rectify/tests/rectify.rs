@@ -8,9 +8,9 @@ use nimble_assent::AssentCallback;
 use nimble_participant::ParticipantId;
 use nimble_rectify::{Rectify, RectifyCallback};
 use nimble_seer::SeerCallback;
+use nimble_step::Step;
 use nimble_step_types::StepForParticipants;
-use nimble_steps::Step;
-use nimble_steps::Step::Custom;
+use std::fmt::Display;
 use std::io;
 use tick_id::TickId;
 
@@ -24,8 +24,8 @@ impl TestGame {
         info!("sim tick!");
         for (_, step) in &steps.combined_step {
             match step {
-                Custom(TestGameStep::MoveLeft) => self.position_x -= 1,
-                Custom(TestGameStep::MoveRight) => self.position_x += 1,
+                Step::Custom(TestGameStep::MoveLeft) => self.position_x -= 1,
+                Step::Custom(TestGameStep::MoveRight) => self.position_x += 1,
                 Step::Forced => todo!(),
                 Step::WaitingForReconnect => todo!(),
                 Step::Joined(_) => todo!(),
@@ -39,6 +39,12 @@ impl TestGame {
 pub enum TestGameStep {
     MoveLeft,
     MoveRight,
+}
+
+impl Display for TestGameStep {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?}", self)
+    }
 }
 
 impl Deserialize for TestGameStep {
@@ -102,7 +108,7 @@ fn one_prediction() {
     let mut participant_step_combined = StepForParticipants::<Step<TestGameStep>>::new();
     participant_step_combined
         .combined_step
-        .insert(ParticipantId(0), Custom(TestGameStep::MoveLeft))
+        .insert(ParticipantId(0), Step::Custom(TestGameStep::MoveLeft))
         .expect("Should be able to move left");
 
     rectify.push_predicted(participant_step_combined);
@@ -128,7 +134,7 @@ fn one_authoritative_and_one_prediction() {
     let mut authoritative_step_combined = StepForParticipants::<Step<TestGameStep>>::new();
     authoritative_step_combined
         .combined_step
-        .insert(ParticipantId(0), Custom(TestGameStep::MoveRight))
+        .insert(ParticipantId(0), Step::Custom(TestGameStep::MoveRight))
         .expect("should work");
     rectify
         .push_authoritative_with_check(TickId(0), authoritative_step_combined)
@@ -137,7 +143,7 @@ fn one_authoritative_and_one_prediction() {
     let mut predicted_step_combined = StepForParticipants::<Step<TestGameStep>>::new();
     predicted_step_combined
         .combined_step
-        .insert(ParticipantId(0), Custom(TestGameStep::MoveLeft))
+        .insert(ParticipantId(0), Step::Custom(TestGameStep::MoveLeft))
         .expect("should work");
 
     rectify.push_predicted(predicted_step_combined);
@@ -163,7 +169,7 @@ fn one_authoritative_and_x_predictions() {
     let mut authoritative_step_combined = StepForParticipants::<Step<TestGameStep>>::new();
     authoritative_step_combined
         .combined_step
-        .insert(ParticipantId(0), Custom(TestGameStep::MoveRight))
+        .insert(ParticipantId(0), Step::Custom(TestGameStep::MoveRight))
         .expect("should work");
     rectify
         .push_authoritative_with_check(TickId(0), authoritative_step_combined)
@@ -172,7 +178,7 @@ fn one_authoritative_and_x_predictions() {
     let mut predicted_step_combined = StepForParticipants::<Step<TestGameStep>>::new();
     predicted_step_combined
         .combined_step
-        .insert(ParticipantId(0), Custom(TestGameStep::MoveLeft))
+        .insert(ParticipantId(0), Step::Custom(TestGameStep::MoveLeft))
         .expect("should work");
 
     rectify.push_predicted(predicted_step_combined.clone());

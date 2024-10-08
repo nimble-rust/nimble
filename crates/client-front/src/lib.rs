@@ -9,7 +9,8 @@ use hexify::format_hex;
 use log::trace;
 use metricator::{AggregateMetric, RateMetric};
 use monotonic_time_rs::{MillisLow16, MonotonicClock};
-use nimble_client_stream::client::{ClientStream, ClientStreamError};
+use nimble_client_stream::client::{AuthStepVec, ClientStream, ClientStreamError};
+pub use nimble_client_stream::LocalPlayer;
 use nimble_ordered_datagram::{DatagramOrderInError, OrderedIn, OrderedOut};
 use nimble_protocol_header::ClientTime;
 use nimble_step_types::{LocalIndex, StepForParticipants};
@@ -18,9 +19,6 @@ use std::fmt::Debug;
 use std::io;
 use std::rc::Rc;
 use tick_id::TickId;
-
-pub use nimble_client_stream::LocalPlayer;
-use nimble_step::Step;
 
 #[derive(Debug)]
 pub enum ClientFrontError {
@@ -155,7 +153,7 @@ impl<
 
     pub fn pop_all_authoritative_steps(
         &mut self,
-    ) -> Result<(TickId, Vec<StepForParticipants<Step<StepT>>>), ClientFrontError> {
+    ) -> Result<(TickId, AuthStepVec<StepT>), ClientFrontError> {
         Ok(self.client.pop_all_authoritative_steps()?)
     }
 

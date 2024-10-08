@@ -17,6 +17,9 @@ use std::fmt::Debug;
 use std::io;
 use tick_id::TickId;
 
+pub type AuthStep<StepT> = StepForParticipants<Step<StepT>>;
+pub type AuthStepVec<StepT> = Vec<AuthStep<StepT>>;
+
 #[derive(Debug)]
 pub enum ClientStreamError {
     Unexpected(String),
@@ -112,7 +115,7 @@ impl<
 
     pub fn pop_all_authoritative_steps(
         &mut self,
-    ) -> Result<(TickId, Vec<StepForParticipants<Step<StepT>>>), ClientStreamError> {
+    ) -> Result<(TickId, AuthStepVec<StepT>), ClientStreamError> {
         Ok(self.logic.pop_all_authoritative_steps())
     }
 

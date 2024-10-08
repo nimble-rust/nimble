@@ -19,6 +19,7 @@ nimble-seer = { path = "../seer", version = "0.0.12-dev" }
 nimble-rectify = { path = "../rectify", version = "0.0.12-dev" }
 flood-rs = "0.0.11"
 nimble-steps = { path = "../steps", version = "0.0.12-dev" }
+nimble-step = { path = "../step", version = "0.0.12-dev" }
 tick-id = "0.0.7"
 nimble-client-logic = { path = "../client-logic", version = "0.0.12-dev" }
 log = "0.4.22"

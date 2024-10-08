@@ -23,7 +23,12 @@ impl GameStateProvider for TestStateProvider {
 }
 
 fn create_and_connect<
-    StepT: Clone + std::fmt::Debug + std::cmp::Eq + flood_rs::Deserialize + flood_rs::Serialize,
+    StepT: Clone
+        + std::fmt::Debug
+        + std::fmt::Display
+        + std::cmp::Eq
+        + flood_rs::Deserialize
+        + flood_rs::Serialize,
 >() -> Result<(HostFront<StepT>, HostConnectionId, TestStateProvider), HostFrontError> {
     #[rustfmt::skip]
     let connect_datagram: &[u8] = &[

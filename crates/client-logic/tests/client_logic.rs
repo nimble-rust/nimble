@@ -12,9 +12,10 @@ use nimble_protocol::host_to_client::{
 };
 use nimble_protocol::prelude::{ClientToHostCommands, CombinedSteps, HostToClientCommands};
 use nimble_sample_step::{SampleState, SampleStep};
+use nimble_step::Step;
+use nimble_step::Step::{Custom, Forced};
 use nimble_step_types::StepForParticipants;
-use nimble_steps::Step::{Custom, Forced};
-use nimble_steps::{Step, StepInfo, StepsError};
+use nimble_steps::{StepInfo, StepsError};
 use seq_map::SeqMap;
 use std::fmt::Debug;
 use tick_id::TickId;
@@ -59,8 +60,10 @@ fn feed_connect_response(client_logic: &mut ClientLogic<SampleState, Step<Sample
     }
 }
 
-fn setup_logic<StateT: BufferDeserializer, StepT: Clone + Deserialize + Serialize + Debug>(
-) -> ClientLogic<StateT, StepT> {
+fn setup_logic<
+    StateT: BufferDeserializer,
+    StepT: Clone + Deserialize + Serialize + Debug + std::fmt::Display,
+>() -> ClientLogic<StateT, StepT> {
     let simulation_version = app_version::Version::new(0, 1, 2);
     ClientLogic::<StateT, StepT>::new(simulation_version)
 }
@@ -141,7 +144,7 @@ fn setup_sample_steps() -> AuthoritativeStepRanges<Step<SampleStep>> {
 }
 #[test_log::test]
 fn receive_authoritative_steps() -> Result<(), ClientError> {
-    let mut client_logic = setup_logic::<SampleState, Step<SampleStep>>();
+    let mut client_logic = setup_logic::<SampleState, SampleStep>();
 
     // Create a GameStep command
     let response = GameStepResponse::<Step<SampleStep>> {

@@ -9,13 +9,13 @@ use monotonic_time_rs::Millis;
 use nimble_client_logic::logic::ClientLogic;
 use nimble_host_logic::logic::{GameStateProvider, HostConnectionId, HostLogic};
 use nimble_sample_game::{SampleGame, SampleGameState, SampleStep};
-use nimble_steps::Step;
-use std::fmt::Debug;
+use nimble_step::Step;
+use std::fmt::{Debug, Display};
 use tick_id::TickId;
 
 fn communicate<
     SampleState: BufferDeserializer,
-    SampleStep: Clone + Deserialize + Debug + Eq + PartialEq,
+    SampleStep: Clone + Deserialize + Debug + Display + Eq + PartialEq,
 >(
     host: &mut HostLogic<Step<SampleStep>>,
     state_provider: &impl GameStateProvider,

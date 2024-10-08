@@ -212,24 +212,26 @@ impl<
     pub fn send(&mut self) -> Vec<ClientToHostCommands<StepT>> {
         let mut commands: Vec<ClientToHostCommands<StepT>> = vec![];
 
-        if let Some(joining_players) = &self.joining_player {
-            debug!("connected. send join_game_request {:?}", joining_players);
+        if self.phase != ClientLogicPhase::RequestConnect {
+            if let Some(joining_players) = &self.joining_player {
+                debug!("connected. send join_game_request {:?}", joining_players);
 
-            let player_requests = joining_players
-                .iter()
-                .map(|local_index| JoinPlayerRequest {
-                    local_index: *local_index,
-                })
-                .collect();
-            let join_command = ClientToHostCommands::JoinGameType(JoinGameRequest {
-                client_request_id: self.joining_request_id,
-                join_game_type: JoinGameType::NoSecret,
-                player_requests: JoinPlayerRequests {
-                    players: player_requests,
-                },
-            });
-            trace!("send join command: {join_command:?}");
-            commands.push(join_command);
+                let player_requests = joining_players
+                    .iter()
+                    .map(|local_index| JoinPlayerRequest {
+                        local_index: *local_index,
+                    })
+                    .collect();
+                let join_command = ClientToHostCommands::JoinGameType(JoinGameRequest {
+                    client_request_id: self.joining_request_id,
+                    join_game_type: JoinGameType::NoSecret,
+                    player_requests: JoinPlayerRequests {
+                        players: player_requests,
+                    },
+                });
+                trace!("send join command: {join_command:?}");
+                commands.push(join_command);
+            }
         }
 
         let normal_commands: Vec<ClientToHostCommands<StepT>> = match self.phase {

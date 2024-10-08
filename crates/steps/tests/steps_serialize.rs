@@ -3,7 +3,7 @@
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
 use flood_rs::prelude::*;
-use nimble_steps::Step;
+use nimble_step::Step;
 use std::io;
 
 mod steps_test_types;

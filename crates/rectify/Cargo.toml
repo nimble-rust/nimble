@@ -20,3 +20,4 @@ tick-id = "0.0.7"
 [dev-dependencies]
 test-log = "0.2.16"
 nimble-step-types = { path = "../step-types", version = "0.0.12-dev" }
+nimble-step = { path = "../step", version = "0.0.12-dev" }

@@ -3,6 +3,7 @@
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
 use nimble_assent::prelude::*;
+use std::fmt::Display;
 
 pub struct TestGame {
     pub position_x: i32,
@@ -12,6 +13,12 @@ pub struct TestGame {
 pub enum TestGameStep {
     MoveLeft,
     MoveRight,
+}
+
+impl Display for TestGameStep {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?}", self)
+    }
 }
 
 impl AssentCallback<TestGameStep> for TestGame {
