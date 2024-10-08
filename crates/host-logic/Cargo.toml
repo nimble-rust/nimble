@@ -20,6 +20,7 @@ flood-rs = "0.0.11"
 monotonic-time-rs = "0.0.3"
 nimble-step-types = { path = "../step-types", version = "0.0.12-dev" }
 seq-map = "0.0.1"
+app-version = "0.0.2"
 
 [dev-dependencies]
 test-log = "0.2.16"

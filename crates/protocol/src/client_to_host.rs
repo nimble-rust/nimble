@@ -4,7 +4,7 @@
  */
 use crate::host_to_client::TickIdUtil;
 use crate::serialize::CombinedSteps;
-use crate::{ClientRequestId, SessionConnectionSecret};
+use crate::{ClientRequestId, SessionConnectionSecret, Version};
 use flood_rs::{Deserialize, ReadOctetStream, Serialize, WriteOctetStream};
 use io::ErrorKind;
 use nimble_blob_stream::prelude::ReceiverToSenderFrontCommands;
@@ -19,6 +19,7 @@ enum ClientToHostCommand {
     Steps = 0x02,
     DownloadGameState = 0x03,
     BlobStreamChannel = 0x04,
+    Connect = 0x05,
 }
 
 impl TryFrom<u8> for ClientToHostCommand {
@@ -30,11 +31,38 @@ impl TryFrom<u8> for ClientToHostCommand {
             0x02 => Ok(Self::Steps),
             0x03 => Ok(Self::DownloadGameState),
             0x04 => Ok(Self::BlobStreamChannel),
+            0x05 => Ok(Self::Connect),
             _ => Err(io::Error::new(
                 ErrorKind::InvalidData,
                 format!("Unknown ClientToHostCommand {}", value),
             )),
         }
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq)]
+pub struct ConnectRequest {
+    pub nimble_version: Version,
+    pub use_debug_stream: bool,
+    pub application_version: Version,
+    pub client_request_id: ClientRequestId,
+}
+impl ConnectRequest {
+    pub fn to_stream(&self, stream: &mut impl WriteOctetStream) -> io::Result<()> {
+        self.nimble_version.to_stream(stream)?;
+        stream.write_u8(if self.use_debug_stream { 0x01 } else { 0x00 })?;
+        self.application_version.to_stream(stream)?;
+        self.client_request_id.serialize(stream)?;
+        Ok(())
+    }
+
+    pub fn from_stream(stream: &mut impl ReadOctetStream) -> io::Result<Self> {
+        Ok(Self {
+            nimble_version: Version::from_stream(stream)?,
+            use_debug_stream: stream.read_u8()? != 0,
+            application_version: Version::from_stream(stream)?,
+            client_request_id: ClientRequestId::deserialize(stream)?,
+        })
     }
 }
 
@@ -61,6 +89,7 @@ pub enum ClientToHostCommands<StepT: Clone + Debug + Serialize + Deserialize> {
     Steps(StepsRequest<StepT>),
     DownloadGameState(DownloadGameStateRequest),
     BlobStreamChannel(ReceiverToSenderFrontCommands),
+    ConnectType(ConnectRequest),
 }
 
 impl<StepT: Clone + Debug + Serialize + Deserialize> Serialize for ClientToHostCommands<StepT> {
@@ -71,6 +100,7 @@ impl<StepT: Clone + Debug + Serialize + Deserialize> Serialize for ClientToHostC
             Self::JoinGameType(join_game_request) => join_game_request.to_stream(stream),
             Self::DownloadGameState(download_game_state) => download_game_state.to_stream(stream),
             Self::BlobStreamChannel(blob_stream_command) => blob_stream_command.to_stream(stream),
+            Self::ConnectType(connect_request) => connect_request.to_stream(stream),
         }
     }
 }
@@ -90,6 +120,7 @@ impl<StepT: Clone + Debug + Serialize + Deserialize> Deserialize for ClientToHos
             ClientToHostCommand::BlobStreamChannel => {
                 Self::BlobStreamChannel(ReceiverToSenderFrontCommands::from_stream(stream)?)
             }
+            ClientToHostCommand::Connect => Self::ConnectType(ConnectRequest::from_stream(stream)?),
         };
         Ok(x)
     }
@@ -102,6 +133,7 @@ impl<StepT: Clone + Debug + Serialize + Deserialize> ClientToHostCommands<StepT>
             Self::JoinGameType(_) => ClientToHostCommand::JoinGame as u8,
             Self::DownloadGameState(_) => ClientToHostCommand::DownloadGameState as u8,
             Self::BlobStreamChannel(_) => ClientToHostCommand::BlobStreamChannel as u8,
+            &Self::ConnectType(_) => ClientToHostCommand::Connect as u8,
         }
     }
 }
@@ -121,6 +153,7 @@ impl<StepT: Clone + Debug + Eq + PartialEq + Serialize + Deserialize> fmt::Displ
             Self::BlobStreamChannel(blob_command) => {
                 write!(f, "blob stream channel {:?}", blob_command)
             }
+            &Self::ConnectType(connect_request) => write!(f, "connect {:?}", connect_request),
         }
     }
 }

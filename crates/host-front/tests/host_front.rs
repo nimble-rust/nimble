@@ -39,12 +39,8 @@ fn create_and_connect<
         0,                  // Client Request Id
     ];
 
-    let application_version = app_version::Version {
-        major: 0,
-        minor: 1,
-        patch: 2,
-    };
-    let mut host = HostFront::<StepT>::new(&application_version, TickId(0));
+    let application_version = app_version::Version::new(0, 1, 2);
+    let mut host = HostFront::<StepT>::new(application_version, TickId(0));
 
     let not_used_connection_id = host
         .create_connection()

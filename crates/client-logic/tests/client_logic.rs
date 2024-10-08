@@ -6,9 +6,9 @@ use flood_rs::{BufferDeserializer, Deserialize, Serialize};
 use nimble_client_logic::err::ClientError;
 use nimble_client_logic::logic::ClientLogic;
 use nimble_participant::ParticipantId;
-use nimble_protocol::client_to_host::DownloadGameStateRequest;
+use nimble_protocol::client_to_host::{ConnectRequest, DownloadGameStateRequest};
 use nimble_protocol::host_to_client::{
-    AuthoritativeStepRanges, GameStepResponse, GameStepResponseHeader,
+    AuthoritativeStepRanges, ConnectionAccepted, GameStepResponse, GameStepResponseHeader,
 };
 use nimble_protocol::prelude::{ClientToHostCommands, CombinedSteps, HostToClientCommands};
 use nimble_sample_step::{SampleState, SampleStep};
@@ -21,8 +21,10 @@ use tick_id::TickId;
 
 #[test_log::test]
 fn basic_logic() {
-    let mut client_logic = ClientLogic::<SampleState, Step<SampleStep>>::new();
+    let simulation_version = app_version::Version::new(0, 1, 2);
+    let mut client_logic = ClientLogic::<SampleState, Step<SampleStep>>::new(simulation_version);
 
+    feed_connect_response(&mut client_logic);
     {
         let commands = client_logic.send();
         assert_eq!(commands.len(), 1);
@@ -36,9 +38,31 @@ fn basic_logic() {
     }
 }
 
+fn feed_connect_response(client_logic: &mut ClientLogic<SampleState, Step<SampleStep>>) {
+    let commands = client_logic.send();
+    assert_eq!(commands.len(), 1);
+
+    if let ClientToHostCommands::ConnectType(ConnectRequest {
+        client_request_id, ..
+    }) = commands[0]
+    {
+        let connect_response = ConnectionAccepted {
+            flags: 0,
+            response_to_request: client_request_id,
+        };
+
+        client_logic
+            .receive(&[HostToClientCommands::ConnectType(connect_response)])
+            .expect("TODO: panic message");
+    } else {
+        panic!("Command should be connect request");
+    }
+}
+
 fn setup_logic<StateT: BufferDeserializer, StepT: Clone + Deserialize + Serialize + Debug>(
 ) -> ClientLogic<StateT, StepT> {
-    ClientLogic::<StateT, StepT>::new()
+    let simulation_version = app_version::Version::new(0, 1, 2);
+    ClientLogic::<StateT, StepT>::new(simulation_version)
 }
 
 #[test_log::test]
@@ -54,15 +78,20 @@ fn send_steps() -> Result<(), StepsError> {
         },
     )?;
 
+    feed_connect_response(&mut client_logic);
+
     {
         let commands = client_logic.send();
         assert_eq!(commands.len(), 1);
         if let ClientToHostCommands::DownloadGameState(DownloadGameStateRequest { request_id }) =
             &commands[0]
         {
-            assert_eq!(*request_id, 153);
+            assert_eq!(*request_id, 0x99);
         } else {
-            panic!("Command did not match expected structure or pattern");
+            panic!(
+                "Command did not match expected structure or pattern {}",
+                commands[0]
+            );
         }
     }
 
@@ -205,3 +234,97 @@ fn receive_authoritative_steps() -> Result<(), ClientError> {
 
     Ok(())
 }
+
+/*
+
+#[test_log::test]
+fn send_connect_command() {
+    let mut client = create_connecting_client(None, None);
+    let commands = client.send::<SampleStep>();
+
+    let ClientToHostCommands::<SampleStep>::ConnectType(connect_cmd) = &commands else {
+        panic!("Wrong command")
+    };
+    assert_eq!(
+        connect_cmd.application_version,
+        Version {
+            major: 1,
+            minor: 0,
+            patch: 0
+        }
+    );
+    assert_eq!(
+        connect_cmd.nimble_version,
+        Version {
+            major: 0,
+            minor: 0,
+            patch: 5
+        }
+    );
+    assert_eq!(connect_cmd.use_debug_stream, false);
+    assert_eq!(
+        connect_cmd.client_request_id,
+        client.debug_client_request_id()
+    );
+}
+
+#[test_log::test]
+fn receive_valid_connection_accepted() {
+    let mut client = create_connecting_client(None, None);
+    let response_nonce = client.debug_client_request_id();
+
+    let accepted = ConnectionAccepted {
+        flags: 0,
+        response_to_request: response_nonce,
+    };
+    let command = HostToClientCommands::<SampleStep>::ConnectType(accepted);
+
+    let _ = client.send::<SampleStep>(); // Just make it send once so it can try to accept the connection accepted
+
+    let result = client.receive(&command);
+
+    assert!(result.is_ok());
+    assert!(client.is_connected());
+}
+
+#[test_log::test]
+fn receive_invalid_connection_accepted_nonce() {
+    let mut client = create_connecting_client(None, None);
+    let wrong_request_id = ClientRequestId(99);
+    let accepted = ConnectionAccepted {
+        flags: 0,
+        response_to_request: wrong_request_id,
+    };
+    let command = HostToClientCommands::<SampleStep>::ConnectType(accepted);
+
+    let _ = client.send::<SampleStep>(); // Just make it send once so it can try to accept the connection accepted
+
+    let result = client.receive(&command);
+
+    match result {
+        Err(ClientError::WrongConnectResponseRequestId(n)) => {
+            assert_eq!(n, wrong_request_id);
+        }
+        _ => panic!("Expected WrongConnectResponseNonce error"),
+    }
+}
+
+#[test_log::test]
+fn receive_response_without_request() {
+    let mut client = create_connecting_client(None, None);
+    let wrong_request_id = ClientRequestId(99);
+    let accepted = ConnectionAccepted {
+        flags: 0,
+        response_to_request: wrong_request_id,
+    };
+    let command = HostToClientCommands::<SampleStep>::ConnectType(accepted);
+
+    let result = client.receive(&command);
+
+    match result {
+        Err(ClientError::ReceivedConnectResponseWithoutRequest) => {}
+        _ => panic!("Expected WrongConnectResponseNonce error"),
+    }
+}
+
+ */

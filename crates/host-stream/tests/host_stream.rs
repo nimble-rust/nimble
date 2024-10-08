@@ -22,12 +22,8 @@ impl GameStateProvider for TestStateProvider {
 
 #[test_log::test]
 fn join_game2() -> Result<(), HostStreamError> {
-    let application_version = app_version::Version {
-        major: 0,
-        minor: 1,
-        patch: 2,
-    };
-    let mut host = HostStream::<SampleStep>::new(&application_version, TickId(0));
+    let application_version = app_version::Version::new(0, 1, 2);
+    let mut host = HostStream::<SampleStep>::new(application_version, TickId(0));
     let connection_id = host
         .create_connection()
         .expect("it should not be out of connections");

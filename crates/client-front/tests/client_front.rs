@@ -29,11 +29,7 @@ impl MonotonicClock for FakeClock {
 
 #[test_log::test]
 pub fn client() -> Result<(), ClientFrontError> {
-    let app_version = app_version::Version {
-        major: 0,
-        minor: 0,
-        patch: 0,
-    };
+    let app_version = app_version::Version::new(0, 0, 0);
 
     let fake_clock = FakeClock {
         millis: Millis::new(0),
@@ -42,7 +38,7 @@ pub fn client() -> Result<(), ClientFrontError> {
     let monotonic_clock = Rc::clone(&concrete_clock) as Rc<RefCell<dyn MonotonicClock>>;
 
     let mut client =
-        ClientFront::<SampleState, SampleStep>::new(&app_version, Rc::clone(&monotonic_clock));
+        ClientFront::<SampleState, SampleStep>::new(app_version, Rc::clone(&monotonic_clock));
 
     let datagrams = client.send()?;
 

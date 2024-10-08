@@ -3,15 +3,13 @@
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
 use std::fmt;
-use std::fmt::Formatter;
+use std::fmt::{Debug, Formatter};
 use std::io::Result;
 
 use flood_rs::{Deserialize, ReadOctetStream, Serialize, WriteOctetStream};
 
 pub mod client_to_host;
-pub mod client_to_host_oob;
 pub mod host_to_client;
-pub mod host_to_client_oob;
 pub mod prelude;
 pub mod serialize;
 
@@ -56,6 +54,13 @@ pub struct Version {
 }
 
 impl Version {
+    pub const fn new(major: u16, minor: u16, patch: u16) -> Self {
+        Self {
+            major,
+            minor,
+            patch,
+        }
+    }
     pub fn to_stream(&self, stream: &mut impl WriteOctetStream) -> Result<()> {
         stream.write_u16(self.major)?;
         stream.write_u16(self.minor)?;
@@ -72,6 +77,8 @@ impl Version {
         })
     }
 }
+
+pub const NIMBLE_PROTOCOL_VERSION: Version = Version::new(0, 0, 5);
 
 #[derive(PartialEq, Copy, Clone, Eq)]
 pub struct SessionConnectionSecret {

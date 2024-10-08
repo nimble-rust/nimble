@@ -16,4 +16,4 @@ nimble-steps = { path = "../steps", version = "0.0.12-dev" }
 log = "0.4.22"
 nimble-step-types = { path = "../step-types", version = "0.0.12-dev" }
 nimble-sample-step = { path = "../sample-step", version = "0.0.12-dev" }
-app-version = { path = "../app-version", version = "0.0.1" }
+app-version = "0.0.2"

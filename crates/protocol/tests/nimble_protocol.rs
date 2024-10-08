@@ -5,7 +5,6 @@
 use flood_rs::prelude::*;
 use nimble_participant::ParticipantId;
 
-use nimble_protocol::client_to_host_oob::ConnectRequest;
 use nimble_protocol::host_to_client::{AuthoritativeStepRanges, InternalAuthoritativeStepRanges};
 
 use nimble_protocol::serialize::{
@@ -14,6 +13,7 @@ use nimble_protocol::serialize::{
 };
 use nimble_protocol::{ClientRequestId, Version};
 
+use nimble_protocol::client_to_host::ConnectRequest;
 use nimble_sample_step::SampleStep;
 use nimble_step_types::StepForParticipants;
 use seq_map::SeqMap;

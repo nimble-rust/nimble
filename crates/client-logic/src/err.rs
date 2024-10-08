@@ -40,6 +40,7 @@ pub enum ClientErrorKind {
     UnexpectedBlobChannelCommand,
     FrontLogicErr(FrontLogicError),
     StepsError(StepsError),
+    ReceivedConnectResponseWhenNotConnecting,
 }
 
 impl ErrorLevelProvider for ClientErrorKind {
@@ -52,6 +53,7 @@ impl ErrorLevelProvider for ClientErrorKind {
             Self::UnexpectedBlobChannelCommand => ErrorLevel::Info,
             Self::FrontLogicErr(err) => err.error_level(),
             Self::StepsError(_) => ErrorLevel::Warning,
+            &ClientErrorKind::ReceivedConnectResponseWhenNotConnecting => ErrorLevel::Info,
         }
     }
 }
@@ -74,6 +76,9 @@ impl fmt::Display for ClientErrorKind {
             Self::UnexpectedBlobChannelCommand => write!(f, "UnexpectedBlobChannelCommand"),
             Self::FrontLogicErr(err) => write!(f, "front logic err {err:?}"),
             Self::StepsError(err) => write!(f, "StepsError: {err:?}"),
+            Self::ReceivedConnectResponseWhenNotConnecting => {
+                write!(f, "ReceivedConnectResponseWhenNotConnecting")
+            }
         }
     }
 }

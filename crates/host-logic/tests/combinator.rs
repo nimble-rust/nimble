@@ -19,8 +19,12 @@ fn combinator_add() {
     combinator.create_buffer(ParticipantId(1));
     combinator.create_buffer(ParticipantId(2));
 
-    combinator.add(ParticipantId(1), TestStep::InGame(-2));
-    combinator.add(ParticipantId(2), TestStep::SelectTeam(42));
+    combinator
+        .add(ParticipantId(1), TestStep::InGame(-2))
+        .expect("TODO: panic message");
+    combinator
+        .add(ParticipantId(2), TestStep::SelectTeam(42))
+        .expect("TODO: panic message");
 
     assert_eq!(combinator.in_buffers.len(), 2);
     assert_eq!(

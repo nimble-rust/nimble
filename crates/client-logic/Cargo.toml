@@ -19,6 +19,8 @@ err-rs = "0.0.2"
 nimble-step-types = { path = "../step-types", version = "0.0.12-dev" }
 metricator = "0.0.2"
 nimble-participant = { path = "../participant", version = "0.0.12-dev" }
+app-version = "0.0.2"
+url = "2.5.2"
 
 [dev-dependencies]
 test-log = "0.2.16"

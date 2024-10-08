@@ -2,6 +2,7 @@
  * Copyright (c) Peter Bjorklund. All rights reserved. https://github.com/nimble-rust/nimble
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
+use app_version::Version;
 use flood_rs::{BufferDeserializer, Deserialize, Serialize};
 use log::trace;
 use monotonic_time_rs::Millis;
@@ -67,10 +68,12 @@ fn client_host_integration() {
         tick_id: TickId(42),
         payload: state_octets,
     };
-    let mut host = HostLogic::<Step<SampleStep>>::new(TickId(42));
+    let simulation_version = Version::new(1, 0, 0);
+
+    let mut host = HostLogic::<Step<SampleStep>>::new(TickId(42), simulation_version.clone());
     let connection = host.create_connection().expect("should create connection");
 
-    let mut client = ClientLogic::<SampleGameState, Step<SampleStep>>::new();
+    let mut client = ClientLogic::<SampleGameState, Step<SampleStep>>::new(simulation_version);
 
     client.set_joining_player([0].into());
 

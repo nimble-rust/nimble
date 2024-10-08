@@ -138,7 +138,7 @@ fn client_to_host() -> Result<(), ClientError> {
 
     let application_version = SampleGame::version();
 
-    let mut host = HostFront::<SampleStep>::new(&application_version, TickId::new(0));
+    let mut host = HostFront::<SampleStep>::new(application_version, TickId::new(0));
 
     let connection_id = host.create_connection().expect("should work");
     let now = Millis::new(0);
@@ -153,24 +153,21 @@ fn client_to_host() -> Result<(), ClientError> {
     };
 
     let conn_before = host
-        .get_stream(connection_id)
+        .get_logic(connection_id)
         .expect("should find connection");
     assert_eq!(
         conn_before.phase(),
-        &nimble_host_stream::HostStreamConnectionPhase::Connecting
+        &nimble_host_logic::logic::Phase::WaitingForValidConnectRequest
     );
     host.update(connection_id, now, to_host[0].as_slice(), &state_provider)
         .expect("should update host");
 
     let conn = host
-        .get_stream(connection_id)
+        .get_logic(connection_id)
         .expect("should find connection");
-    assert_eq!(
-        conn.phase(),
-        &nimble_host_stream::HostStreamConnectionPhase::Connected
-    );
+    assert_eq!(conn.phase(), &nimble_host_logic::logic::Phase::Connected);
 
-    communicate::<SampleGame>(&mut host, &state_provider, connection_id, &mut client, 33);
+    communicate::<SampleGame>(&mut host, &state_provider, connection_id, &mut client, 143);
 
     // let host_connection = host.get_stream(connection_id).expect("should find connection");
     // let x = host.session().participants.get(&ParticipantId(0)).expect("should find participant");

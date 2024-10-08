@@ -2,7 +2,7 @@
  * Copyright (c) Peter Bjorklund. All rights reserved. https://github.com/nimble-rust/nimble
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
-use app_version::{Version, VersionProvider};
+use app_version::VersionProvider;
 use flood_rs::{BufferDeserializer, Deserialize, Serialize};
 use log::trace;
 use monotonic_time_rs::InstantMonotonicClock;
@@ -72,13 +72,8 @@ impl<
         let clock = Rc::new(RefCell::new(InstantMonotonicClock::new()));
 
         let deterministic_app_version = GameT::version();
-        let application_version = Version {
-            major: deterministic_app_version.major,
-            minor: deterministic_app_version.minor,
-            patch: deterministic_app_version.patch,
-        };
         Self {
-            client: ClientFront::<GameT, StepT>::new(&application_version, clock),
+            client: ClientFront::<GameT, StepT>::new(deterministic_app_version, clock),
             tick_duration_ms: 16,
             rectify: Rectify::default(),
         }

@@ -3,13 +3,15 @@
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
 use crate::test_types::TestStateProvider;
+use app_version::Version;
 use log::debug;
 use monotonic_time_rs::Millis;
 use nimble_blob_stream::in_logic_front::FrontLogic;
 use nimble_blob_stream::prelude::{ReceiverToSenderFrontCommands, SenderToReceiverFrontCommands};
 use nimble_host_logic::logic::HostLogic;
-use nimble_protocol::client_to_host::DownloadGameStateRequest;
+use nimble_protocol::client_to_host::{ConnectRequest, DownloadGameStateRequest};
 use nimble_protocol::prelude::{ClientToHostCommands, HostToClientCommands};
+use nimble_protocol::ClientRequestId;
 use nimble_sample_step::SampleStep;
 use tick_id::TickId;
 
@@ -23,11 +25,35 @@ fn game_state_download() {
         tick_id: TICK_ID,
         payload: EXPECTED_PAYLOAD.to_vec(),
     };
-    let mut host = HostLogic::<SampleStep>::new(TICK_ID);
+    let version = Version::new(0, 1, 2);
+    let mut host = HostLogic::<SampleStep>::new(TICK_ID, version);
 
     let connection_id = host.create_connection().expect("it should work");
     assert_eq!(connection_id.0, 0);
     let now = Millis::from(0);
+
+    let connect_request = ConnectRequest {
+        nimble_version: nimble_protocol::Version {
+            major: 0,
+            minor: 0,
+            patch: 0,
+        },
+        use_debug_stream: false,
+        application_version: nimble_protocol::Version {
+            major: version.major(),
+            minor: version.minor(),
+            patch: version.patch(),
+        },
+        client_request_id: ClientRequestId(0),
+    };
+
+    host.update(
+        connection_id,
+        now,
+        &ClientToHostCommands::ConnectType(connect_request),
+        &state,
+    )
+    .expect("it should work");
 
     // Send a Download Game State request to the host.
     // This is usually done by the client, but we do it manually here.

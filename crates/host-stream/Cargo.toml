@@ -10,7 +10,7 @@ tick-id = "0.0.7"
 datagram-chunker = { path = "../datagram-chunker", version = "0.0.1" }
 nimble-protocol = { path = "../protocol", version = "0.0.12-dev" }
 monotonic-time-rs = "0.0.3"
-app-version = { path = "../app-version", version = "0.0.1" }
+app-version= "0.0.2"
 log = "0.4.22"
 hexify = "0.0.3"
 

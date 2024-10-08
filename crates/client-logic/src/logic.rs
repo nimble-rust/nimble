@@ -11,19 +11,24 @@ use metricator::AggregateMetric;
 use nimble_blob_stream::prelude::{FrontLogic, SenderToReceiverFrontCommands};
 use nimble_participant::ParticipantId;
 use nimble_protocol::client_to_host::{
-    DownloadGameStateRequest, JoinGameType, JoinPlayerRequest, JoinPlayerRequests,
+    ConnectRequest, DownloadGameStateRequest, JoinGameType, JoinPlayerRequest, JoinPlayerRequests,
 };
-use nimble_protocol::host_to_client::{DownloadGameStateResponse, GameStepResponseHeader};
+use nimble_protocol::host_to_client::{
+    ConnectionAccepted, DownloadGameStateResponse, GameStepResponseHeader,
+};
 use nimble_protocol::prelude::*;
-use nimble_protocol::ClientRequestId;
+use nimble_protocol::{ClientRequestId, NIMBLE_PROTOCOL_VERSION};
 use nimble_step_types::{LocalIndex, StepForParticipants};
 use nimble_steps::{Steps, StepsError};
 use std::fmt::Debug;
 use tick_id::TickId;
 
 /// Represents the various phases of the client logic.
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum ClientLogicPhase {
+    /// Request Connect (agreeing on abilities, such as version)
+    RequestConnect,
+
     /// Requesting a download of the game state.
     RequestDownloadState { download_state_request_id: u8 },
 
@@ -48,6 +53,11 @@ pub struct LocalPlayer {
 /// * `StepT`: A type implementing representing the game steps.
 #[derive(Debug)]
 pub struct ClientLogic<StateT: BufferDeserializer, StepT: Clone + Deserialize + Serialize + Debug> {
+    // The deterministic simulation version
+    deterministic_simulation_version: app_version::Version,
+
+    connect_request_id: ClientRequestId,
+
     /// Represents the player's join game request, if available.
     joining_player: Option<Vec<LocalIndex>>,
 
@@ -64,7 +74,6 @@ pub struct ClientLogic<StateT: BufferDeserializer, StepT: Clone + Deserialize + 
     incoming_authoritative_steps: Steps<StepForParticipants<StepT>>,
 
     /// Represents the current phase of the client's logic.
-    #[allow(unused)]
     phase: ClientLogicPhase,
 
     /// Tracks the delta of tick id on the server.
@@ -77,20 +86,13 @@ pub struct ClientLogic<StateT: BufferDeserializer, StepT: Clone + Deserialize + 
     local_players: Vec<LocalPlayer>,
 }
 
-impl<StateT: BufferDeserializer, StepT: Clone + Deserialize + Serialize + Debug> Default
-    for ClientLogic<StateT, StepT>
-{
-    /// Creates a new `ClientLogic` instance with default values.
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 impl<StateT: BufferDeserializer, StepT: Clone + Deserialize + Serialize + Debug>
     ClientLogic<StateT, StepT>
 {
     /// Creates a new `ClientLogic` instance, initializing all fields.
-    pub fn new() -> ClientLogic<StateT, StepT> {
+    pub fn new(
+        deterministic_simulation_version: app_version::Version,
+    ) -> ClientLogic<StateT, StepT> {
         Self {
             joining_player: None,
             joining_request_id: ClientRequestId(0),
@@ -100,16 +102,20 @@ impl<StateT: BufferDeserializer, StepT: Clone + Deserialize + Serialize + Debug>
             server_buffer_delta_tick_id: AggregateMetric::new(3).unwrap(),
             server_buffer_count: AggregateMetric::new(3).unwrap(),
             state: None,
-            phase: ClientLogicPhase::RequestDownloadState {
-                download_state_request_id: 0x99,
-            },
+            phase: ClientLogicPhase::RequestConnect,
             local_players: Vec::new(),
+            deterministic_simulation_version,
+            connect_request_id: ClientRequestId::new(0),
         }
     }
 
     /// Returns a reference to the incoming authoritative steps.
     pub fn debug_authoritative_steps(&self) -> &Steps<StepForParticipants<StepT>> {
         &self.incoming_authoritative_steps
+    }
+
+    pub fn phase(&self) -> &ClientLogicPhase {
+        &self.phase
     }
 
     pub fn pop_all_authoritative_steps(&mut self) -> Vec<StepForParticipants<StepT>> {
@@ -148,6 +154,21 @@ impl<StateT: BufferDeserializer, StepT: Clone + Deserialize + Serialize + Debug>
         }
 
         vec
+    }
+
+    fn send_connect_request(&self) -> ClientToHostCommands<StepT> {
+        let connect_request = ConnectRequest {
+            nimble_version: NIMBLE_PROTOCOL_VERSION,
+            use_debug_stream: false,
+            application_version: Version {
+                major: self.deterministic_simulation_version.major(),
+                minor: self.deterministic_simulation_version.minor(),
+                patch: self.deterministic_simulation_version.patch(),
+            },
+            client_request_id: ClientRequestId(0),
+        };
+
+        ClientToHostCommands::ConnectType(connect_request)
     }
 
     /// Sends the predicted steps to the host.
@@ -191,6 +212,7 @@ impl<StateT: BufferDeserializer, StepT: Clone + Deserialize + Serialize + Debug>
                     vec![]
                 }
             }
+            ClientLogicPhase::RequestConnect => [self.send_connect_request()].to_vec(),
         };
 
         commands.extend(normal_commands);
@@ -281,6 +303,23 @@ impl<StateT: BufferDeserializer, StepT: Clone + Deserialize + Serialize + Debug>
         trace!("removing every predicted step before {host_expected_tick_id}");
         self.outgoing_predicted_steps
             .pop_up_to(host_expected_tick_id);
+    }
+
+    fn on_connect(&mut self, cmd: &ConnectionAccepted) -> Result<(), ClientErrorKind> {
+        if self.phase != ClientLogicPhase::RequestConnect {
+            Err(ClientErrorKind::ReceivedConnectResponseWhenNotConnecting)?
+        }
+
+        if cmd.response_to_request != self.connect_request_id {
+            Err(ClientErrorKind::WrongConnectResponseRequestId(
+                cmd.response_to_request,
+            ))?
+        }
+        self.phase = ClientLogicPhase::RequestDownloadState {
+            download_state_request_id: 0x99,
+        }; // TODO: proper download state request id
+        debug!("set phase to connected!");
+        Ok(())
     }
 
     /// Handles the reception of a game step response from the host.
@@ -407,6 +446,9 @@ impl<StateT: BufferDeserializer, StepT: Clone + Deserialize + Serialize + Debug>
             }
             HostToClientCommands::BlobStreamChannel(ref blob_stream_command) => {
                 self.on_blob_stream(blob_stream_command)?
+            }
+            HostToClientCommands::ConnectType(ref connect_accepted) => {
+                self.on_connect(connect_accepted)?
             }
         }
         Ok(())

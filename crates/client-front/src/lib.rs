@@ -78,13 +78,13 @@ impl<StateT: BufferDeserializer + Debug, StepT: Clone + Deserialize + Serialize 
     ClientFront<StateT, StepT>
 {
     pub fn new(
-        application_version: &app_version::Version,
+        deterministic_simulation_version: app_version::Version,
         clock: Rc<RefCell<dyn MonotonicClock>>,
     ) -> Self {
         let now = clock.borrow_mut().now();
         Self {
             clock,
-            client: ClientStream::<StateT, StepT>::new(application_version),
+            client: ClientStream::<StateT, StepT>::new(deterministic_simulation_version),
             ordered_datagram_out: Default::default(),
             ordered_in: Default::default(),
             latency: AggregateMetric::<u16>::new(10).unwrap(),

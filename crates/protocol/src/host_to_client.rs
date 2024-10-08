@@ -22,6 +22,7 @@ pub enum HostToClientCommand {
     JoinGame = 0x09,
     DownloadGameState = 0x0B,
     BlobStreamChannel = 0x0C,
+    Connect = 0x0D,
 }
 
 impl TryFrom<u8> for HostToClientCommand {
@@ -33,6 +34,7 @@ impl TryFrom<u8> for HostToClientCommand {
             0x08 => Ok(Self::GameStep),
             0x0B => Ok(Self::DownloadGameState),
             0x0C => Ok(Self::BlobStreamChannel),
+            0x0D => Ok(Self::Connect),
             _ => Err(io::Error::new(
                 ErrorKind::InvalidData,
                 format!("Unknown host to client command {:X}", value),
@@ -103,12 +105,34 @@ impl ConnectResponse {
     }
 }
 
+#[derive(Debug, PartialEq)]
+pub struct ConnectionAccepted {
+    pub flags: u8,
+    pub response_to_request: ClientRequestId,
+}
+
+impl ConnectionAccepted {
+    pub fn to_stream(&self, stream: &mut impl WriteOctetStream) -> io::Result<()> {
+        stream.write_u8(self.flags)?;
+        self.response_to_request.serialize(stream)?;
+        Ok(())
+    }
+
+    pub fn from_stream(stream: &mut impl ReadOctetStream) -> io::Result<Self> {
+        Ok(Self {
+            flags: stream.read_u8()?,
+            response_to_request: ClientRequestId::deserialize(stream)?,
+        })
+    }
+}
+
 #[derive(Debug)]
 pub enum HostToClientCommands<StepT: Deserialize + Serialize + Debug + Clone> {
     JoinGame(JoinGameAccepted),
     GameStep(GameStepResponse<StepT>),
     DownloadGameState(DownloadGameStateResponse),
     BlobStreamChannel(SenderToReceiverFrontCommands),
+    ConnectType(ConnectionAccepted),
 }
 
 impl<StepT: Clone + Debug + Serialize + Deserialize> Serialize for HostToClientCommands<StepT> {
@@ -121,6 +145,7 @@ impl<StepT: Clone + Debug + Serialize + Deserialize> Serialize for HostToClientC
                 download_game_state_response.to_stream(stream)
             }
             Self::BlobStreamChannel(blob_stream_command) => blob_stream_command.to_stream(stream),
+            Self::ConnectType(connect_response) => connect_response.to_stream(stream),
         }
     }
 }
@@ -146,6 +171,9 @@ impl<StepT: Clone + Debug + Serialize + Deserialize> Deserialize for HostToClien
             HostToClientCommand::BlobStreamChannel => {
                 Self::BlobStreamChannel(SenderToReceiverFrontCommands::from_stream(stream)?)
             }
+            HostToClientCommand::Connect => {
+                Self::ConnectType(ConnectionAccepted::from_stream(stream)?)
+            }
         };
         Ok(x)
     }
@@ -158,6 +186,7 @@ impl<StepT: Deserialize + Serialize + Debug + Clone> HostToClientCommands<StepT>
             Self::GameStep(_) => HostToClientCommand::GameStep as u8,
             Self::DownloadGameState(_) => HostToClientCommand::DownloadGameState as u8,
             Self::BlobStreamChannel(_) => HostToClientCommand::BlobStreamChannel as u8,
+            Self::ConnectType(_) => HostToClientCommand::Connect as u8,
         }
     }
 }

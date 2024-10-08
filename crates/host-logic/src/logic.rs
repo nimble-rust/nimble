@@ -3,6 +3,7 @@
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
 use crate::combinator::{Combinator, CombinatorError};
+use app_version::Version;
 use flood_rs::{Deserialize, Serialize};
 use freelist_rs::{FreeList, FreeListError};
 use log::{debug, info, trace};
@@ -10,15 +11,15 @@ use monotonic_time_rs::Millis;
 use nimble_blob_stream::prelude::*;
 use nimble_participant::ParticipantId;
 use nimble_protocol::client_to_host::{
-    ClientToHostCommands, DownloadGameStateRequest, StepsRequest,
+    ClientToHostCommands, ConnectRequest, DownloadGameStateRequest, StepsRequest,
 };
 use nimble_protocol::host_to_client::{
-    AuthoritativeStepRanges, DownloadGameStateResponse, GameStepResponseHeader,
+    AuthoritativeStepRanges, ConnectionAccepted, DownloadGameStateResponse, GameStepResponseHeader,
     HostToClientCommands, JoinGameAccepted, JoinGameParticipant, JoinGameParticipants,
     PartyAndSessionSecret,
 };
 use nimble_protocol::prelude::{GameStepResponse, JoinGameRequest};
-use nimble_protocol::SessionConnectionSecret;
+use nimble_protocol::{SessionConnectionSecret, NIMBLE_PROTOCOL_VERSION};
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::fmt::Debug;
@@ -107,6 +108,18 @@ impl<StepT: Clone> GameSession<StepT> {
     }
 }
 
+#[derive(Debug, PartialEq, Eq)]
+pub enum Phase {
+    WaitingForValidConnectRequest,
+    Connected,
+}
+
+pub const NIMBLE_VERSION: Version = Version::new(
+    NIMBLE_PROTOCOL_VERSION.major,
+    NIMBLE_PROTOCOL_VERSION.minor,
+    NIMBLE_PROTOCOL_VERSION.patch,
+);
+
 #[derive(Debug)]
 #[allow(clippy::new_without_default)]
 pub struct Connection<StepT: Clone + Eq + Debug + Deserialize + Serialize> {
@@ -114,6 +127,7 @@ pub struct Connection<StepT: Clone + Eq + Debug + Deserialize + Serialize> {
     pub out_blob_stream: Option<OutLogicFront>,
     pub blob_stream_for_client_request: Option<u8>,
     last_transfer_id: u16,
+    phase: Phase,
     #[allow(unused)]
     debug_counter: u16,
     phantom_data: PhantomData<StepT>,
@@ -128,8 +142,38 @@ impl<StepT: Clone + Eq + Debug + Deserialize + Serialize> Connection<StepT> {
             blob_stream_for_client_request: None,
             last_transfer_id: 0,
             debug_counter: 0,
+            phase: Phase::WaitingForValidConnectRequest,
             phantom_data: PhantomData,
         }
+    }
+
+    pub fn phase(&self) -> &Phase {
+        &self.phase
+    }
+
+    pub fn on_connect(
+        &mut self,
+        connect_request: &ConnectRequest,
+        required_deterministic_simulation_version: &app_version::Version,
+    ) -> Result<Vec<HostToClientCommands<StepT>>, HostLogicError> {
+        self.phase = Phase::Connected;
+
+        let connect_version = app_version::Version::new(
+            connect_request.application_version.major,
+            connect_request.application_version.minor,
+            connect_request.application_version.patch,
+        );
+
+        if connect_version != *required_deterministic_simulation_version {
+            return Err(HostLogicError::WrongApplicationVersion);
+        }
+
+        let response = ConnectionAccepted {
+            flags: 0,
+            response_to_request: connect_request.client_request_id,
+        };
+        debug!("host-stream received connect request {:?}", connect_request);
+        Ok([HostToClientCommands::ConnectType(response)].into())
     }
 
     pub fn is_state_received_by_remote(&self) -> bool {
@@ -187,6 +231,7 @@ impl<StepT: Clone + Eq + Debug + Deserialize + Serialize> Connection<StepT> {
         for participant in &participants {
             self.participant_lookup
                 .insert(participant.borrow().id, participant.clone());
+            session.combinator.create_buffer(participant.borrow().id);
         }
 
         let join_game_participants = participants
@@ -306,6 +351,8 @@ pub enum HostLogicError {
     BlobStreamErr(OutStreamError),
     NoDownloadNow,
     CombinatorError(CombinatorError),
+    NeedConnectRequestFirst,
+    WrongApplicationVersion,
 }
 
 impl From<CombinatorError> for HostLogicError {
@@ -324,14 +371,16 @@ pub struct HostLogic<
     connections: HashMap<u8, Connection<StepT>>,
     session: GameSession<StepT>,
     free_list: FreeList<u8>,
+    deterministic_simulation_version: app_version::Version,
 }
 
 impl<StepT: Clone + Eq + Debug + Deserialize + Serialize> HostLogic<StepT> {
-    pub fn new(tick_id: TickId) -> Self {
+    pub fn new(tick_id: TickId, deterministic_simulation_version: app_version::Version) -> Self {
         Self {
             connections: HashMap::new(),
             session: GameSession::new(tick_id),
             free_list: FreeList::<u8>::new(0xff),
+            deterministic_simulation_version,
         }
     }
 
@@ -379,32 +428,46 @@ impl<StepT: Clone + Eq + Debug + Deserialize + Serialize> HostLogic<StepT> {
         state_provider: &impl GameStateProvider,
     ) -> Result<Vec<HostToClientCommands<StepT>>, HostLogicError> {
         if let Some(ref mut connection) = self.connections.get_mut(&connection_id.0) {
-            match request {
-                ClientToHostCommands::JoinGameType(join_game_request) => Ok(vec![
-                    connection.on_join(&mut self.session, join_game_request)?
-                ]),
-                ClientToHostCommands::Steps(add_steps_request) => {
-                    for combined_step in &add_steps_request.combined_predicted_steps.steps {
-                        for (participant_id, step) in combined_step.combined_step.into_iter() {
-                            if !connection.participant_lookup.contains_key(participant_id) {
-                                Err(HostLogicError::UnknownPartyMember(*participant_id))?;
-                            }
-                            self.session.combinator.add(*participant_id, step.clone())?;
-                        }
+            match &connection.phase {
+                Phase::Connected => match request {
+                    ClientToHostCommands::JoinGameType(join_game_request) => {
+                        Ok(vec![
+                            connection.on_join(&mut self.session, join_game_request)?
+                        ])
                     }
-                    Ok(vec![connection.on_steps(add_steps_request)?])
-                }
-                ClientToHostCommands::DownloadGameState(download_game_state_request) => {
-                    Ok(connection.on_download(
-                        self.session.combinator.tick_id_to_produce,
-                        now,
-                        download_game_state_request,
-                        state_provider,
-                    )?)
-                }
-                ClientToHostCommands::BlobStreamChannel(blob_stream_command) => {
-                    Ok(connection.on_blob_stream(now, blob_stream_command)?)
-                }
+                    ClientToHostCommands::Steps(add_steps_request) => {
+                        for combined_step in &add_steps_request.combined_predicted_steps.steps {
+                            for (participant_id, step) in combined_step.combined_step.into_iter() {
+                                if !connection.participant_lookup.contains_key(participant_id) {
+                                    Err(HostLogicError::UnknownPartyMember(*participant_id))?;
+                                }
+                                self.session.combinator.add(*participant_id, step.clone())?;
+                            }
+                        }
+                        Ok(vec![connection.on_steps(add_steps_request)?])
+                    }
+                    ClientToHostCommands::DownloadGameState(download_game_state_request) => {
+                        Ok(connection.on_download(
+                            self.session.combinator.tick_id_to_produce,
+                            now,
+                            download_game_state_request,
+                            state_provider,
+                        )?)
+                    }
+                    ClientToHostCommands::BlobStreamChannel(blob_stream_command) => {
+                        connection.on_blob_stream(now, blob_stream_command)
+                    }
+                    ClientToHostCommands::ConnectType(connect_request) => {
+                        trace!("notice: got connection request, even though we are connected, but will send response anyway");
+                        connection
+                            .on_connect(connect_request, &self.deterministic_simulation_version)
+                    }
+                },
+                Phase::WaitingForValidConnectRequest => match request {
+                    ClientToHostCommands::ConnectType(connect_request) => connection
+                        .on_connect(connect_request, &self.deterministic_simulation_version),
+                    _ => Err(HostLogicError::NeedConnectRequestFirst),
+                },
             }
         } else {
             Err(HostLogicError::UnknownConnectionId(connection_id))

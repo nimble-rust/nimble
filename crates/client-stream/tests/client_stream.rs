@@ -5,7 +5,8 @@
 use flood_rs::BufferDeserializer;
 use hexify::assert_eq_slices;
 use log::{info, trace};
-use nimble_client_stream::client::{ClientPhase, ClientStream, ClientStreamError};
+use nimble_client_logic::logic::ClientLogicPhase;
+use nimble_client_stream::client::{ClientStream, ClientStreamError};
 use nimble_participant::ParticipantId;
 use nimble_sample_step::{SampleState, SampleStep};
 use nimble_step_types::{LocalIndex, StepForParticipants};
@@ -41,7 +42,7 @@ fn connect<
 
     info!("phase {phase:?}");
 
-    assert!(matches!(phase, &ClientPhase::Connecting(_)));
+    assert!(matches!(phase, &ClientLogicPhase::RequestConnect));
 
     #[rustfmt::skip]
     let connect_response_from_host = [
@@ -59,7 +60,10 @@ fn connect<
 
     info!("phase {phase:?}");
 
-    assert!(matches!(phase, &ClientPhase::Connected(_)));
+    assert!(matches!(
+        phase,
+        &ClientLogicPhase::RequestDownloadState { .. }
+    ));
 
     Ok(())
 }
@@ -138,14 +142,10 @@ fn download_state<
 
 #[test_log::test]
 fn connect_stream() -> Result<(), ClientStreamError> {
-    let application_version = app_version::Version {
-        major: 0,
-        minor: 1,
-        patch: 2,
-    };
+    let application_version = app_version::Version::new(0, 1, 2);
 
     let mut stream: ClientStream<SampleState, Step<SampleStep>> =
-        ClientStream::new(&application_version);
+        ClientStream::new(application_version);
 
     connect(&mut stream)?;
 
@@ -156,14 +156,10 @@ fn connect_stream() -> Result<(), ClientStreamError> {
 
 #[test_log::test]
 fn predicted_steps() -> Result<(), ClientStreamError> {
-    let application_version = app_version::Version {
-        major: 0,
-        minor: 1,
-        patch: 2,
-    };
+    let application_version = app_version::Version::new(0, 1, 2);
 
     let mut stream: ClientStream<SampleState, Step<SampleStep>> =
-        ClientStream::new(&application_version);
+        ClientStream::new(application_version);
 
     // Client must be connected and have a state before sending predicted steps
     connect(&mut stream)?;
@@ -399,14 +395,10 @@ fn create_predicted_steps<StepT: Clone>(
 
 #[test_log::test]
 fn feed_garbled() -> Result<(), ClientStreamError> {
-    let application_version = app_version::Version {
-        major: 0,
-        minor: 1,
-        patch: 2,
-    };
+    let application_version = app_version::Version::new(0, 1, 2);
 
     let mut stream: ClientStream<SampleState, Step<SampleStep>> =
-        ClientStream::new(&application_version);
+        ClientStream::new(application_version);
     let mut rng = StdRng::seed_from_u64(0x1199F00D);
 
     stream.send()?;

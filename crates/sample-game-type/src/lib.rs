@@ -113,11 +113,7 @@ impl BufferDeserializer for SampleGame {
 
 impl VersionProvider for SampleGame {
     fn version() -> Version {
-        Version {
-            major: 0,
-            minor: 0,
-            patch: 5,
-        }
+        Version::new(0, 0, 5)
     }
 }
 

@@ -12,7 +12,6 @@ members = [
     "crates/ordered-datagram",
     "crates/sample-step",
     "crates/client-stream",
-    "crates/client-connecting",
     "crates/nimble",
     "crates/step-types",
     "crates/sample-game-type",
@@ -22,6 +21,5 @@ members = [
     "crates/host-stream",
     "crates/datagram-chunker",
     "crates/host-front",
-    "crates/app-version",
 ]
 resolver = "2"

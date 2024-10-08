@@ -9,8 +9,8 @@ use flood_rs::{Deserialize, Serialize, WriteOctetStream};
 use hexify::format_hex;
 use log::{debug, trace};
 use monotonic_time_rs::Millis;
-use nimble_host_logic::logic::{GameSession, GameStateProvider};
-use nimble_host_stream::{HostStream, HostStreamConnection, HostStreamError};
+use nimble_host_logic::logic::{Connection, GameSession, GameStateProvider, HostLogic};
+use nimble_host_stream::{HostStream, HostStreamError};
 use nimble_ordered_datagram::{DatagramOrderInError, OrderedIn, OrderedOut};
 use nimble_protocol_header::ClientTime;
 use std::collections::HashMap;
@@ -70,7 +70,7 @@ pub struct HostFront<StepT: Clone + Debug + Eq + Deserialize + Serialize> {
 }
 
 impl<StepT: Clone + Deserialize + Serialize + Eq + Debug> HostFront<StepT> {
-    pub fn new(app_version: &app_version::Version, tick_id: TickId) -> Self {
+    pub fn new(app_version: app_version::Version, tick_id: TickId) -> Self {
         Self {
             host_stream: HostStream::<StepT>::new(app_version, tick_id),
             connections: HashMap::new(),
@@ -81,6 +81,10 @@ impl<StepT: Clone + Deserialize + Serialize + Eq + Debug> HostFront<StepT> {
         self.host_stream.session()
     }
 
+    pub fn logic(&self) -> &HostLogic<StepT> {
+        self.host_stream.logic()
+    }
+
     pub fn get(
         &self,
         connection_id: nimble_host_logic::logic::HostConnectionId,
@@ -88,11 +92,11 @@ impl<StepT: Clone + Deserialize + Serialize + Eq + Debug> HostFront<StepT> {
         self.connections.get(&connection_id.0)
     }
 
-    pub fn get_stream(
+    pub fn get_logic(
         &self,
         connection_id: nimble_host_logic::logic::HostConnectionId,
-    ) -> Option<&HostStreamConnection> {
-        self.host_stream.get(connection_id)
+    ) -> Option<&Connection<StepT>> {
+        self.host_stream.logic().get(connection_id)
     }
 
     pub fn update(
