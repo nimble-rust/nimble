@@ -29,17 +29,17 @@ impl TryFrom<u8> for HostToClientCommand {
     type Error = io::Error;
 
     fn try_from(value: u8) -> io::Result<Self> {
-        match value {
-            0x09 => Ok(Self::JoinGame),
-            0x08 => Ok(Self::GameStep),
-            0x0B => Ok(Self::DownloadGameState),
-            0x0C => Ok(Self::BlobStreamChannel),
-            0x0D => Ok(Self::Connect),
+        Ok(match value {
+            0x09 => Self::JoinGame,
+            0x08 => Self::GameStep,
+            0x0B => Self::DownloadGameState,
+            0x0C => Self::BlobStreamChannel,
+            0x0D => Self::Connect,
             _ => Err(io::Error::new(
                 ErrorKind::InvalidData,
                 format!("Unknown host to client command {:X}", value),
-            )),
-        }
+            ))?,
+        })
     }
 }
 

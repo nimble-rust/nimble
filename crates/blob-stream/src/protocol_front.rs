@@ -53,14 +53,14 @@ impl TryFrom<u8> for SenderToReceiverFrontCommand {
     type Error = io::Error;
 
     fn try_from(value: u8) -> io::Result<Self> {
-        match value {
-            0x01 => Ok(Self::SetChunk),
-            0x02 => Ok(Self::StartTransfer),
+        Ok(match value {
+            0x01 => Self::SetChunk,
+            0x02 => Self::StartTransfer,
             _ => Err(io::Error::new(
                 io::ErrorKind::InvalidData,
                 format!("Unknown SenderToReceiverFrontCommand {value}"),
-            )),
-        }
+            ))?,
+        })
     }
 }
 
@@ -115,14 +115,14 @@ impl TryFrom<u8> for ReceiverToSenderFrontCommand {
     type Error = io::Error;
 
     fn try_from(value: u8) -> io::Result<Self> {
-        match value {
-            0x03 => Ok(Self::AckStart),
-            0x04 => Ok(Self::AckChunk),
+        Ok(match value {
+            0x03 => Self::AckStart,
+            0x04 => Self::AckChunk,
             _ => Err(io::Error::new(
                 ErrorKind::InvalidData,
                 format!("Unknown ReceiverToSenderFrontCommand {value}"),
-            )),
-        }
+            ))?,
+        })
     }
 }
 

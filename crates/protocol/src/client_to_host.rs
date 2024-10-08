@@ -26,17 +26,17 @@ impl TryFrom<u8> for ClientToHostCommand {
     type Error = io::Error;
 
     fn try_from(value: u8) -> io::Result<Self> {
-        match value {
-            0x01 => Ok(Self::JoinGame),
-            0x02 => Ok(Self::Steps),
-            0x03 => Ok(Self::DownloadGameState),
-            0x04 => Ok(Self::BlobStreamChannel),
-            0x05 => Ok(Self::Connect),
+        Ok(match value {
+            0x01 => Self::JoinGame,
+            0x02 => Self::Steps,
+            0x03 => Self::DownloadGameState,
+            0x04 => Self::BlobStreamChannel,
+            0x05 => Self::Connect,
             _ => Err(io::Error::new(
                 ErrorKind::InvalidData,
                 format!("Unknown ClientToHostCommand {}", value),
-            )),
-        }
+            ))?,
+        })
     }
 }
 
@@ -197,15 +197,15 @@ impl TryFrom<u8> for JoinGameTypeValue {
     type Error = io::Error;
 
     fn try_from(value: u8) -> io::Result<Self> {
-        match value {
-            0x00 => Ok(Self::NoSecret),
-            0x01 => Ok(Self::SessionSecret),
-            0x02 => Ok(Self::HostMigrationParticipantId),
+        Ok(match value {
+            0x00 => Self::NoSecret,
+            0x01 => Self::SessionSecret,
+            0x02 => Self::HostMigrationParticipantId,
             _ => Err(io::Error::new(
                 ErrorKind::InvalidData,
                 format!("Unknown join game type {}", value),
-            )),
-        }
+            ))?,
+        })
     }
 }
 
