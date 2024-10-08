@@ -4,6 +4,7 @@
  */
 use crate::protocol::{AckChunkData, SetChunkData, StartTransferData, TransferId};
 use flood_rs::{ReadOctetStream, WriteOctetStream};
+use std::fmt::Display;
 use std::io;
 use std::io::ErrorKind;
 
@@ -41,6 +42,23 @@ impl SetChunkFrontData {
 pub enum SenderToReceiverFrontCommands {
     SetChunk(SetChunkFrontData),
     StartTransfer(StartTransferData),
+}
+
+impl Display for SenderToReceiverFrontCommands {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            SenderToReceiverFrontCommands::SetChunk(set_chunk_data) => write!(
+                f,
+                "set_chunk transfer{} index:{} chunk_size:{}",
+                set_chunk_data.transfer_id.0,
+                set_chunk_data.data.chunk_index,
+                set_chunk_data.data.payload.len()
+            ),
+            SenderToReceiverFrontCommands::StartTransfer(transfer_data) => {
+                write!(f, "start transfer {transfer_data:?}")
+            }
+        }
+    }
 }
 
 #[repr(u8)]

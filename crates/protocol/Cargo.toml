@@ -14,7 +14,7 @@ nimble-participant = { path = "../participant", version = "0.0.12-dev" }
 tick-id = "0.0.7"
 log = "0.4.22"
 nimble-step-types = { path = "../step-types", version = "0.0.12-dev" }
-seq-map = "0.0.1"
+seq-map = "0.0.2"
 
 [dev-dependencies]
 test-log = "0.2.16"

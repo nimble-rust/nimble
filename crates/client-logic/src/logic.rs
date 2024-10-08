@@ -18,6 +18,7 @@ use nimble_protocol::host_to_client::{
 };
 use nimble_protocol::prelude::*;
 use nimble_protocol::{ClientRequestId, NIMBLE_PROTOCOL_VERSION};
+use nimble_step::Step;
 use nimble_step_types::{LocalIndex, StepForParticipants};
 use nimble_steps::{Steps, StepsError};
 use std::fmt::Debug;
@@ -52,7 +53,10 @@ pub struct LocalPlayer {
 /// * `StateT`: A type implementing representing the game state.
 /// * `StepT`: A type implementing representing the game steps.
 #[derive(Debug)]
-pub struct ClientLogic<StateT: BufferDeserializer, StepT: Clone + Deserialize + Serialize + Debug> {
+pub struct ClientLogic<
+    StateT: BufferDeserializer,
+    StepT: Clone + Deserialize + Serialize + Debug + std::fmt::Display,
+> {
     // The deterministic simulation version
     deterministic_simulation_version: app_version::Version,
 
@@ -71,7 +75,7 @@ pub struct ClientLogic<StateT: BufferDeserializer, StepT: Clone + Deserialize + 
     outgoing_predicted_steps: Steps<StepForParticipants<StepT>>,
 
     /// Stores the incoming authoritative steps from the host.
-    incoming_authoritative_steps: Steps<StepForParticipants<StepT>>,
+    incoming_authoritative_steps: Steps<StepForParticipants<Step<StepT>>>,
 
     /// Represents the current phase of the client's logic.
     phase: ClientLogicPhase,
@@ -86,8 +90,10 @@ pub struct ClientLogic<StateT: BufferDeserializer, StepT: Clone + Deserialize + 
     local_players: Vec<LocalPlayer>,
 }
 
-impl<StateT: BufferDeserializer, StepT: Clone + Deserialize + Serialize + Debug>
-    ClientLogic<StateT, StepT>
+impl<
+        StateT: BufferDeserializer,
+        StepT: Clone + Deserialize + Serialize + Debug + std::fmt::Display,
+    > ClientLogic<StateT, StepT>
 {
     /// Creates a new `ClientLogic` instance, initializing all fields.
     pub fn new(
@@ -110,7 +116,7 @@ impl<StateT: BufferDeserializer, StepT: Clone + Deserialize + Serialize + Debug>
     }
 
     /// Returns a reference to the incoming authoritative steps.
-    pub fn debug_authoritative_steps(&self) -> &Steps<StepForParticipants<StepT>> {
+    pub fn debug_authoritative_steps(&self) -> &Steps<StepForParticipants<Step<StepT>>> {
         &self.incoming_authoritative_steps
     }
 
@@ -118,10 +124,16 @@ impl<StateT: BufferDeserializer, StepT: Clone + Deserialize + Serialize + Debug>
         &self.phase
     }
 
-    pub fn pop_all_authoritative_steps(&mut self) -> Vec<StepForParticipants<StepT>> {
-        let vec = self.incoming_authoritative_steps.to_vec();
-        self.incoming_authoritative_steps.clear();
-        vec
+    pub fn pop_all_authoritative_steps(
+        &mut self,
+    ) -> (TickId, Vec<StepForParticipants<Step<StepT>>>) {
+        if let Some(first_tick_id) = self.incoming_authoritative_steps.front_tick_id() {
+            let vec = self.incoming_authoritative_steps.to_vec();
+            self.incoming_authoritative_steps.clear();
+            (first_tick_id, vec)
+        } else {
+            (TickId(0), vec![])
+        }
     }
 
     /// Sets the joining player request for this client.
@@ -200,6 +212,26 @@ impl<StateT: BufferDeserializer, StepT: Clone + Deserialize + Serialize + Debug>
     pub fn send(&mut self) -> Vec<ClientToHostCommands<StepT>> {
         let mut commands: Vec<ClientToHostCommands<StepT>> = vec![];
 
+        if let Some(joining_players) = &self.joining_player {
+            debug!("connected. send join_game_request {:?}", joining_players);
+
+            let player_requests = joining_players
+                .iter()
+                .map(|local_index| JoinPlayerRequest {
+                    local_index: *local_index,
+                })
+                .collect();
+            let join_command = ClientToHostCommands::JoinGameType(JoinGameRequest {
+                client_request_id: self.joining_request_id,
+                join_game_type: JoinGameType::NoSecret,
+                player_requests: JoinPlayerRequests {
+                    players: player_requests,
+                },
+            });
+            trace!("send join command: {join_command:?}");
+            commands.push(join_command);
+        }
+
         let normal_commands: Vec<ClientToHostCommands<StepT>> = match self.phase {
             ClientLogicPhase::RequestDownloadState {
                 download_state_request_id,
@@ -216,24 +248,6 @@ impl<StateT: BufferDeserializer, StepT: Clone + Deserialize + Serialize + Debug>
         };
 
         commands.extend(normal_commands);
-
-        if let Some(joining_players) = &self.joining_player {
-            debug!("connected. send join_game_request {:?}", joining_players);
-
-            let player_requests = joining_players
-                .iter()
-                .map(|local_index| JoinPlayerRequest {
-                    local_index: *local_index,
-                })
-                .collect();
-            commands.push(ClientToHostCommands::JoinGameType(JoinGameRequest {
-                client_request_id: self.joining_request_id,
-                join_game_type: JoinGameType::NoSecret,
-                player_requests: JoinPlayerRequests {
-                    players: player_requests,
-                },
-            }));
-        }
 
         commands
     }
@@ -266,6 +280,15 @@ impl<StateT: BufferDeserializer, StepT: Clone + Deserialize + Serialize + Debug>
     /// Returns a [`ClientErrorKind`] if the join game process encounters an error.
     fn on_join_game(&mut self, cmd: &JoinGameAccepted) -> Result<(), ClientErrorKind> {
         debug!("join game accepted: {:?}", cmd);
+
+        if cmd.client_request_id != self.joining_request_id {
+            Err(ClientErrorKind::WrongJoinResponseRequestId {
+                encountered: cmd.client_request_id,
+                expected: self.joining_request_id,
+            })?;
+        }
+
+        self.joining_player = None;
 
         self.local_players.clear();
 
@@ -329,8 +352,8 @@ impl<StateT: BufferDeserializer, StepT: Clone + Deserialize + Serialize + Debug>
     ///
     /// # Errors
     /// Returns a `ClientErrorKind` if there are issues processing the game steps.
-    fn on_game_step(&mut self, cmd: &GameStepResponse<StepT>) -> Result<(), ClientErrorKind> {
-        trace!("game step response: {:?}", cmd);
+    fn on_game_step(&mut self, cmd: &GameStepResponse<Step<StepT>>) -> Result<(), ClientErrorKind> {
+        trace!("game step response: {}", cmd);
 
         self.handle_game_step_header(&cmd.response_header);
 
@@ -430,7 +453,7 @@ impl<StateT: BufferDeserializer, StepT: Clone + Deserialize + Serialize + Debug>
     /// Returns a [`ClientErrorKind`] if the command cannot be processed.
     pub fn receive_cmd(
         &mut self,
-        command: &HostToClientCommands<StepT>,
+        command: &HostToClientCommands<Step<StepT>>,
     ) -> Result<(), ClientErrorKind> {
         match command {
             HostToClientCommands::JoinGame(ref join_game_response) => {
@@ -459,7 +482,10 @@ impl<StateT: BufferDeserializer, StepT: Clone + Deserialize + Serialize + Debug>
     ///
     /// # Errors
     /// Returns a `ClientError` if any command encounters an error during processing.
-    pub fn receive(&mut self, commands: &[HostToClientCommands<StepT>]) -> Result<(), ClientError> {
+    pub fn receive(
+        &mut self,
+        commands: &[HostToClientCommands<Step<StepT>>],
+    ) -> Result<(), ClientError> {
         let mut client_errors: Vec<ClientErrorKind> = Vec::new();
 
         for command in commands {

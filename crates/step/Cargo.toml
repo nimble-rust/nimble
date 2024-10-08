@@ -1,0 +1,11 @@
+[package]
+name = "nimble-step"
+version = "0.0.12-dev"
+edition = "2021"
+license = "MIT"
+description = "Nimble Step"
+repository = "https://github.com/nimble-rust/nimble"
+
+[dependencies]
+tick-id = "0.0.7"
+flood-rs = "0.0.11"

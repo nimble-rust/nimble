@@ -17,9 +17,11 @@ hexify = "0.0.3"
 err-rs = "0.0.4"
 tick-id = "0.0.7"
 nimble-steps = { path = "../steps", version = "0.0.12-dev" }
-seq-map = "0.0.1"
+seq-map = "0.0.2"
 datagram-chunker = { path = "../datagram-chunker", version = "0.0.1" }
 app-version = "0.0.2"
+nimble-step = { path = "../step", version = "0.0.12-dev" }
+
 
 [dev-dependencies]
 nimble-sample-step = { path = "../sample-step", version = "0.0.12-dev" }

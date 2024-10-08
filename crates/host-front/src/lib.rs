@@ -3,6 +3,7 @@
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
 
+use err_rs::{ErrorLevel, ErrorLevelProvider};
 use flood_rs::in_stream::InOctetStream;
 use flood_rs::prelude::OutOctetStream;
 use flood_rs::{Deserialize, Serialize, WriteOctetStream};
@@ -38,6 +39,16 @@ pub enum HostFrontError {
     IoError(std::io::Error),
 }
 
+impl ErrorLevelProvider for HostFrontError {
+    fn error_level(&self) -> ErrorLevel {
+        match self {
+            HostFrontError::DatagramOrderInError(_) => ErrorLevel::Info,
+            HostFrontError::HostStreamError(err) => err.error_level(),
+            HostFrontError::IoError(_) => ErrorLevel::Warning,
+        }
+    }
+}
+
 impl From<DatagramOrderInError> for HostFrontError {
     fn from(err: DatagramOrderInError) -> Self {
         Self::DatagramOrderInError(err)
@@ -64,12 +75,12 @@ impl ConnectionId {
     }
 }
 
-pub struct HostFront<StepT: Clone + Debug + Eq + Deserialize + Serialize> {
+pub struct HostFront<StepT: Clone + Debug + Eq + Deserialize + Serialize + std::fmt::Display> {
     host_stream: HostStream<StepT>,
     connections: HashMap<u8, HostFrontConnection>,
 }
 
-impl<StepT: Clone + Deserialize + Serialize + Eq + Debug> HostFront<StepT> {
+impl<StepT: Clone + Deserialize + Serialize + Eq + Debug + std::fmt::Display> HostFront<StepT> {
     pub fn new(app_version: app_version::Version, tick_id: TickId) -> Self {
         Self {
             host_stream: HostStream::<StepT>::new(app_version, tick_id),

@@ -2,114 +2,22 @@
  * Copyright (c) Peter Bjorklund. All rights reserved. https://github.com/nimble-rust/nimble
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
-use flood_rs::prelude::*;
 use std::collections::VecDeque;
-use std::io;
+use std::fmt::{Display, Formatter};
 use tick_id::TickId;
 
 pub mod pending_steps;
-
-#[derive(Debug)]
-pub struct GenericOctetStep {
-    pub payload: Vec<u8>,
-}
-
-impl Serialize for GenericOctetStep {
-    fn serialize(&self, stream: &mut impl WriteOctetStream) -> io::Result<()>
-    where
-        Self: Sized,
-    {
-        stream.write_u8(self.payload.len() as u8)?;
-        stream.write(self.payload.as_slice())
-    }
-}
-
-impl Deserialize for GenericOctetStep {
-    fn deserialize(stream: &mut impl ReadOctetStream) -> io::Result<Self>
-    where
-        Self: Sized,
-    {
-        let len = stream.read_u8()? as usize;
-        let mut payload = vec![0u8; len];
-        stream.read(&mut payload)?;
-        Ok(Self { payload })
-    }
-}
-
-#[derive(Debug, Clone, Eq, PartialEq)]
-pub struct JoinedData {
-    pub tick_id: TickId,
-}
-
-impl Serialize for JoinedData {
-    fn serialize(&self, stream: &mut impl WriteOctetStream) -> io::Result<()> {
-        stream.write_u32(self.tick_id.0)
-    }
-}
-
-impl Deserialize for JoinedData {
-    fn deserialize(stream: &mut impl ReadOctetStream) -> io::Result<Self> {
-        Ok(Self {
-            tick_id: TickId(stream.read_u32()?),
-        })
-    }
-}
-
-#[derive(Debug, Clone, Eq, PartialEq)] // Clone is needed since it can be in collections (like pending steps queue), Eq and PartialEq is to be able to use in tests, Debug for debug output.
-pub enum Step<T> {
-    Forced,
-    WaitingForReconnect,
-    Joined(JoinedData),
-    Left,
-    Custom(T),
-}
-
-impl<T> Step<T> {
-    #[must_use]
-    pub fn to_octet(&self) -> u8 {
-        match self {
-            Step::Forced => 0x01,
-            Step::WaitingForReconnect => 0x02,
-            Step::Joined(_) => 0x03,
-            Step::Left => 0x04,
-            Step::Custom(_) => 0x05,
-        }
-    }
-}
-
-impl<T: Serialize> Serialize for Step<T> {
-    fn serialize(&self, stream: &mut impl WriteOctetStream) -> io::Result<()> {
-        stream.write_u8(self.to_octet())?;
-        match self {
-            Step::Joined(join) => join.serialize(stream),
-            Step::Custom(custom) => custom.serialize(stream),
-            _ => Ok(()),
-        }
-    }
-}
-
-impl<T: Deserialize> Deserialize for Step<T> {
-    fn deserialize(stream: &mut impl ReadOctetStream) -> io::Result<Self> {
-        let step_type = stream.read_u8()?;
-        let t = match step_type {
-            0x01 => Step::Forced,
-            0x02 => Step::WaitingForReconnect,
-            0x03 => Step::Joined(JoinedData::deserialize(stream)?),
-            0x04 => Step::Left,
-            0x05 => Step::Custom(T::deserialize(stream)?),
-            _ => Err(io::Error::new(
-                io::ErrorKind::InvalidInput,
-                "invalid input, unknown step type",
-            ))?,
-        };
-        Ok(t)
-    }
-}
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct StepInfo<T> {
     pub step: T,
     pub tick_id: TickId,
+}
+
+impl<T: Display> Display for StepInfo<T> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}: {}", self.tick_id, self.step)
+    }
 }
 
 #[derive(Default, Debug)]

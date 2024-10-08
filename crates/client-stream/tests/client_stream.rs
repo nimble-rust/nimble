@@ -414,7 +414,7 @@ fn feed_garbled() -> Result<(), ClientStreamError> {
             0x00,
         ]);
         let result = stream.receive(&random_octets).err().unwrap();
-        trace!("received {result:?}");
+        trace!("client received {result:?}");
     }
     Ok(())
 }

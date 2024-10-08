@@ -44,6 +44,10 @@ impl ErrorLevelProvider for ClientError {
 #[derive(Debug)]
 pub enum ClientErrorKind {
     IoErr(io::Error),
+    WrongJoinResponseRequestId {
+        expected: ClientRequestId,
+        encountered: ClientRequestId,
+    },
     WrongConnectResponseRequestId(ClientRequestId),
     WrongDownloadRequestId,
     DownloadResponseWasUnexpected,
@@ -90,6 +94,7 @@ impl ErrorLevelProvider for ClientErrorKind {
             Self::StepsError(_) => ErrorLevel::Critical,
             Self::ReceivedConnectResponseWhenNotConnecting => ErrorLevel::Info,
             Self::BlobError(_) => ErrorLevel::Warning,
+            Self::WrongJoinResponseRequestId { .. } => ErrorLevel::Info,
         }
     }
 }
@@ -116,6 +121,13 @@ impl fmt::Display for ClientErrorKind {
                 write!(f, "ReceivedConnectResponseWhenNotConnecting")
             }
             Self::BlobError(_) => write!(f, "BlobError"),
+            Self::WrongJoinResponseRequestId {
+                expected,
+                encountered,
+            } => write!(
+                f,
+                "wrong join response, expected {expected:?}, encountered: {encountered:?}"
+            ),
         }
     }
 }

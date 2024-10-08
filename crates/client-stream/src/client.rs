@@ -10,6 +10,7 @@ use log::trace;
 use nimble_client_logic::err::{ClientError, ClientErrorKind};
 use nimble_client_logic::logic::{ClientLogic, ClientLogicPhase, LocalPlayer};
 use nimble_protocol::prelude::HostToClientCommands;
+use nimble_step::Step;
 use nimble_step_types::{LocalIndex, StepForParticipants};
 use nimble_steps::StepsError;
 use std::fmt::Debug;
@@ -75,13 +76,17 @@ impl From<ClientErrorKind> for ClientStreamError {
     }
 }
 #[derive(Debug)]
-pub struct ClientStream<StateT: BufferDeserializer, StepT: Clone + Deserialize + Serialize + Debug>
-{
+pub struct ClientStream<
+    StateT: BufferDeserializer,
+    StepT: Clone + Deserialize + Serialize + Debug + std::fmt::Display,
+> {
     logic: ClientLogic<StateT, StepT>,
 }
 
-impl<StateT: BufferDeserializer + Debug, StepT: Clone + Deserialize + Serialize + Debug>
-    ClientStream<StateT, StepT>
+impl<
+        StateT: BufferDeserializer + Debug,
+        StepT: Clone + Deserialize + Serialize + Debug + std::fmt::Display,
+    > ClientStream<StateT, StepT>
 {
     pub fn new(application_version: app_version::Version) -> Self {
         Self {
@@ -98,8 +103,8 @@ impl<StateT: BufferDeserializer + Debug, StepT: Clone + Deserialize + Serialize 
         in_stream: &mut impl ReadOctetStream,
     ) -> Result<(), ClientStreamError> {
         while !in_stream.has_reached_end() {
-            let cmd = HostToClientCommands::deserialize(in_stream)?;
-            trace!("client-stream: connected_receive {cmd:?}");
+            let cmd = HostToClientCommands::<Step<StepT>>::deserialize(in_stream)?;
+            trace!("client-stream: connected_receive {cmd}");
             self.logic.receive_cmd(&cmd)?;
         }
         Ok(())
@@ -107,7 +112,7 @@ impl<StateT: BufferDeserializer + Debug, StepT: Clone + Deserialize + Serialize 
 
     pub fn pop_all_authoritative_steps(
         &mut self,
-    ) -> Result<Vec<StepForParticipants<StepT>>, ClientStreamError> {
+    ) -> Result<(TickId, Vec<StepForParticipants<Step<StepT>>>), ClientStreamError> {
         Ok(self.logic.pop_all_authoritative_steps())
     }
 

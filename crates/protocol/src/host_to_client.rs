@@ -12,7 +12,7 @@ use io::ErrorKind;
 use log::trace;
 use nimble_blob_stream::prelude::SenderToReceiverFrontCommands;
 use nimble_participant::ParticipantId;
-use std::fmt::Debug;
+use std::fmt::{Debug, Display, Formatter};
 use std::io;
 use tick_id::TickId;
 
@@ -63,6 +63,16 @@ pub struct DownloadGameStateResponse {
     pub blob_stream_channel: u16,
 }
 
+impl Display for DownloadGameStateResponse {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "download game state response {} {} {}",
+            self.client_request, self.tick_id, self.blob_stream_channel
+        )
+    }
+}
+
 impl DownloadGameStateResponse {
     pub fn to_stream(&self, stream: &mut impl WriteOctetStream) -> io::Result<()> {
         stream.write_u8(self.client_request)?;
@@ -111,6 +121,16 @@ pub struct ConnectionAccepted {
     pub response_to_request: ClientRequestId,
 }
 
+impl Display for ConnectionAccepted {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "connection accepted {} {}",
+            self.flags, self.response_to_request
+        )
+    }
+}
+
 impl ConnectionAccepted {
     pub fn to_stream(&self, stream: &mut impl WriteOctetStream) -> io::Result<()> {
         stream.write_u8(self.flags)?;
@@ -127,7 +147,7 @@ impl ConnectionAccepted {
 }
 
 #[derive(Debug)]
-pub enum HostToClientCommands<StepT: Deserialize + Serialize + Debug + Clone> {
+pub enum HostToClientCommands<StepT: Deserialize + Serialize + Debug + Clone + std::fmt::Display> {
     JoinGame(JoinGameAccepted),
     GameStep(GameStepResponse<StepT>),
     DownloadGameState(DownloadGameStateResponse),
@@ -135,7 +155,9 @@ pub enum HostToClientCommands<StepT: Deserialize + Serialize + Debug + Clone> {
     ConnectType(ConnectionAccepted),
 }
 
-impl<StepT: Clone + Debug + Serialize + Deserialize> Serialize for HostToClientCommands<StepT> {
+impl<StepT: Clone + Debug + Serialize + Deserialize + std::fmt::Display> Serialize
+    for HostToClientCommands<StepT>
+{
     fn serialize(&self, stream: &mut impl WriteOctetStream) -> io::Result<()> {
         stream.write_u8(self.to_octet())?;
         match self {
@@ -150,7 +172,33 @@ impl<StepT: Clone + Debug + Serialize + Deserialize> Serialize for HostToClientC
     }
 }
 
-impl<StepT: Clone + Debug + Serialize + Deserialize> Deserialize for HostToClientCommands<StepT> {
+impl<StepT: Clone + Debug + Serialize + Deserialize + std::fmt::Display> Display
+    for HostToClientCommands<StepT>
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::JoinGame(join_game_response) => {
+                write!(f, "JoinGameResponse({})", join_game_response)
+            }
+            Self::GameStep(game_step_response) => {
+                write!(f, "GameStepResponse({})", game_step_response)
+            }
+            Self::DownloadGameState(download_game_state_response) => {
+                write!(f, "DownloadGameState({})", download_game_state_response)
+            }
+            Self::BlobStreamChannel(blob_stream_command) => {
+                write!(f, "BlobStreamChannel({})", blob_stream_command)
+            }
+            Self::ConnectType(connect_response) => {
+                write!(f, "ConnectResponse({})", connect_response)
+            }
+        }
+    }
+}
+
+impl<StepT: Clone + Debug + Serialize + Deserialize + std::fmt::Display> Deserialize
+    for HostToClientCommands<StepT>
+{
     fn deserialize(stream: &mut impl ReadOctetStream) -> io::Result<Self> {
         let command_value = stream.read_u8()?;
         let command = HostToClientCommand::try_from(command_value)?;
@@ -171,7 +219,9 @@ impl<StepT: Clone + Debug + Serialize + Deserialize> Deserialize for HostToClien
     }
 }
 
-impl<StepT: Deserialize + Serialize + Debug + Clone> HostToClientCommands<StepT> {
+impl<StepT: Deserialize + Serialize + Debug + Clone + std::fmt::Display>
+    HostToClientCommands<StepT>
+{
     pub fn to_octet(&self) -> u8 {
         match self {
             Self::JoinGame(_) => HostToClientCommand::JoinGame as u8,
@@ -253,6 +303,16 @@ pub struct JoinGameAccepted {
     pub participants: JoinGameParticipants,
 }
 
+impl Display for JoinGameAccepted {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "JoinGameAccepted {} {:?} {:?}",
+            self.client_request_id, self.party_and_session_secret, self.participants
+        )
+    }
+}
+
 impl JoinGameAccepted {
     pub fn to_stream(&self, stream: &mut impl WriteOctetStream) -> io::Result<()> {
         self.client_request_id.serialize(stream)?;
@@ -276,6 +336,16 @@ pub struct GameStepResponseHeader {
     pub next_expected_tick_id: TickId,
 }
 
+impl Display for GameStepResponseHeader {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "game_step_response: count:{} expected-tick:{} delta-buf:{}",
+            self.connection_buffer_count, self.next_expected_tick_id, self.delta_buffer
+        )
+    }
+}
+
 impl GameStepResponseHeader {
     pub fn to_stream(&self, stream: &mut impl WriteOctetStream) -> io::Result<()> {
         stream.write_u8(self.connection_buffer_count)?;
@@ -292,7 +362,9 @@ impl GameStepResponseHeader {
     }
 }
 
-impl<StepT: Deserialize + Serialize + Debug + Clone> InternalAuthoritativeStepRange<StepT> {
+impl<StepT: Deserialize + Serialize + Debug + Clone + std::fmt::Display>
+    InternalAuthoritativeStepRange<StepT>
+{
     pub fn to_stream(&self, stream: &mut impl WriteOctetStream) -> io::Result<()> {
         stream.write_u8(self.delta_tick_id_from_previous)?;
 
@@ -314,11 +386,29 @@ impl<StepT: Deserialize + Serialize + Debug + Clone> InternalAuthoritativeStepRa
 }
 
 #[derive(Debug)]
-pub struct AuthoritativeStepRanges<StepT: Deserialize + Serialize + Debug + Clone> {
+pub struct AuthoritativeStepRanges<
+    StepT: Deserialize + Serialize + Debug + Clone + std::fmt::Display,
+> {
     pub ranges: Vec<CombinedSteps<StepT>>,
 }
 
-impl<StepT: Deserialize + Serialize + Debug + Clone> Serialize for AuthoritativeStepRanges<StepT> {
+impl<StepT: Deserialize + Serialize + Debug + Clone + std::fmt::Display> Display
+    for AuthoritativeStepRanges<StepT>
+{
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "auth_steps range-count:{} ranges:", self.ranges.len())?;
+
+        for range in &self.ranges {
+            write!(f, "\n{}", range)?;
+        }
+
+        Ok(())
+    }
+}
+
+impl<StepT: Deserialize + Serialize + Debug + Clone + std::fmt::Display> Serialize
+    for AuthoritativeStepRanges<StepT>
+{
     fn serialize(&self, stream: &mut impl WriteOctetStream) -> io::Result<()>
     where
         Self: Sized,
@@ -359,7 +449,7 @@ impl<StepT: Deserialize + Serialize + Debug + Clone> Serialize for Authoritative
     }
 }
 
-impl<StepT: Deserialize + Serialize + Debug + Clone> Deserialize
+impl<StepT: Deserialize + Serialize + Debug + Clone + std::fmt::Display> Deserialize
     for AuthoritativeStepRanges<StepT>
 {
     fn deserialize(stream: &mut impl ReadOctetStream) -> io::Result<Self>
@@ -387,12 +477,16 @@ impl<StepT: Deserialize + Serialize + Debug + Clone> Deserialize
 }
 
 #[derive(Debug)]
-pub struct InternalAuthoritativeStepRanges<StepT: Deserialize + Serialize + Debug + Clone> {
+pub struct InternalAuthoritativeStepRanges<
+    StepT: Deserialize + Serialize + Debug + Clone + std::fmt::Display,
+> {
     pub root_tick_id: TickId,
     pub ranges: Vec<InternalAuthoritativeStepRange<StepT>>,
 }
 
-impl<StepT: Deserialize + Serialize + Debug + Clone> InternalAuthoritativeStepRanges<StepT> {
+impl<StepT: Deserialize + Serialize + Debug + Clone + std::fmt::Display>
+    InternalAuthoritativeStepRanges<StepT>
+{
     pub fn to_stream(&self, stream: &mut impl WriteOctetStream) -> io::Result<()> {
         TickIdUtil::to_stream(self.root_tick_id, stream)?;
         stream.write_u8(self.ranges.len() as u8)?;
@@ -426,12 +520,24 @@ impl<StepT: Deserialize + Serialize + Debug + Clone> InternalAuthoritativeStepRa
 }
 
 #[derive(Debug)]
-pub struct GameStepResponse<StepT: Serialize + Deserialize + Debug + Clone> {
+pub struct GameStepResponse<StepT: Serialize + Deserialize + Debug + Clone + std::fmt::Display> {
     pub response_header: GameStepResponseHeader,
     pub authoritative_steps: AuthoritativeStepRanges<StepT>,
 }
 
-impl<StepT: Deserialize + Serialize + Debug + Clone> GameStepResponse<StepT> {
+impl<StepT: Serialize + Deserialize + Debug + Clone + std::fmt::Display> Display
+    for GameStepResponse<StepT>
+{
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "response: {} auth-steps: {}",
+            self.response_header, self.authoritative_steps
+        )
+    }
+}
+
+impl<StepT: Deserialize + Serialize + Debug + Clone + std::fmt::Display> GameStepResponse<StepT> {
     pub fn to_stream(&self, stream: &mut impl WriteOctetStream) -> io::Result<()> {
         self.response_header.to_stream(stream)?;
         self.authoritative_steps.serialize(stream)

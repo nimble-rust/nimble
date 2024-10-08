@@ -20,12 +20,14 @@ use std::rc::Rc;
 use tick_id::TickId;
 
 pub use nimble_client_stream::LocalPlayer;
+use nimble_step::Step;
 
 #[derive(Debug)]
 pub enum ClientFrontError {
     Unexpected(String),
     DatagramOrderInError(DatagramOrderInError),
     ClientStreamError(ClientStreamError),
+
     IoError(io::Error),
 }
 
@@ -36,6 +38,7 @@ impl ErrorLevelProvider for ClientFrontError {
             Self::DatagramOrderInError(_) => ErrorLevel::Info,
             Self::IoError(_) => ErrorLevel::Warning,
             Self::ClientStreamError(err) => err.error_level(),
+            // Self::RectifyError(_) => ErrorLevel::Critical,
         }
     }
 }
@@ -60,7 +63,7 @@ impl From<io::Error> for ClientFrontError {
 
 pub struct ClientFront<
     StateT: BufferDeserializer + Debug,
-    StepT: Clone + Deserialize + Serialize + Debug,
+    StepT: Clone + Deserialize + Serialize + Debug + std::fmt::Display,
 > {
     pub client: ClientStream<StateT, StepT>,
     clock: Rc<RefCell<dyn MonotonicClock>>, //pub clock: InstantMonotonicClock,
@@ -74,8 +77,10 @@ pub struct ClientFront<
     out_octets_per_second: RateMetric,
 }
 
-impl<StateT: BufferDeserializer + Debug, StepT: Clone + Deserialize + Serialize + Debug>
-    ClientFront<StateT, StepT>
+impl<
+        StateT: BufferDeserializer + Debug,
+        StepT: Clone + Deserialize + Serialize + Debug + std::fmt::Display,
+    > ClientFront<StateT, StepT>
 {
     pub fn new(
         deterministic_simulation_version: app_version::Version,
@@ -150,7 +155,7 @@ impl<StateT: BufferDeserializer + Debug, StepT: Clone + Deserialize + Serialize 
 
     pub fn pop_all_authoritative_steps(
         &mut self,
-    ) -> Result<Vec<StepForParticipants<StepT>>, ClientFrontError> {
+    ) -> Result<(TickId, Vec<StepForParticipants<Step<StepT>>>), ClientFrontError> {
         Ok(self.client.pop_all_authoritative_steps()?)
     }
 

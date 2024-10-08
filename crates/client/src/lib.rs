@@ -3,30 +3,32 @@
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
 use app_version::VersionProvider;
+use err_rs::{ErrorLevel, ErrorLevelProvider};
 use flood_rs::{BufferDeserializer, Deserialize, Serialize};
-use log::trace;
 use monotonic_time_rs::InstantMonotonicClock;
 use nimble_client_front::{ClientFront, ClientFrontError, LocalPlayer};
-use nimble_rectify::{Rectify, RectifyCallbacks};
+use nimble_rectify::{Rectify, RectifyCallbacks, RectifyError};
+use nimble_step::Step;
 use nimble_step_types::{LocalIndex, StepForParticipants};
-use nimble_steps::Step;
 use std::cell::RefCell;
 use std::fmt::Debug;
 use std::rc::Rc;
 use tick_id::TickId;
 
-pub trait GameCallbacks<StepT>:
+pub trait GameCallbacks<StepT: std::fmt::Display>:
     RectifyCallbacks<StepForParticipants<Step<StepT>>> + VersionProvider + BufferDeserializer
 {
 }
 
-impl<T, StepT> GameCallbacks<StepT> for T where
-    T: RectifyCallbacks<StepForParticipants<Step<StepT>>> + VersionProvider + BufferDeserializer
+impl<T, StepT> GameCallbacks<StepT> for T
+where
+    T: RectifyCallbacks<StepForParticipants<Step<StepT>>> + VersionProvider + BufferDeserializer,
+    StepT: std::fmt::Display,
 {
 }
 
 impl<
-        StepT: Clone + Deserialize + Serialize + Debug,
+        StepT: Clone + Deserialize + Serialize + Debug + std::fmt::Display,
         GameT: GameCallbacks<StepT> + std::fmt::Debug,
     > Default for Client<GameT, StepT>
 {
@@ -39,6 +41,23 @@ impl<
 pub enum ClientError {
     ClientFrontError(ClientFrontError),
     IoError(std::io::Error),
+    RectifyError(RectifyError),
+}
+
+impl ErrorLevelProvider for ClientError {
+    fn error_level(&self) -> ErrorLevel {
+        match self {
+            ClientError::ClientFrontError(err) => err.error_level(),
+            ClientError::IoError(_) => ErrorLevel::Info,
+            ClientError::RectifyError(err) => err.error_level(),
+        }
+    }
+}
+
+impl From<RectifyError> for ClientError {
+    fn from(err: RectifyError) -> Self {
+        ClientError::RectifyError(err)
+    }
 }
 
 impl From<std::io::Error> for ClientError {
@@ -55,7 +74,7 @@ impl From<ClientFrontError> for ClientError {
 
 pub struct Client<
     GameT: GameCallbacks<StepT> + std::fmt::Debug,
-    StepT: Clone + Deserialize + Serialize + Debug,
+    StepT: Clone + Deserialize + Serialize + Debug + std::fmt::Display,
 > {
     client: ClientFront<GameT, StepT>,
     tick_duration_ms: u64,
@@ -64,7 +83,7 @@ pub struct Client<
 }
 
 impl<
-        StepT: Clone + Deserialize + Serialize + Debug,
+        StepT: Clone + Deserialize + Serialize + Debug + std::fmt::Display,
         GameT: GameCallbacks<StepT> + std::fmt::Debug,
     > Client<GameT, StepT>
 {
@@ -84,22 +103,29 @@ impl<
         self
     }
 
-    pub fn send(&mut self) -> Result<Vec<Vec<u8>>, ClientFrontError> {
-        self.client.send()
+    pub fn send(&mut self) -> Result<Vec<Vec<u8>>, ClientError> {
+        Ok(self.client.send()?)
     }
 
-    pub fn receive(&mut self, datagram: &[u8]) -> Result<(), ClientFrontError> {
+    pub fn receive(&mut self, datagram: &[u8]) -> Result<(), ClientError> {
         self.client.receive(datagram)?;
-        let auth_steps = self.client.pop_all_authoritative_steps()?;
-        trace!("found auth_steps: {:?}", auth_steps);
+        //let auth_steps = self.client.pop_all_authoritative_steps()?;
+        //trace!("found auth_steps: {}", auth_steps);
         Ok(())
     }
 
-    pub fn update(&mut self) {
+    pub fn update(&mut self) -> Result<(), ClientError> {
         self.client.update();
+
+        let (tick_id, auth_steps) = self.client.pop_all_authoritative_steps()?;
+
+        self.rectify
+            .push_authoritatives_with_check(tick_id, auth_steps.as_slice())?;
         if let Some(game_state) = self.client.game_state_mut() {
             self.rectify.update(game_state);
         }
+
+        Ok(())
     }
 
     pub fn want_predicted_step(&self) -> bool {

@@ -3,6 +3,7 @@
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
 use datagram_chunker::{serialize_to_chunker, DatagramChunkerError};
+use err_rs::{ErrorLevel, ErrorLevelProvider};
 use flood_rs::prelude::InOctetStream;
 use flood_rs::{Deserialize, ReadOctetStream, Serialize};
 use hexify::format_hex;
@@ -12,6 +13,7 @@ use nimble_host_logic::logic::{
     GameSession, GameStateProvider, HostConnectionId, HostLogic, HostLogicError,
 };
 use nimble_protocol::prelude::{ClientToHostCommands, HostToClientCommands};
+use nimble_step::Step;
 use std::fmt::Debug;
 use std::io;
 use tick_id::TickId;
@@ -26,6 +28,19 @@ pub enum HostStreamError {
     ConnectionNotFound,
     WrongApplicationVersion,
     MustBeConnectedFirst,
+}
+
+impl ErrorLevelProvider for HostStreamError {
+    fn error_level(&self) -> ErrorLevel {
+        match self {
+            HostStreamError::DatagramChunkerError(err) => err.error_level(),
+            HostStreamError::HostLogicError(err) => err.error_level(),
+            HostStreamError::IoError(_) => ErrorLevel::Info,
+            HostStreamError::ConnectionNotFound => ErrorLevel::Warning,
+            HostStreamError::WrongApplicationVersion => ErrorLevel::Warning,
+            HostStreamError::MustBeConnectedFirst => ErrorLevel::Warning,
+        }
+    }
 }
 
 impl From<DatagramChunkerError> for HostStreamError {
@@ -47,12 +62,17 @@ impl From<io::Error> for HostStreamError {
 }
 
 pub struct HostStream<
-    StepT: Clone + std::fmt::Debug + std::cmp::Eq + flood_rs::Deserialize + flood_rs::Serialize,
+    StepT: Clone
+        + std::fmt::Debug
+        + std::cmp::Eq
+        + flood_rs::Deserialize
+        + flood_rs::Serialize
+        + std::fmt::Display,
 > {
     host_logic: HostLogic<StepT>,
 }
 
-impl<StepT: Clone + Eq + Debug + Deserialize + Serialize> HostStream<StepT> {
+impl<StepT: Clone + Eq + Debug + Deserialize + Serialize + std::fmt::Display> HostStream<StepT> {
     pub fn new(
         required_deterministic_simulation_version: app_version::Version,
         tick_id: TickId,
@@ -68,8 +88,9 @@ impl<StepT: Clone + Eq + Debug + Deserialize + Serialize> HostStream<StepT> {
         in_stream: &mut impl ReadOctetStream,
         state_provider: &impl GameStateProvider,
         now: Millis,
-    ) -> Result<Vec<HostToClientCommands<StepT>>, HostStreamError> {
+    ) -> Result<Vec<HostToClientCommands<Step<StepT>>>, HostStreamError> {
         let request = ClientToHostCommands::<StepT>::deserialize(in_stream)?;
+        trace!("host connection:  {connection_id:?}, handling request: {request}");
         let commands = host_logic.update(connection_id, now, &request, state_provider)?;
         Ok(commands)
     }

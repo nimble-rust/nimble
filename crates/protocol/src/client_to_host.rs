@@ -9,7 +9,7 @@ use flood_rs::{Deserialize, ReadOctetStream, Serialize, WriteOctetStream};
 use io::ErrorKind;
 use nimble_blob_stream::prelude::ReceiverToSenderFrontCommands;
 use nimble_participant::ParticipantId;
-use std::fmt::Debug;
+use std::fmt::{Debug, Display};
 use std::{fmt, io};
 use tick_id::TickId;
 
@@ -84,7 +84,7 @@ impl DownloadGameStateRequest {
 }
 
 #[derive(Debug, Clone)]
-pub enum ClientToHostCommands<StepT: Clone + Debug + Serialize + Deserialize> {
+pub enum ClientToHostCommands<StepT: Clone + Debug + Serialize + Deserialize + std::fmt::Display> {
     JoinGameType(JoinGameRequest),
     Steps(StepsRequest<StepT>),
     DownloadGameState(DownloadGameStateRequest),
@@ -92,7 +92,9 @@ pub enum ClientToHostCommands<StepT: Clone + Debug + Serialize + Deserialize> {
     ConnectType(ConnectRequest),
 }
 
-impl<StepT: Clone + Debug + Serialize + Deserialize> Serialize for ClientToHostCommands<StepT> {
+impl<StepT: Clone + Debug + Serialize + Deserialize + std::fmt::Display> Serialize
+    for ClientToHostCommands<StepT>
+{
     fn serialize(&self, stream: &mut impl WriteOctetStream) -> io::Result<()> {
         stream.write_u8(self.to_octet())?;
         match self {
@@ -105,7 +107,9 @@ impl<StepT: Clone + Debug + Serialize + Deserialize> Serialize for ClientToHostC
     }
 }
 
-impl<StepT: Clone + Debug + Serialize + Deserialize> Deserialize for ClientToHostCommands<StepT> {
+impl<StepT: Clone + Debug + Serialize + Deserialize + std::fmt::Display> Deserialize
+    for ClientToHostCommands<StepT>
+{
     fn deserialize(stream: &mut impl ReadOctetStream) -> io::Result<Self> {
         let command_value = stream.read_u8()?;
         let command = ClientToHostCommand::try_from(command_value)?;
@@ -126,7 +130,9 @@ impl<StepT: Clone + Debug + Serialize + Deserialize> Deserialize for ClientToHos
     }
 }
 
-impl<StepT: Clone + Debug + Serialize + Deserialize> ClientToHostCommands<StepT> {
+impl<StepT: Clone + Debug + Serialize + Deserialize + std::fmt::Display>
+    ClientToHostCommands<StepT>
+{
     pub fn to_octet(&self) -> u8 {
         match self {
             Self::Steps(_) => ClientToHostCommand::Steps as u8,
@@ -138,14 +144,14 @@ impl<StepT: Clone + Debug + Serialize + Deserialize> ClientToHostCommands<StepT>
     }
 }
 
-impl<StepT: Clone + Debug + Eq + PartialEq + Serialize + Deserialize> fmt::Display
-    for ClientToHostCommands<StepT>
+impl<StepT: Clone + Debug + Eq + PartialEq + Serialize + Deserialize + std::fmt::Display>
+    fmt::Display for ClientToHostCommands<StepT>
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::JoinGameType(join) => write!(f, "join {:?}", join),
             Self::Steps(predicted_steps_and_ack) => {
-                write!(f, "steps {:?}", predicted_steps_and_ack)
+                write!(f, "steps {predicted_steps_and_ack}")
             }
             Self::DownloadGameState(download_game_state) => {
                 write!(f, "download game state {:?}", download_game_state)
@@ -319,6 +325,16 @@ pub struct StepsAck {
     pub lost_steps_mask_after_last_received: u64,
 }
 
+impl Display for StepsAck {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "waiting: {}, receive_mask:{:X}",
+            self.waiting_for_tick_id, self.lost_steps_mask_after_last_received
+        )
+    }
+}
+
 impl StepsAck {
     pub fn to_stream(&self, stream: &mut impl WriteOctetStream) -> io::Result<()> {
         TickIdUtil::to_stream(self.waiting_for_tick_id, stream)?;
@@ -335,12 +351,24 @@ impl StepsAck {
 }
 
 #[derive(Debug, Clone)]
-pub struct StepsRequest<StepT: Clone + Serialize + Deserialize + Debug> {
+pub struct StepsRequest<StepT: Clone + Serialize + Deserialize + Debug + std::fmt::Display> {
     pub ack: StepsAck,
     pub combined_predicted_steps: CombinedSteps<StepT>,
 }
 
-impl<StepT: Clone + Serialize + Deserialize + Debug> StepsRequest<StepT> {
+impl<StepT: Clone + Serialize + Deserialize + Debug + std::fmt::Display> Display
+    for StepsRequest<StepT>
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "steps-request ack:{}, steps:{}",
+            self.ack, self.combined_predicted_steps
+        )
+    }
+}
+
+impl<StepT: Clone + Serialize + Deserialize + Debug + std::fmt::Display> StepsRequest<StepT> {
     pub fn to_stream(&self, stream: &mut impl WriteOctetStream) -> io::Result<()> {
         self.ack.to_stream(stream)?;
 

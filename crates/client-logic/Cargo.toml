@@ -20,13 +20,13 @@ nimble-step-types = { path = "../step-types", version = "0.0.12-dev" }
 metricator = "0.0.2"
 nimble-participant = { path = "../participant", version = "0.0.12-dev" }
 app-version = "0.0.2"
-url = "2.5.2"
+nimble-step = { path = "../step", version = "0.0.12-dev" }
 
 [dev-dependencies]
 test-log = "0.2.16"
 nimble-sample-step = { path = "../sample-step", version = "0.0.12-dev" }
 criterion = "0.5.1"
-seq-map = "0.0.1"
+seq-map = "0.0.2"
 
 [[bench]]
 name = "bench_logic"

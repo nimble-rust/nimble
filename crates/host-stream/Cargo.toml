@@ -13,7 +13,8 @@ monotonic-time-rs = "0.0.3"
 app-version= "0.0.2"
 log = "0.4.22"
 hexify = "0.0.3"
-
+nimble-step = { path = "../step", version = "0.0.12-dev" }
+err-rs = "0.0.4"
 
 [dev-dependencies]
 test-log = "0.2.16"

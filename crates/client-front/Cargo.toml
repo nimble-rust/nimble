@@ -17,6 +17,8 @@ nimble-step-types = { path = "../step-types", version = "0.0.12-dev" }
 tick-id = "0.0.7"
 err-rs = "0.0.4"
 hexify = { version = "0.0.3", features = ["log_equal"] }
+nimble-steps = { path = "../steps", version = "0.0.12-dev" }
+nimble-step = { path = "../step", version = "0.0.12-dev" }
 
 [dev-dependencies]
 test-log = "0.2.16"

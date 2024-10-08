@@ -2,13 +2,15 @@
  * Copyright (c) Peter Bjorklund. All rights reserved. https://github.com/nimble-rust/nimble
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
+use err_rs::{ErrorLevel, ErrorLevelProvider};
 use seq_map::SeqMapError;
 use std::collections::HashMap;
 use tick_id::TickId;
 
 use nimble_participant::ParticipantId;
+use nimble_step::Step;
 use nimble_step_types::StepForParticipants;
-use nimble_steps::{Step, Steps};
+use nimble_steps::Steps;
 
 #[derive(Debug)]
 pub enum CombinatorError {
@@ -19,6 +21,17 @@ pub enum CombinatorError {
     OtherError,
     SeqMapError(SeqMapError),
     NoBufferForParticipant,
+}
+
+impl ErrorLevelProvider for CombinatorError {
+    fn error_level(&self) -> ErrorLevel {
+        match self {
+            CombinatorError::NotReadyToProduceStep { .. } => ErrorLevel::Info,
+            CombinatorError::OtherError => ErrorLevel::Info,
+            CombinatorError::SeqMapError(_) => ErrorLevel::Info,
+            CombinatorError::NoBufferForParticipant => ErrorLevel::Info,
+        }
+    }
 }
 
 impl From<SeqMapError> for CombinatorError {
@@ -33,7 +46,7 @@ pub struct Combinator<T: Clone> {
     pub tick_id_to_produce: TickId,
 }
 
-impl<T: Clone> Combinator<T> {
+impl<T: Clone + std::fmt::Display> Combinator<T> {
     pub fn new(tick_id_to_produce: TickId) -> Self {
         Combinator {
             in_buffers: HashMap::new(),

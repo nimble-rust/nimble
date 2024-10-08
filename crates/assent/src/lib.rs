@@ -37,7 +37,7 @@ where
 impl<C, CombinedStepT> Default for Assent<C, CombinedStepT>
 where
     C: AssentCallback<CombinedStepT>,
-    CombinedStepT: Clone + std::fmt::Debug,
+    CombinedStepT: Clone + std::fmt::Debug + std::fmt::Display,
 {
     fn default() -> Self {
         Assent::new()
@@ -47,7 +47,7 @@ where
 impl<C, CombinedStepT> Assent<C, CombinedStepT>
 where
     C: AssentCallback<CombinedStepT>,
-    CombinedStepT: std::clone::Clone + std::fmt::Debug,
+    CombinedStepT: std::clone::Clone + std::fmt::Debug + std::fmt::Display,
 {
     pub fn new() -> Self {
         Assent {
@@ -72,7 +72,7 @@ where
         callback.on_pre_ticks();
         trace!("assent tick start. len {}", self.steps.len());
         for combined_step_info in self.steps.iter() {
-            trace!("assent tick: {:?}", &combined_step_info);
+            trace!("assent tick: {}", &combined_step_info);
             callback.on_tick(&combined_step_info.step);
         }
 

@@ -8,7 +8,7 @@ use hazy_transport::{DeciderConfig, Direction, DirectionConfig};
 use log::{debug, error, info, warn};
 use monotonic_time_rs::{Millis, MillisDuration};
 use nimble_client::{Client, ClientError, GameCallbacks};
-use nimble_host_front::HostFront;
+use nimble_host_front::{HostFront, HostFrontError};
 use nimble_host_logic::logic::{GameStateProvider, HostConnectionId};
 use nimble_sample_game::{SampleGame, SampleGameState};
 use nimble_sample_step::SampleStep;
@@ -45,7 +45,7 @@ fn communicate<
     connection_id: HostConnectionId,
     client: &mut Client<GameT, SampleStep>,
     count: usize,
-) {
+) -> Result<(), HostFrontError> {
     let mut now = Millis::new(0);
     let mut tick_id = TickId::default();
     let config = DirectionConfig {
@@ -74,7 +74,7 @@ fn communicate<
 
     for _ in 0..count {
         if client.want_predicted_step() {
-            debug!("pushing predicted step for {tick_id}");
+            debug!("trying to push predicted step for {tick_id}");
             let mut map = SeqMap::new();
             map.insert(ParticipantId(0), SampleStep::MoveLeft(-1))
                 .expect("should insert map");
@@ -109,7 +109,14 @@ fn communicate<
                     to_client.push(now.absolute_milliseconds(), &to_client_datagram);
                 }
             } else {
-                warn!("received: {:?}", to_client_datagrams_result.err());
+                let error = to_client_datagrams_result.err().unwrap();
+                log_err(&error);
+                match error.error_level() {
+                    ErrorLevel::Critical => {
+                        return Err(error);
+                    }
+                    _ => {}
+                }
             }
         }
 
@@ -123,6 +130,7 @@ fn communicate<
 
         now += MillisDuration::from_millis(16 * 5);
     }
+    Ok(())
 }
 
 use nimble_participant::ParticipantId;
@@ -143,9 +151,9 @@ fn client_to_host() -> Result<(), ClientError> {
     let connection_id = host.create_connection().expect("should work");
     let now = Millis::new(0);
 
-    let expected_game_state = SampleGameState { x: -11, y: 42 };
+    let initial_game_state = SampleGameState { x: -11, y: 42 };
 
-    let expected_game_state_octets = expected_game_state.to_octets()?;
+    let expected_game_state_octets = initial_game_state.to_octets()?;
 
     let state_provider = TestStateProvider {
         tick_id: TickId(0),
@@ -167,12 +175,15 @@ fn client_to_host() -> Result<(), ClientError> {
         .expect("should find connection");
     assert_eq!(conn.phase(), &nimble_host_logic::logic::Phase::Connected);
 
-    communicate::<SampleGame>(&mut host, &state_provider, connection_id, &mut client, 143);
+    communicate::<SampleGame>(&mut host, &state_provider, connection_id, &mut client, 53)
+        .expect("should communicate");
 
     // let host_connection = host.get_stream(connection_id).expect("should find connection");
     // let x = host.session().participants.get(&ParticipantId(0)).expect("should find participant");
 
-    client.update();
+    client.update()?;
+
+    let expected_game_state = SampleGameState { x: -11 + 82, y: 42 };
 
     assert_eq!(
         client

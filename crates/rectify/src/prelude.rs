@@ -7,4 +7,4 @@
 //! By importing this prelude, you gain easy access to the core types and traits
 //! that are frequently used throughout the crate. This reduces the boilerplate
 //! needed in user code.
-pub use crate::{Rectify, RectifyCallback};
+pub use crate::{Rectify, RectifyCallback, RectifyError};

@@ -2,6 +2,7 @@
  * Copyright (c) Peter Bjorklund. All rights reserved. https://github.com/nimble-rust/nimble
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
+use err_rs::{ErrorLevel, ErrorLevelProvider};
 use flood_rs::prelude::OutOctetStream;
 use flood_rs::Serialize;
 use std::fmt::Debug;
@@ -11,6 +12,15 @@ use std::{io, mem};
 pub enum DatagramChunkerError {
     ItemSizeTooBig,
     IoError(io::Error),
+}
+
+impl ErrorLevelProvider for DatagramChunkerError {
+    fn error_level(&self) -> ErrorLevel {
+        match self {
+            DatagramChunkerError::ItemSizeTooBig => ErrorLevel::Critical,
+            DatagramChunkerError::IoError(_) => ErrorLevel::Info,
+        }
+    }
 }
 
 pub struct DatagramChunker {

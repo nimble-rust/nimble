@@ -4,6 +4,7 @@
  */
 use flood_rs::prelude::*;
 use flood_rs::BufferDeserializer;
+use std::fmt::Display;
 use std::io;
 
 #[derive(Debug)]
@@ -26,6 +27,17 @@ pub enum SampleStep {
     MoveRight(i16),
     Jump,
     Nothing,
+}
+
+impl Display for SampleStep {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::MoveLeft(_) => write!(f, "Move left"),
+            Self::MoveRight(_) => write!(f, "Move right"),
+            Self::Jump => write!(f, "Jump"),
+            Self::Nothing => write!(f, "No Game-pad Input"),
+        }
+    }
 }
 
 impl Serialize for SampleStep {
@@ -53,7 +65,10 @@ impl Deserialize for SampleStep {
             0x01 => Self::MoveLeft(stream.read_i16()?),
             0x02 => Self::MoveRight(stream.read_i16()?),
             0x03 => Self::Jump,
-            _ => Err(io::Error::new(io::ErrorKind::InvalidInput, "invalid input"))?,
+            _ => Err(io::Error::new(
+                io::ErrorKind::InvalidInput,
+                format!("Unknown sample step enum {octet:X}"),
+            ))?,
         })
     }
 }
