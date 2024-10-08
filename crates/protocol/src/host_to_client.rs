@@ -156,15 +156,7 @@ impl<StepT: Clone + Debug + Serialize + Deserialize> Deserialize for HostToClien
         let command = HostToClientCommand::try_from(command_value)?;
         let x = match command {
             HostToClientCommand::JoinGame => Self::JoinGame(JoinGameAccepted::from_stream(stream)?),
-            HostToClientCommand::GameStep => Self::GameStep(GameStepResponse::from_stream(stream)?), /*
-            => {
-            return Err(io::Error::new(
-            ErrorKind::InvalidData,
-            format!("unknown command {}", command_value),
-            ));
-            }
-
-            */
+            HostToClientCommand::GameStep => Self::GameStep(GameStepResponse::from_stream(stream)?),
             HostToClientCommand::DownloadGameState => {
                 Self::DownloadGameState(DownloadGameStateResponse::from_stream(stream)?)
             }

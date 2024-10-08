@@ -59,29 +59,6 @@ impl<StepT: Clone> GameSession<StepT> {
         }
     }
 
-    /*
-    pub(crate) fn create_participant(
-        &mut self,
-        client_local_index: u8,
-    ) -> Option<Rc<RefCell<Participant>>> {
-        let participant_id_value = self.participant_ids.allocate();
-        if let Some(id_value) = participant_id_value {
-            let participant_id = ParticipantId(id_value);
-            let participant = Rc::new(RefCell::new(Participant {
-                client_local_index,
-                id: participant_id,
-            }));
-
-            self.participants
-                .insert(participant_id, participant.clone());
-            Some(participant)
-        } else {
-            None
-        }
-    }
-
-     */
-
     pub fn create_participants(
         &mut self,
         client_local_indices: &[u8],

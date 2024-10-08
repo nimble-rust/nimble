@@ -23,7 +23,6 @@ impl<T: Clone> HostCombinator<T> {
             authoritative_steps: Vec::new(),
         }
     }
-
     pub fn receive_step(&mut self, participant_id: ParticipantId, step: T) {
         if let Some(participant_buffer) = self.combinator.in_buffers.get_mut(&participant_id) {
             participant_buffer.push(step);
