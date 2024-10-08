@@ -37,7 +37,7 @@ impl TryFrom<u8> for HostToClientCommand {
             0x0D => Self::Connect,
             _ => Err(io::Error::new(
                 ErrorKind::InvalidData,
-                format!("Unknown host to client command {:X}", value),
+                format!("Unknown host to client command 0x{:0X}", value),
             ))?,
         })
     }

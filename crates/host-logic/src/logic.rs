@@ -307,10 +307,17 @@ impl<StepT: Clone + Eq + Debug + Deserialize + Serialize + std::fmt::Display> Co
 
         let authoritative_steps = combinator.authoritative_steps();
 
-        let combined_steps = CombinedSteps::<Step<StepT>> {
-            tick_id: authoritative_steps.front_tick_id().unwrap_or(TickId(0)),
-            steps: authoritative_steps.to_vec(),
-        };
+        let combined_steps_vec =
+            if let Some(found_first_tick_id) = authoritative_steps.front_tick_id() {
+                let combined_steps = CombinedSteps::<Step<StepT>> {
+                    tick_id: found_first_tick_id,
+                    steps: authoritative_steps.to_vec(),
+                };
+                vec![combined_steps]
+            } else {
+                vec![]
+            };
+
         let game_step_response = GameStepResponse {
             response_header: GameStepResponseHeader {
                 connection_buffer_count: 0,
@@ -318,7 +325,7 @@ impl<StepT: Clone + Eq + Debug + Deserialize + Serialize + std::fmt::Display> Co
                 next_expected_tick_id: combinator.tick_id_to_produce(),
             },
             authoritative_steps: AuthoritativeStepRanges {
-                ranges: vec![combined_steps],
+                ranges: combined_steps_vec,
             },
         };
 

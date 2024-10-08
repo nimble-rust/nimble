@@ -22,7 +22,7 @@ fn connect<
     StateT: BufferDeserializer + std::fmt::Debug,
     StepT: Clone + flood_rs::Deserialize + flood_rs::Serialize + std::fmt::Debug + std::fmt::Display,
 >(
-    stream: &mut ClientStream<StateT, Step<StepT>>,
+    stream: &mut ClientStream<StateT, StepT>,
 ) -> Result<(), ClientStreamError> {
     let octet_vector = stream.send()?;
     assert_eq!(octet_vector.len(), 1);
@@ -159,8 +159,7 @@ fn connect_stream() -> Result<(), ClientStreamError> {
 fn predicted_steps() -> Result<(), ClientStreamError> {
     let application_version = app_version::Version::new(0, 1, 2);
 
-    let mut stream: ClientStream<SampleState, Step<SampleStep>> =
-        ClientStream::new(application_version);
+    let mut stream: ClientStream<SampleState, SampleStep> = ClientStream::new(application_version);
 
     // Client must be connected and have a state before sending predicted steps
     connect(&mut stream)?;
@@ -182,15 +181,9 @@ fn predicted_steps() -> Result<(), ClientStreamError> {
         expected_zero_predicted_steps,
     );
 
-    let array: &[(LocalIndex, &[Step<SampleStep>])] = &[
-        (
-            1,
-            &[
-                Step::Custom(SampleStep::Jump),
-                Step::Custom(SampleStep::MoveLeft(-10)),
-            ],
-        ),
-        (2, &[Step::Custom(SampleStep::MoveRight(10))]),
+    let array: &[(LocalIndex, &[SampleStep])] = &[
+        (1, &[SampleStep::Jump, SampleStep::MoveLeft(-10)]),
+        (2, &[SampleStep::MoveRight(10)]),
     ];
 
     let predicted_steps = create_predicted_steps(array);
@@ -222,17 +215,14 @@ fn predicted_steps() -> Result<(), ClientStreamError> {
         0x02, // Predicted Step Count following
 
         // Predicted Steps
-        0x05, // Step::Custom
         0x03, // SampleStep::Jump
 
-        0x05, // Step::Custom
         0x01, // SampleStep::Move Left
         0xFF, 0xF6, // FFF6 = -10 (signed 16-bit two’s complement notation)
     
         0x02, // Local Player ID
         0x00, // Tick ID Offset for Local Player 2 (usually the same as for player 1)
         0x01, // Predicted Step Count following
-        0x05, // Step::Custom
         0x02, // SampleStep::Move Right
         0x00, 0x0A, // = +10 (signed 16-bit two’s complement notation)
     ];
@@ -278,7 +268,6 @@ fn predicted_steps() -> Result<(), ClientStreamError> {
         0x01, // Predicted Step Count following
 
         // Predicted Steps
-        0x05, // Step::Custom
         0x01, // SampleStep::Move Left
         0xFF, 0xF6, // FFF6 = -10 (signed 16-bit two’s complement notation)
     ];
@@ -338,7 +327,6 @@ fn predicted_steps() -> Result<(), ClientStreamError> {
         0x01, // Predicted Step Count following
 
         // Predicted Steps
-        0x05, // Step::Custom
         0x01, // SampleStep::Move Left
         0xFF, 0xF6, // FFF6 = -10 (signed 16-bit two’s complement notation)
     ];
