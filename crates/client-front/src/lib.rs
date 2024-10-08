@@ -36,7 +36,6 @@ impl ErrorLevelProvider for ClientFrontError {
             Self::DatagramOrderInError(_) => ErrorLevel::Info,
             Self::IoError(_) => ErrorLevel::Warning,
             Self::ClientStreamError(err) => err.error_level(),
-            // Self::RectifyError(_) => ErrorLevel::Critical,
         }
     }
 }

@@ -33,20 +33,20 @@ impl AssentCallback<TestGameStep> for TestGame {
 #[test_log::test]
 fn one_step() {
     let mut game = TestGame { position_x: -44 };
-    let mut assent: Assent<TestGame, TestGameStep> = Assent::new();
+    let mut assent: Assent<TestGame, TestGameStep> = Assent::default();
     let step = TestGameStep::MoveLeft;
     assent.push(step);
-    assent.update(&mut game);
+    assert_eq!(assent.update(&mut game), UpdateState::ConsumedAllKnowledge);
     assert_eq!(game.position_x, -45);
 }
 
 #[test_log::test]
 fn multiple_steps() {
     let mut game = TestGame { position_x: -44 };
-    let mut assent: Assent<TestGame, TestGameStep> = Assent::new();
+    let mut assent: Assent<TestGame, TestGameStep> = Assent::default();
     let step = TestGameStep::MoveRight;
     assent.push(step);
     assent.push(step);
-    assent.update(&mut game);
+    assert_eq!(assent.update(&mut game), UpdateState::ConsumedAllKnowledge);
     assert_eq!(game.position_x, -42);
 }

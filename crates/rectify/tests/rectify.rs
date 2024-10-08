@@ -104,14 +104,16 @@ fn one_prediction() {
         predicted_game,
     };
 
-    let mut rectify = Rectify::<CombinedGame, StepForParticipants<Step<TestGameStep>>>::new();
+    let mut rectify = Rectify::<CombinedGame, StepForParticipants<Step<TestGameStep>>>::default();
     let mut participant_step_combined = StepForParticipants::<Step<TestGameStep>>::new();
     participant_step_combined
         .combined_step
         .insert(ParticipantId(0), Step::Custom(TestGameStep::MoveLeft))
         .expect("Should be able to move left");
 
-    rectify.push_predicted(participant_step_combined);
+    rectify
+        .push_predicted(participant_step_combined)
+        .expect("Should be able to move left");
 
     rectify.update(&mut callbacks);
 
@@ -129,7 +131,7 @@ fn one_authoritative_and_one_prediction() {
         predicted_game,
     };
 
-    let mut rectify = Rectify::<CombinedGame, StepForParticipants<Step<TestGameStep>>>::new();
+    let mut rectify = Rectify::<CombinedGame, StepForParticipants<Step<TestGameStep>>>::default();
 
     let mut authoritative_step_combined = StepForParticipants::<Step<TestGameStep>>::new();
     authoritative_step_combined
@@ -146,7 +148,9 @@ fn one_authoritative_and_one_prediction() {
         .insert(ParticipantId(0), Step::Custom(TestGameStep::MoveLeft))
         .expect("should work");
 
-    rectify.push_predicted(predicted_step_combined);
+    rectify
+        .push_predicted(predicted_step_combined)
+        .expect("should work");
     rectify.update(&mut callbacks);
 
     assert_eq!(callbacks.authoritative_game.position_x, -43);
@@ -163,7 +167,7 @@ fn one_authoritative_and_x_predictions() {
         predicted_game,
     };
 
-    let mut rectify = Rectify::<CombinedGame, StepForParticipants<Step<TestGameStep>>>::new();
+    let mut rectify = Rectify::<CombinedGame, StepForParticipants<Step<TestGameStep>>>::default();
 
     assert_eq!(rectify.waiting_for_authoritative_tick_id(), None);
     let mut authoritative_step_combined = StepForParticipants::<Step<TestGameStep>>::new();
@@ -181,9 +185,15 @@ fn one_authoritative_and_x_predictions() {
         .insert(ParticipantId(0), Step::Custom(TestGameStep::MoveLeft))
         .expect("should work");
 
-    rectify.push_predicted(predicted_step_combined.clone());
-    rectify.push_predicted(predicted_step_combined.clone());
-    rectify.push_predicted(predicted_step_combined.clone());
+    rectify
+        .push_predicted(predicted_step_combined.clone())
+        .expect("should work");
+    rectify
+        .push_predicted(predicted_step_combined.clone())
+        .expect("should work");
+    rectify
+        .push_predicted(predicted_step_combined.clone())
+        .expect("should work");
     rectify.update(&mut callbacks);
 
     assert_eq!(callbacks.authoritative_game.position_x, -43);

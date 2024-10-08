@@ -6,7 +6,7 @@ pub mod prelude;
 
 use err_rs::{ErrorLevel, ErrorLevelProvider};
 use nimble_assent::{Assent, AssentCallback, UpdateState};
-use nimble_seer::{Seer, SeerCallback};
+use nimble_seer::{Seer, SeerCallback, SeerError};
 use std::fmt::Debug;
 use tick_id::TickId;
 
@@ -16,12 +16,20 @@ pub enum RectifyError {
         expected: TickId,
         encountered: TickId,
     },
+    SeerError(SeerError),
+}
+
+impl From<SeerError> for RectifyError {
+    fn from(value: SeerError) -> Self {
+        RectifyError::SeerError(value)
+    }
 }
 
 impl ErrorLevelProvider for RectifyError {
     fn error_level(&self) -> ErrorLevel {
         match self {
             Self::WrongTickId { .. } => ErrorLevel::Critical,
+            Self::SeerError(err) => err.error_level(),
         }
     }
 }
@@ -47,13 +55,29 @@ impl<T, StepT> RectifyCallbacks<StepT> for T where
 pub struct Rectify<Game: RectifyCallbacks<StepT>, StepT: Clone + Debug> {
     assent: Assent<Game, StepT>,
     seer: Seer<Game, StepT>,
+    settings: Settings,
 }
 
 impl<Game: RectifyCallbacks<StepT>, StepT: Clone + Debug + std::fmt::Display> Default
     for Rectify<Game, StepT>
 {
     fn default() -> Self {
-        Self::new()
+        Self::new(Settings::default())
+    }
+}
+
+#[derive(Debug, Copy, Clone)]
+pub struct Settings {
+    pub assent: nimble_assent::Settings,
+    pub seer: nimble_seer::Settings,
+}
+
+impl Default for Settings {
+    fn default() -> Self {
+        Self {
+            assent: nimble_assent::Settings::default(),
+            seer: nimble_seer::Settings::default(),
+        }
     }
 }
 
@@ -65,15 +89,23 @@ impl<Game: RectifyCallbacks<StepT>, StepT: Clone + std::fmt::Debug + std::fmt::D
     /// # Returns
     ///
     /// A new `Rectify` instance.
-    pub fn new() -> Self {
-        let assent = Assent::new();
-        let seer = Seer::new();
+    pub fn new(settings: Settings) -> Self {
+        let assent = Assent::new(settings.assent.clone());
+        let seer = Seer::new(settings.seer.clone());
 
-        Self { assent, seer }
+        Self {
+            settings,
+            assent,
+            seer,
+        }
     }
 
     pub fn seer(&self) -> &Seer<Game, StepT> {
         &self.seer
+    }
+
+    pub fn settings(&self) -> Settings {
+        self.settings
     }
 
     pub fn assent(&self) -> &Assent<Game, StepT> {
@@ -85,11 +117,12 @@ impl<Game: RectifyCallbacks<StepT>, StepT: Clone + std::fmt::Debug + std::fmt::D
     /// # Arguments
     ///
     /// * `step` - The predicted step to be pushed.
-    pub fn push_predicted(&mut self, step: StepT) {
+    pub fn push_predicted(&mut self, step: StepT) -> Result<(), RectifyError> {
         if let Some(end_tick_id) = self.assent.end_tick_id() {
             self.seer.received_authoritative(end_tick_id);
         }
-        self.seer.push(step)
+        self.seer.push(step)?;
+        Ok(())
     }
 
     pub fn waiting_for_authoritative_tick_id(&self) -> Option<TickId> {
@@ -144,8 +177,7 @@ impl<Game: RectifyCallbacks<StepT>, StepT: Clone + std::fmt::Debug + std::fmt::D
         let consumed_all_knowledge = self.assent.update(game);
         if consumed_all_knowledge == UpdateState::ConsumedAllKnowledge {
             game.on_copy_from_authoritative();
+            self.seer.update(game);
         }
-
-        self.seer.update(game);
     }
 }

@@ -114,6 +114,10 @@ impl<
         Ok(())
     }
 
+    pub fn rectify(&self) -> &Rectify<GameT, StepForParticipants<Step<StepT>>> {
+        &self.rectify
+    }
+
     pub fn update(&mut self) -> Result<(), ClientError> {
         self.client.update();
 
@@ -126,6 +130,10 @@ impl<
         }
 
         Ok(())
+    }
+
+    pub fn game_state(&self) -> Option<&GameT> {
+        self.client.game_state()
     }
 
     pub fn want_predicted_step(&self) -> bool {
@@ -186,10 +194,6 @@ impl<
         } else {
             2
         }
-    }
-
-    pub fn game_state(&self) -> Option<&GameT> {
-        self.client.game_state()
     }
 
     pub fn request_join_player(

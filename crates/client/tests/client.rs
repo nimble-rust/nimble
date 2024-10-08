@@ -175,15 +175,23 @@ fn client_to_host() -> Result<(), ClientError> {
         .expect("should find connection");
     assert_eq!(conn.phase(), &nimble_host_logic::logic::Phase::Connected);
 
-    communicate::<SampleGame>(&mut host, &state_provider, connection_id, &mut client, 53)
+    communicate::<SampleGame>(&mut host, &state_provider, connection_id, &mut client, 31)
         .expect("should communicate");
 
     // let host_connection = host.get_stream(connection_id).expect("should find connection");
     // let x = host.session().participants.get(&ParticipantId(0)).expect("should find participant");
 
-    client.update()?;
+    let rectify_settings = client.rectify().settings();
 
-    let expected_game_state = SampleGameState { x: -11 + 82, y: 42 };
+    for _ in 0..2 {
+        client.update()?;
+    }
+
+    let expected_game_state = SampleGameState {
+        x: -11 + ((rectify_settings.assent.max_tick_count_per_update * 2) as i32),
+        y: 42,
+    };
+    let expected_predicted_state_with_no_prediction = initial_game_state;
 
     assert_eq!(
         client
@@ -191,6 +199,28 @@ fn client_to_host() -> Result<(), ClientError> {
             .expect("game state should be set")
             .authoritative,
         expected_game_state
+    );
+
+    assert_eq!(
+        client
+            .game_state()
+            .expect("game state should be set")
+            .predicted,
+        expected_predicted_state_with_no_prediction
+    );
+
+    for _ in 0..10 {
+        client.update()?;
+    }
+
+    let expected_predicted_state_with_prediction = SampleGameState { x: 27, y: 42 };
+
+    assert_eq!(
+        client
+            .game_state()
+            .expect("game state should be set")
+            .predicted,
+        expected_predicted_state_with_prediction
     );
 
     Ok(())

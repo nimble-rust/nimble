@@ -24,6 +24,19 @@ pub enum UpdateState {
     DidNotConsumeAllKnowledge,
 }
 
+#[derive(Debug, Copy, Clone)]
+pub struct Settings {
+    pub max_tick_count_per_update: usize,
+}
+
+impl Default for Settings {
+    fn default() -> Self {
+        Self {
+            max_tick_count_per_update: 5,
+        }
+    }
+}
+
 // Define the Assent struct
 #[derive(Debug)]
 pub struct Assent<C, CombinedStepT>
@@ -31,6 +44,7 @@ where
     C: AssentCallback<CombinedStepT>,
 {
     phantom: PhantomData<C>,
+    settings: Settings,
     steps: Steps<CombinedStepT>,
 }
 
@@ -40,7 +54,7 @@ where
     CombinedStepT: Clone + std::fmt::Debug + std::fmt::Display,
 {
     fn default() -> Self {
-        Assent::new()
+        Assent::new(Settings::default())
     }
 }
 
@@ -49,10 +63,11 @@ where
     C: AssentCallback<CombinedStepT>,
     CombinedStepT: std::clone::Clone + std::fmt::Debug + std::fmt::Display,
 {
-    pub fn new() -> Self {
+    pub fn new(settings: Settings) -> Self {
         Assent {
             phantom: PhantomData {},
             steps: Steps::new(),
+            settings,
         }
     }
 
@@ -71,12 +86,15 @@ where
     pub fn update(&mut self, callback: &mut C) -> UpdateState {
         callback.on_pre_ticks();
         trace!("assent tick start. len {}", self.steps.len());
-        for combined_step_info in self.steps.iter() {
+        let mut count = 0;
+        while let Some(combined_step_info) = self.steps.pop() {
             trace!("assent tick: {}", &combined_step_info);
             callback.on_tick(&combined_step_info.step);
+            count += 1;
+            if count >= self.settings.max_tick_count_per_update {
+                return UpdateState::DidNotConsumeAllKnowledge;
+            }
         }
-
-        self.steps.clear();
 
         UpdateState::ConsumedAllKnowledge
     }

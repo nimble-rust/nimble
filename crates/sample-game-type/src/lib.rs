@@ -103,7 +103,7 @@ impl BufferDeserializer for SampleGame {
         let (sample_state, size) = SampleGameState::from_octets(octets)?;
         Ok((
             Self {
-                predicted: SampleGameState::default(),
+                predicted: sample_state.clone(),
                 authoritative: sample_state,
             },
             size,
@@ -125,29 +125,28 @@ impl Serialize for SampleGame {
 
 impl Deserialize for SampleGame {
     fn deserialize(stream: &mut impl ReadOctetStream) -> io::Result<Self> {
+        let state = <SampleGameState as Deserialize>::deserialize(stream)?;
         Ok(Self {
-            authoritative: <SampleGameState as Deserialize>::deserialize(stream)?,
-            predicted: SampleGameState::default(),
+            authoritative: state.clone(),
+            predicted: state,
         })
     }
 }
 
 impl SeerCallback<StepForParticipants<Step<SampleStep>>> for SampleGame {
+    fn on_pre_ticks(&mut self) {}
     fn on_tick(&mut self, step: &StepForParticipants<Step<SampleStep>>) {
         self.predicted.update(step);
     }
+    fn on_post_ticks(&mut self) {}
 }
 
 impl AssentCallback<StepForParticipants<Step<SampleStep>>> for SampleGame {
-    fn on_pre_ticks(&mut self) {
-        self.predicted = self.authoritative.clone();
-    }
+    fn on_pre_ticks(&mut self) {}
     fn on_tick(&mut self, step: &StepForParticipants<Step<SampleStep>>) {
         self.authoritative.update(step);
     }
-    fn on_post_ticks(&mut self) {
-        self.authoritative = self.predicted.clone();
-    }
+    fn on_post_ticks(&mut self) {}
 }
 
 impl RectifyCallback for SampleGame {
