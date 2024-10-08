@@ -2,7 +2,7 @@
  * Copyright (c) Peter Bjorklund. All rights reserved. https://github.com/nimble-rust/nimble
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
-use err_rs::{most_severe_error, ErrorLevel, ErrorLevelProvider};
+use err_rs::{ErrorLevel, ErrorLevelProvider};
 use nimble_blob_stream::in_logic_front::FrontLogicError;
 use nimble_blob_stream::prelude::BlobError;
 use nimble_protocol::ClientRequestId;
@@ -10,39 +10,7 @@ use nimble_steps::StepsError;
 use std::{fmt, io};
 
 #[derive(Debug)]
-pub enum ClientError {
-    Single(ClientErrorKind),
-    Multiple(Vec<ClientErrorKind>),
-}
-
-impl fmt::Display for ClientError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Single(error) => std::fmt::Display::fmt(&error, f),
-            Self::Multiple(errors) => {
-                writeln!(f, "Multiple errors occurred:")?;
-
-                for (index, error) in errors.iter().enumerate() {
-                    writeln!(f, "{}: {}", index + 1, error)?;
-                }
-
-                Ok(())
-            }
-        }
-    }
-}
-
-impl ErrorLevelProvider for ClientError {
-    fn error_level(&self) -> ErrorLevel {
-        match self {
-            ClientError::Single(err) => err.error_level(),
-            ClientError::Multiple(errors) => most_severe_error(errors).expect("REASON"),
-        }
-    }
-}
-
-#[derive(Debug)]
-pub enum ClientErrorKind {
+pub enum ClientLogicErrorKind {
     IoErr(io::Error),
     WrongJoinResponseRequestId {
         expected: ClientRequestId,
@@ -58,31 +26,31 @@ pub enum ClientErrorKind {
     ReceivedConnectResponseWhenNotConnecting,
 }
 
-impl From<BlobError> for ClientErrorKind {
+impl From<BlobError> for ClientLogicErrorKind {
     fn from(err: BlobError) -> Self {
         Self::BlobError(err)
     }
 }
 
-impl From<StepsError> for ClientErrorKind {
+impl From<StepsError> for ClientLogicErrorKind {
     fn from(err: StepsError) -> Self {
         Self::StepsError(err)
     }
 }
 
-impl From<FrontLogicError> for ClientErrorKind {
+impl From<FrontLogicError> for ClientLogicErrorKind {
     fn from(err: FrontLogicError) -> Self {
         Self::FrontLogicErr(err)
     }
 }
 
-impl From<io::Error> for ClientErrorKind {
+impl From<io::Error> for ClientLogicErrorKind {
     fn from(err: io::Error) -> Self {
         Self::IoErr(err)
     }
 }
 
-impl ErrorLevelProvider for ClientErrorKind {
+impl ErrorLevelProvider for ClientLogicErrorKind {
     fn error_level(&self) -> ErrorLevel {
         match self {
             Self::IoErr(_) => ErrorLevel::Critical,
@@ -99,7 +67,7 @@ impl ErrorLevelProvider for ClientErrorKind {
     }
 }
 
-impl fmt::Display for ClientErrorKind {
+impl fmt::Display for ClientLogicErrorKind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::IoErr(io_err) => {
@@ -132,5 +100,4 @@ impl fmt::Display for ClientErrorKind {
     }
 }
 
-impl std::error::Error for ClientErrorKind {} // it implements Debug and Display
-impl std::error::Error for ClientError {} // it implements Debug and Display
+impl std::error::Error for ClientLogicErrorKind {} // it implements Debug and Display

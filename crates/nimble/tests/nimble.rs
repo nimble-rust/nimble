@@ -42,9 +42,9 @@ fn communicate<
         trace!("client << host: {cmd:?}");
     }
 
-    client
-        .receive(to_client.as_slice())
-        .expect("TODO: panic message");
+    for to_client_cmd in to_client {
+        client.receive(&to_client_cmd).expect("TODO: panic message");
+    }
 }
 
 pub struct TestStateProvider {

@@ -2,8 +2,7 @@
  * Copyright (c) Peter Bjorklund. All rights reserved. https://github.com/nimble-rust/nimble
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
-use crate::err::{ClientError, ClientErrorKind};
-use err_rs::{ErrorLevel, ErrorLevelProvider};
+use crate::err::ClientLogicErrorKind;
 use flood_rs::BufferDeserializer;
 use flood_rs::{Deserialize, Serialize};
 use log::{debug, trace};
@@ -60,7 +59,7 @@ pub struct ClientLogic<
     // The deterministic simulation version
     deterministic_simulation_version: app_version::Version,
 
-    connect_request_id: ClientRequestId,
+    connect_request_id: Option<ClientRequestId>,
 
     /// Represents the player's join game request, if available.
     joining_player: Option<Vec<LocalIndex>>,
@@ -111,7 +110,7 @@ impl<
             phase: ClientLogicPhase::RequestConnect,
             local_players: Vec::new(),
             deterministic_simulation_version,
-            connect_request_id: ClientRequestId::new(0),
+            connect_request_id: None,
         }
     }
 
@@ -168,7 +167,11 @@ impl<
         vec
     }
 
-    fn send_connect_request(&self) -> ClientToHostCommands<StepT> {
+    fn send_connect_request(&mut self) -> ClientToHostCommands<StepT> {
+        if self.connect_request_id.is_none() {
+            self.connect_request_id = Some(ClientRequestId(0));
+        }
+
         let connect_request = ConnectRequest {
             nimble_version: NIMBLE_PROTOCOL_VERSION,
             use_debug_stream: false,
@@ -203,6 +206,10 @@ impl<
         };
 
         ClientToHostCommands::Steps(steps_request)
+    }
+
+    pub fn debug_connect_request_id(&self) -> Option<ClientRequestId> {
+        self.connect_request_id
     }
 
     /// Returns client commands that should be sent to the host.
@@ -280,11 +287,11 @@ impl<
     ///
     /// # Errors
     /// Returns a [`ClientErrorKind`] if the join game process encounters an error.
-    fn on_join_game(&mut self, cmd: &JoinGameAccepted) -> Result<(), ClientErrorKind> {
+    fn on_join_game(&mut self, cmd: &JoinGameAccepted) -> Result<(), ClientLogicErrorKind> {
         debug!("join game accepted: {:?}", cmd);
 
         if cmd.client_request_id != self.joining_request_id {
-            Err(ClientErrorKind::WrongJoinResponseRequestId {
+            Err(ClientLogicErrorKind::WrongJoinResponseRequestId {
                 encountered: cmd.client_request_id,
                 expected: self.joining_request_id,
             })?;
@@ -330,13 +337,17 @@ impl<
             .pop_up_to(host_expected_tick_id);
     }
 
-    fn on_connect(&mut self, cmd: &ConnectionAccepted) -> Result<(), ClientErrorKind> {
+    fn on_connect(&mut self, cmd: &ConnectionAccepted) -> Result<(), ClientLogicErrorKind> {
         if self.phase != ClientLogicPhase::RequestConnect {
-            Err(ClientErrorKind::ReceivedConnectResponseWhenNotConnecting)?
+            Err(ClientLogicErrorKind::ReceivedConnectResponseWhenNotConnecting)?
         }
 
-        if cmd.response_to_request != self.connect_request_id {
-            Err(ClientErrorKind::WrongConnectResponseRequestId(
+        if self.connect_request_id.is_none() {
+            Err(ClientLogicErrorKind::ReceivedConnectResponseWhenNotConnecting)?;
+        }
+
+        if cmd.response_to_request != self.connect_request_id.unwrap() {
+            Err(ClientLogicErrorKind::WrongConnectResponseRequestId(
                 cmd.response_to_request,
             ))?
         }
@@ -354,7 +365,10 @@ impl<
     ///
     /// # Errors
     /// Returns a `ClientErrorKind` if there are issues processing the game steps.
-    fn on_game_step(&mut self, cmd: &GameStepResponse<Step<StepT>>) -> Result<(), ClientErrorKind> {
+    fn on_game_step(
+        &mut self,
+        cmd: &GameStepResponse<Step<StepT>>,
+    ) -> Result<(), ClientLogicErrorKind> {
         trace!("game step response: {}", cmd);
 
         self.handle_game_step_header(&cmd.response_header);
@@ -403,16 +417,16 @@ impl<
     fn on_download_state_response(
         &mut self,
         download_response: &DownloadGameStateResponse,
-    ) -> Result<(), ClientErrorKind> {
+    ) -> Result<(), ClientLogicErrorKind> {
         match self.phase {
             ClientLogicPhase::RequestDownloadState {
                 download_state_request_id,
             } => {
                 if download_response.client_request != download_state_request_id {
-                    Err(ClientErrorKind::WrongDownloadRequestId)?;
+                    Err(ClientLogicErrorKind::WrongDownloadRequestId)?;
                 }
             }
-            _ => Err(ClientErrorKind::DownloadResponseWasUnexpected)?,
+            _ => Err(ClientLogicErrorKind::DownloadResponseWasUnexpected)?,
         }
 
         self.phase = ClientLogicPhase::DownloadingState(download_response.tick_id);
@@ -430,7 +444,7 @@ impl<
     fn on_blob_stream(
         &mut self,
         blob_stream_command: &SenderToReceiverFrontCommands,
-    ) -> Result<(), ClientErrorKind> {
+    ) -> Result<(), ClientLogicErrorKind> {
         match self.phase {
             ClientLogicPhase::DownloadingState(_) => {
                 self.blob_stream_client.receive(blob_stream_command)?;
@@ -441,7 +455,7 @@ impl<
                     self.state = Some(deserialized);
                 }
             }
-            _ => Err(ClientErrorKind::UnexpectedBlobChannelCommand)?,
+            _ => Err(ClientLogicErrorKind::UnexpectedBlobChannelCommand)?,
         }
         Ok(())
     }
@@ -453,10 +467,10 @@ impl<
     ///
     /// # Errors
     /// Returns a [`ClientErrorKind`] if the command cannot be processed.
-    pub fn receive_cmd(
+    pub fn receive(
         &mut self,
         command: &HostToClientCommands<Step<StepT>>,
-    ) -> Result<(), ClientErrorKind> {
+    ) -> Result<(), ClientLogicErrorKind> {
         match command {
             HostToClientCommands::JoinGame(ref join_game_response) => {
                 self.on_join_game(join_game_response)?
@@ -475,35 +489,6 @@ impl<
             }
         }
         Ok(())
-    }
-
-    /// Processes a list of commands received from the host.
-    ///
-    /// # Arguments
-    /// * `commands`: A slice of commands to process.
-    ///
-    /// # Errors
-    /// Returns a `ClientError` if any command encounters an error during processing.
-    pub fn receive(
-        &mut self,
-        commands: &[HostToClientCommands<Step<StepT>>],
-    ) -> Result<(), ClientError> {
-        let mut client_errors: Vec<ClientErrorKind> = Vec::new();
-
-        for command in commands {
-            if let Err(err) = self.receive_cmd(command) {
-                if err.error_level() == ErrorLevel::Critical {
-                    return Err(ClientError::Single(err));
-                }
-                client_errors.push(err);
-            }
-        }
-
-        match client_errors.len() {
-            0 => Ok(()),
-            1 => Err(ClientError::Single(client_errors.pop().unwrap())),
-            _ => Err(ClientError::Multiple(client_errors)),
-        }
     }
 
     /// Returns the average predicted step buffer count from the server, if available.

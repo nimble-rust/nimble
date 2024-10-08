@@ -3,8 +3,8 @@
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
 use flood_rs::{BufferDeserializer, Deserialize, Serialize};
-use nimble_client_logic::err::ClientError;
-use nimble_client_logic::logic::ClientLogic;
+use nimble_client_logic::err::ClientLogicErrorKind;
+use nimble_client_logic::logic::{ClientLogic, ClientLogicPhase};
 use nimble_participant::ParticipantId;
 use nimble_protocol::client_to_host::{ConnectRequest, DownloadGameStateRequest};
 use nimble_protocol::host_to_client::{
@@ -53,7 +53,7 @@ fn feed_connect_response(client_logic: &mut ClientLogic<SampleState, Step<Sample
         };
 
         client_logic
-            .receive(&[HostToClientCommands::ConnectType(connect_response)])
+            .receive(&HostToClientCommands::ConnectType(connect_response))
             .expect("TODO: panic message");
     } else {
         panic!("Command should be connect request");
@@ -143,7 +143,7 @@ fn setup_sample_steps() -> AuthoritativeStepRanges<Step<SampleStep>> {
     ranges_to_send
 }
 #[test_log::test]
-fn receive_authoritative_steps() -> Result<(), ClientError> {
+fn receive_authoritative_steps() -> Result<(), ClientLogicErrorKind> {
     let mut client_logic = setup_logic::<SampleState, SampleStep>();
 
     // Create a GameStep command
@@ -159,7 +159,7 @@ fn receive_authoritative_steps() -> Result<(), ClientError> {
     let command = HostToClientCommands::GameStep(response);
 
     // Receive
-    client_logic.receive(&[command])?;
+    client_logic.receive(&command)?;
 
     // Verify
     let authoritative_steps = client_logic.debug_authoritative_steps();
@@ -209,7 +209,7 @@ fn receive_authoritative_steps() -> Result<(), ClientError> {
     };
     let command2 = HostToClientCommands::GameStep(response2);
     // Receive
-    client_logic.receive(&[command2])?;
+    client_logic.receive(&command2)?;
 
     assert_eq!(client_logic.server_buffer_count(), None);
     assert_eq!(client_logic.server_buffer_delta_ticks(), None);
@@ -225,7 +225,7 @@ fn receive_authoritative_steps() -> Result<(), ClientError> {
         authoritative_steps: setup_sample_steps(),
     };
     let command3 = HostToClientCommands::GameStep(response3);
-    client_logic.receive(&[command3])?;
+    client_logic.receive(&command3)?;
 
     assert_eq!(client_logic.server_buffer_count().expect("should work"), 4);
     assert_eq!(
@@ -238,19 +238,26 @@ fn receive_authoritative_steps() -> Result<(), ClientError> {
     Ok(())
 }
 
-/*
+fn create_connecting_client(
+    simulation_version: Option<app_version::Version>,
+) -> ClientLogic<SampleState, SampleStep> {
+    let simulation_version = simulation_version.unwrap_or(app_version::Version::new(1, 0, 0));
+    let mut client = ClientLogic::<SampleState, SampleStep>::new(simulation_version);
+    let _ = client.send();
+    client
+}
 
 #[test_log::test]
 fn send_connect_command() {
-    let mut client = create_connecting_client(None, None);
-    let commands = client.send::<SampleStep>();
+    let mut client = create_connecting_client(None);
+    let commands = client.send();
 
-    let ClientToHostCommands::<SampleStep>::ConnectType(connect_cmd) = &commands else {
+    let ClientToHostCommands::ConnectType(connect_cmd) = &commands[0] else {
         panic!("Wrong command")
     };
     assert_eq!(
         connect_cmd.application_version,
-        Version {
+        nimble_protocol::Version {
             major: 1,
             minor: 0,
             patch: 0
@@ -258,7 +265,7 @@ fn send_connect_command() {
     );
     assert_eq!(
         connect_cmd.nimble_version,
-        Version {
+        nimble_protocol::Version {
             major: 0,
             minor: 0,
             patch: 5
@@ -267,45 +274,54 @@ fn send_connect_command() {
     assert_eq!(connect_cmd.use_debug_stream, false);
     assert_eq!(
         connect_cmd.client_request_id,
-        client.debug_client_request_id()
+        client
+            .debug_connect_request_id()
+            .expect("connect request id not set")
     );
 }
 
 #[test_log::test]
 fn receive_valid_connection_accepted() {
-    let mut client = create_connecting_client(None, None);
-    let response_nonce = client.debug_client_request_id();
+    let mut client = create_connecting_client(None);
+    let response_nonce = client
+        .debug_connect_request_id()
+        .expect("connect request id not set");
 
     let accepted = ConnectionAccepted {
         flags: 0,
         response_to_request: response_nonce,
     };
-    let command = HostToClientCommands::<SampleStep>::ConnectType(accepted);
+    let command = HostToClientCommands::<Step<SampleStep>>::ConnectType(accepted);
 
-    let _ = client.send::<SampleStep>(); // Just make it send once so it can try to accept the connection accepted
+    let _ = client.send(); // Just make it send once so it can try to accept the connection accepted
 
     let result = client.receive(&command);
 
     assert!(result.is_ok());
-    assert!(client.is_connected());
+    assert_eq!(
+        client.phase(),
+        &ClientLogicPhase::RequestDownloadState {
+            download_state_request_id: 0x99
+        }
+    );
 }
 
 #[test_log::test]
 fn receive_invalid_connection_accepted_nonce() {
-    let mut client = create_connecting_client(None, None);
-    let wrong_request_id = ClientRequestId(99);
+    let mut client = create_connecting_client(None);
+    let wrong_request_id = nimble_protocol::ClientRequestId(99);
     let accepted = ConnectionAccepted {
         flags: 0,
         response_to_request: wrong_request_id,
     };
-    let command = HostToClientCommands::<SampleStep>::ConnectType(accepted);
+    let command = HostToClientCommands::<Step<SampleStep>>::ConnectType(accepted);
 
-    let _ = client.send::<SampleStep>(); // Just make it send once so it can try to accept the connection accepted
+    let _ = client.send(); // Just make it send once so it can try to accept the connection accepted
 
     let result = client.receive(&command);
 
     match result {
-        Err(ClientError::WrongConnectResponseRequestId(n)) => {
+        Err(ClientLogicErrorKind::WrongConnectResponseRequestId(n)) => {
             assert_eq!(n, wrong_request_id);
         }
         _ => panic!("Expected WrongConnectResponseNonce error"),
@@ -314,20 +330,18 @@ fn receive_invalid_connection_accepted_nonce() {
 
 #[test_log::test]
 fn receive_response_without_request() {
-    let mut client = create_connecting_client(None, None);
-    let wrong_request_id = ClientRequestId(99);
+    let mut client = create_connecting_client(None);
+    let wrong_request_id = nimble_protocol::ClientRequestId(99);
     let accepted = ConnectionAccepted {
         flags: 0,
         response_to_request: wrong_request_id,
     };
-    let command = HostToClientCommands::<SampleStep>::ConnectType(accepted);
+    let command = HostToClientCommands::<Step<SampleStep>>::ConnectType(accepted);
 
     let result = client.receive(&command);
 
     match result {
-        Err(ClientError::ReceivedConnectResponseWithoutRequest) => {}
-        _ => panic!("Expected WrongConnectResponseNonce error"),
+        Err(ClientLogicErrorKind::WrongConnectResponseRequestId(_)) => {}
+        _ => panic!("Expected WrongConnectResponseNonce error {result:?}"),
     }
 }
-
- */

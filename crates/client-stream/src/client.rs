@@ -7,7 +7,7 @@ use err_rs::{ErrorLevel, ErrorLevelProvider};
 use flood_rs::prelude::OctetRefReader;
 use flood_rs::{BufferDeserializer, Deserialize, ReadOctetStream, Serialize};
 use log::trace;
-use nimble_client_logic::err::{ClientError, ClientErrorKind};
+use nimble_client_logic::err::ClientLogicErrorKind;
 use nimble_client_logic::logic::{ClientLogic, ClientLogicPhase, LocalPlayer};
 use nimble_protocol::prelude::HostToClientCommands;
 use nimble_step::Step;
@@ -24,8 +24,7 @@ pub type AuthStepVec<StepT> = Vec<AuthStep<StepT>>;
 pub enum ClientStreamError {
     Unexpected(String),
     IoErr(io::Error),
-    ClientErr(ClientError),
-    ClientErrorKind(ClientErrorKind),
+    ClientErr(ClientLogicErrorKind),
     PredictedStepsError(StepsError),
     DatagramChunkError(DatagramChunkerError),
     CommandNeedsConnectedPhase,
@@ -44,7 +43,6 @@ impl ErrorLevelProvider for ClientStreamError {
             Self::PredictedStepsError(_) => ErrorLevel::Warning,
             Self::DatagramChunkError(_) => ErrorLevel::Warning,
             Self::CanOnlyPushPredictedStepsIfConnected => ErrorLevel::Warning,
-            Self::ClientErrorKind(err) => err.error_level(),
         }
     }
 }
@@ -67,17 +65,12 @@ impl From<StepsError> for ClientStreamError {
     }
 }
 
-impl From<ClientError> for ClientStreamError {
-    fn from(err: ClientError) -> Self {
+impl From<ClientLogicErrorKind> for ClientStreamError {
+    fn from(err: ClientLogicErrorKind) -> Self {
         Self::ClientErr(err)
     }
 }
 
-impl From<ClientErrorKind> for ClientStreamError {
-    fn from(err: ClientErrorKind) -> Self {
-        Self::ClientErrorKind(err)
-    }
-}
 #[derive(Debug)]
 pub struct ClientStream<
     StateT: BufferDeserializer,
@@ -108,7 +101,7 @@ impl<
         while !in_stream.has_reached_end() {
             let cmd = HostToClientCommands::<Step<StepT>>::deserialize(in_stream)?;
             trace!("client-stream: connected_receive {cmd}");
-            self.logic.receive_cmd(&cmd)?;
+            self.logic.receive(&cmd)?;
         }
         Ok(())
     }
