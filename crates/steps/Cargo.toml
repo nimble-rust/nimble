@@ -10,7 +10,7 @@ repository = "https://github.com/piot/nimble-steps-rs"
 
 [dependencies]
 discoid = "0.0.3"
-tick-id = "0.0.7"
+tick-id = "0.0.9"
 
 [dev-dependencies]
 test-log = "0.2.16"

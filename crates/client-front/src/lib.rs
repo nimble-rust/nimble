@@ -6,15 +6,17 @@ use err_rs::{ErrorLevel, ErrorLevelProvider};
 use flood_rs::prelude::{InOctetStream, OutOctetStream};
 use flood_rs::{BufferDeserializer, Deserialize, Serialize};
 use hexify::format_hex;
-use log::trace;
-use metricator::{AggregateMetric, RateMetric};
-use monotonic_time_rs::{Millis, MillisLow16};
-use nimble_client_stream::client::{AuthStepVec, ClientStream, ClientStreamError};
+use log::{debug, trace};
+use metricator::{AggregateMetric, MinMaxAvg, RateMetric};
+use monotonic_time_rs::{Millis, MillisDuration, MillisLow16};
+use nimble_client_stream::client::{ClientStream, ClientStreamError};
 pub use nimble_client_stream::LocalPlayer;
 use nimble_ordered_datagram::{DatagramOrderInError, OrderedIn, OrderedOut};
 use nimble_protocol_header::ClientTime;
+use nimble_step::Step;
 use nimble_step_types::{LocalIndex, StepForParticipants};
-use std::fmt::Debug;
+use std::cmp::min;
+use std::fmt::{Debug, Display};
 use std::io;
 use tick_id::TickId;
 
@@ -56,6 +58,43 @@ impl From<io::Error> for ClientFrontError {
     }
 }
 
+pub struct MetricsInDirection {
+    pub datagrams_per_second: f32,
+    pub octets_per_second: f32,
+}
+
+impl Display for MetricsInDirection {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{} datagrams/s {} octets/s",
+            self.datagrams_per_second, self.octets_per_second
+        )
+    }
+}
+
+pub struct CombinedMetrics {
+    pub outgoing: MetricsInDirection,
+    pub incoming: MetricsInDirection,
+    pub latency: Option<MinMaxAvg<u16>>,
+}
+
+impl Display for CombinedMetrics {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let latency_string = self
+            .latency
+            .as_ref()
+            .map(|value| value.to_string())
+            .unwrap_or_else(|| "not set yet".to_string());
+
+        write!(
+            f,
+            "metrics: latency:{} out:\n{}, in:\n{}",
+            latency_string, self.outgoing, self.incoming
+        )
+    }
+}
+
 pub struct ClientFront<
     StateT: BufferDeserializer + Debug,
     StepT: Clone + Deserialize + Serialize + Debug + std::fmt::Display,
@@ -69,6 +108,11 @@ pub struct ClientFront<
     in_octets_per_second: RateMetric,
     out_datagrams_per_second: RateMetric,
     out_octets_per_second: RateMetric,
+
+    tick_duration_ms: u64,
+
+    last_debug_metric_at: Millis,
+    debug_metric_duration: MillisDuration,
 }
 
 impl<
@@ -81,7 +125,7 @@ impl<
             client: ClientStream::<StateT, StepT>::new(deterministic_simulation_version),
             ordered_datagram_out: Default::default(),
             ordered_in: Default::default(),
-            latency: AggregateMetric::<u16>::new(10).unwrap(),
+            latency: AggregateMetric::<u16>::new(10).unwrap().with_unit("ms"),
             datagram_drops: AggregateMetric::<u16>::new(10).unwrap(),
 
             in_datagrams_per_second: RateMetric::with_interval(now, 0.1),
@@ -89,7 +133,15 @@ impl<
 
             out_datagrams_per_second: RateMetric::with_interval(now, 0.1),
             out_octets_per_second: RateMetric::with_interval(now, 0.1),
+            last_debug_metric_at: now,
+            debug_metric_duration: MillisDuration::from_secs(1.0).unwrap(),
+            tick_duration_ms: 16,
         }
+    }
+
+    pub fn with_tick_duration(mut self, tick_duration: u64) -> Self {
+        self.tick_duration_ms = tick_duration;
+        self
     }
 
     pub fn send(&mut self, now: Millis) -> Result<Vec<Vec<u8>>, ClientFrontError> {
@@ -125,10 +177,40 @@ impl<
         self.in_octets_per_second.update(now);
         self.out_datagrams_per_second.update(now);
         self.out_octets_per_second.update(now);
+
+        if now - self.last_debug_metric_at > self.debug_metric_duration {
+            self.last_debug_metric_at = now;
+            debug!("metrics: {}", self.metrics())
+        }
     }
 
-    pub fn can_push_predicted_step(&self) -> bool {
-        self.client.can_push_predicted_step()
+    pub fn metrics(&self) -> CombinedMetrics {
+        CombinedMetrics {
+            outgoing: MetricsInDirection {
+                datagrams_per_second: self.out_datagrams_per_second(),
+                octets_per_second: self.out_octets_per_second(),
+            },
+            incoming: MetricsInDirection {
+                datagrams_per_second: self.in_datagrams_per_second(),
+                octets_per_second: self.in_octets_per_second(),
+            },
+            latency: self.latency(),
+        }
+    }
+
+    pub fn need_prediction_count(&self) -> usize {
+        if self.client.can_push_predicted_step() {
+            let optimal = self.optimal_prediction_tick_count();
+            let in_queue = self.client.logic().predicted_step_count_in_queue();
+
+            if optimal > in_queue {
+                optimal - in_queue
+            } else {
+                0
+            }
+        } else {
+            0
+        }
     }
 
     pub fn push_predicted_step(
@@ -142,8 +224,8 @@ impl<
 
     pub fn pop_all_authoritative_steps(
         &mut self,
-    ) -> Result<(TickId, AuthStepVec<StepT>), ClientFrontError> {
-        Ok(self.client.pop_all_authoritative_steps()?)
+    ) -> (TickId, Vec<StepForParticipants<Step<StepT>>>) {
+        self.client.pop_all_authoritative_steps()
     }
 
     pub fn receive(&mut self, now: Millis, datagram: &[u8]) -> Result<(), ClientFrontError> {
@@ -173,11 +255,32 @@ impl<
         Ok(())
     }
 
-    pub fn latency(&self) -> Option<(u16, f32, u16)> {
+    #[allow(unused)]
+    fn optimal_prediction_tick_count(&self) -> usize {
+        if let Some(latency_ms) = self.latency() {
+            let latency_in_ticks = (latency_ms.avg as u16 / self.tick_duration_ms as u16) + 1;
+            let tick_delta = self.server_buffer_delta_ticks().unwrap_or(0);
+            const MINIMUM_DELTA_TICK: u32 = 2;
+            let buffer_add = if (tick_delta as u32) < MINIMUM_DELTA_TICK {
+                ((MINIMUM_DELTA_TICK as i32) - tick_delta as i32) as u32
+            } else {
+                0
+            };
+
+            let count = (latency_in_ticks as u32 + buffer_add) as usize;
+
+            const MAXIMUM_PREDICTION_COUNT: usize = 10; // TODO: Setting
+            min(count, MAXIMUM_PREDICTION_COUNT)
+        } else {
+            2
+        }
+    }
+
+    pub fn latency(&self) -> Option<MinMaxAvg<u16>> {
         self.latency.values()
     }
 
-    pub fn datagram_drops(&self) -> Option<(u16, f32, u16)> {
+    pub fn datagram_drops(&self) -> Option<MinMaxAvg<u16>> {
         self.datagram_drops.values()
     }
 
@@ -205,12 +308,12 @@ impl<
         self.client.server_buffer_delta_ticks()
     }
 
-    pub fn game_state(&self) -> Option<&StateT> {
-        self.client.game_state()
+    pub fn game(&self) -> Option<&StateT> {
+        self.client.game()
     }
 
-    pub fn game_state_mut(&mut self) -> Option<&mut StateT> {
-        self.client.game_state_mut()
+    pub fn game_mut(&mut self) -> Option<&mut StateT> {
+        self.client.game_mut()
     }
 
     pub fn request_join_player(

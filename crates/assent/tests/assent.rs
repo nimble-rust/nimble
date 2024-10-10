@@ -4,6 +4,7 @@
  */
 use nimble_assent::prelude::*;
 use std::fmt::Display;
+use tick_id::TickId;
 
 pub struct TestGame {
     pub position_x: i32,
@@ -35,7 +36,7 @@ fn one_step() {
     let mut game = TestGame { position_x: -44 };
     let mut assent: Assent<TestGame, TestGameStep> = Assent::default();
     let step = TestGameStep::MoveLeft;
-    assent.push(step);
+    assent.push(TickId(0), step).expect("should work");
     assert_eq!(assent.update(&mut game), UpdateState::ConsumedAllKnowledge);
     assert_eq!(game.position_x, -45);
 }
@@ -45,8 +46,8 @@ fn multiple_steps() {
     let mut game = TestGame { position_x: -44 };
     let mut assent: Assent<TestGame, TestGameStep> = Assent::default();
     let step = TestGameStep::MoveRight;
-    assent.push(step);
-    assent.push(step);
+    assent.push(TickId(0), step).expect("should work");
+    assent.push(TickId(1), step).expect("should work");
     assert_eq!(assent.update(&mut game), UpdateState::ConsumedAllKnowledge);
     assert_eq!(game.position_x, -42);
 }

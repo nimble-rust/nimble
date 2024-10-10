@@ -112,7 +112,7 @@ fn one_prediction() {
         .expect("Should be able to move left");
 
     rectify
-        .push_predicted(participant_step_combined)
+        .push_predicted(TickId(0), participant_step_combined)
         .expect("Should be able to move left");
 
     rectify.update(&mut callbacks);
@@ -149,7 +149,7 @@ fn one_authoritative_and_one_prediction() {
         .expect("should work");
 
     rectify
-        .push_predicted(predicted_step_combined)
+        .push_predicted(TickId(0), predicted_step_combined)
         .expect("should work");
     rectify.update(&mut callbacks);
 
@@ -185,14 +185,18 @@ fn one_authoritative_and_x_predictions() {
         .insert(ParticipantId(0), Step::Custom(TestGameStep::MoveLeft))
         .expect("should work");
 
+    let mut tick = TickId(0);
     rectify
-        .push_predicted(predicted_step_combined.clone())
+        .push_predicted(tick, predicted_step_combined.clone())
         .expect("should work");
+
+    tick += 1;
     rectify
-        .push_predicted(predicted_step_combined.clone())
+        .push_predicted(tick, predicted_step_combined.clone())
         .expect("should work");
+    tick += 1;
     rectify
-        .push_predicted(predicted_step_combined.clone())
+        .push_predicted(tick, predicted_step_combined.clone())
         .expect("should work");
     rectify.update(&mut callbacks);
 

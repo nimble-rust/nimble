@@ -322,30 +322,23 @@ impl JoinGameRequest {
 #[derive(Debug, PartialEq, Clone)]
 pub struct StepsAck {
     pub waiting_for_tick_id: TickId,
-    pub lost_steps_mask_after_last_received: u64,
 }
 
 impl Display for StepsAck {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "waiting: {}, receive_mask:{:X}",
-            self.waiting_for_tick_id, self.lost_steps_mask_after_last_received
-        )
+        write!(f, "waiting:{}", self.waiting_for_tick_id)
     }
 }
 
 impl StepsAck {
     pub fn to_stream(&self, stream: &mut impl WriteOctetStream) -> io::Result<()> {
         TickIdUtil::to_stream(self.waiting_for_tick_id, stream)?;
-        stream.write_u64(self.lost_steps_mask_after_last_received)?;
         Ok(())
     }
 
     pub fn from_stream(stream: &mut impl ReadOctetStream) -> io::Result<Self> {
         Ok(Self {
             waiting_for_tick_id: TickIdUtil::from_stream(stream)?,
-            lost_steps_mask_after_last_received: stream.read_u64()?,
         })
     }
 }

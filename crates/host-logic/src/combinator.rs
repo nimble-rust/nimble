@@ -3,6 +3,7 @@
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
 use err_rs::{ErrorLevel, ErrorLevelProvider};
+use log::trace;
 use seq_map::SeqMapError;
 use std::collections::HashMap;
 use tick_id::TickId;
@@ -10,7 +11,7 @@ use tick_id::TickId;
 use nimble_participant::ParticipantId;
 use nimble_step::Step;
 use nimble_step_types::StepForParticipants;
-use nimble_steps::Steps;
+use nimble_steps::{Steps, StepsError};
 
 #[derive(Debug)]
 pub enum CombinatorError {
@@ -21,15 +22,23 @@ pub enum CombinatorError {
     OtherError,
     SeqMapError(SeqMapError),
     NoBufferForParticipant,
+    StepsError(StepsError),
+}
+
+impl From<StepsError> for CombinatorError {
+    fn from(e: StepsError) -> Self {
+        Self::StepsError(e)
+    }
 }
 
 impl ErrorLevelProvider for CombinatorError {
     fn error_level(&self) -> ErrorLevel {
         match self {
-            CombinatorError::NotReadyToProduceStep { .. } => ErrorLevel::Info,
-            CombinatorError::OtherError => ErrorLevel::Info,
-            CombinatorError::SeqMapError(_) => ErrorLevel::Info,
-            CombinatorError::NoBufferForParticipant => ErrorLevel::Info,
+            Self::NotReadyToProduceStep { .. } => ErrorLevel::Info,
+            Self::OtherError => ErrorLevel::Info,
+            Self::SeqMapError(_) => ErrorLevel::Info,
+            Self::NoBufferForParticipant => ErrorLevel::Info,
+            Self::StepsError(_) => ErrorLevel::Critical,
         }
     }
 }
@@ -58,9 +67,14 @@ impl<T: Clone + std::fmt::Display> Combinator<T> {
         self.in_buffers.insert(id, Steps::new());
     }
 
-    pub fn add(&mut self, id: ParticipantId, step: T) -> Result<(), CombinatorError> {
+    pub fn add(
+        &mut self,
+        id: ParticipantId,
+        tick_id: TickId,
+        step: T,
+    ) -> Result<(), CombinatorError> {
         if let Some(buffer) = self.in_buffers.get_mut(&id) {
-            buffer.push(step);
+            buffer.push_with_check(tick_id, step)?;
             Ok(())
         } else {
             Err(CombinatorError::NoBufferForParticipant)
@@ -93,23 +107,43 @@ impl<T: Clone + std::fmt::Display> Combinator<T> {
         )
     }
 
-    pub fn produce(&mut self) -> Result<StepForParticipants<Step<T>>, CombinatorError> {
+    pub fn produce(&mut self) -> Result<(TickId, StepForParticipants<Step<T>>), CombinatorError> {
         let (can_provide, can_not_provide) = self.participants_that_can_provide();
         if can_provide == 0 {
+            trace!(
+                "notice: can not produce authoritative step {}, no one can provide it",
+                self.tick_id_to_produce
+            );
             return Err(CombinatorError::NotReadyToProduceStep {
                 can_provide,
                 can_not_provide,
             });
         }
+        trace!(
+            "found {} that can provide steps and {} that can not",
+            can_provide,
+            can_not_provide
+        );
 
         let mut combined_step = StepForParticipants::<Step<T>>::new();
         for (participant_id, steps) in self.in_buffers.iter_mut() {
             if let Some(first_tick) = steps.front_tick_id() {
                 if first_tick == self.tick_id_to_produce {
+                    trace!(
+                        "found step from {} for {} {}",
+                        first_tick,
+                        participant_id,
+                        steps.front_tick_id().unwrap()
+                    );
                     combined_step
                         .combined_step
                         .insert(*participant_id, Step::Custom(steps.pop().unwrap().step))?;
                 } else {
+                    trace!(
+                        "did not find step from {} for {}, setting it to forced",
+                        first_tick,
+                        participant_id
+                    );
                     combined_step
                         .combined_step
                         .insert(*participant_id, Step::Forced)?;
@@ -120,6 +154,6 @@ impl<T: Clone + std::fmt::Display> Combinator<T> {
 
         self.tick_id_to_produce += 1;
 
-        Ok(combined_step)
+        Ok((self.tick_id_to_produce - 1, combined_step))
     }
 }

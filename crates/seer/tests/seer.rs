@@ -6,6 +6,7 @@ use flood_rs::prelude::*;
 use nimble_seer::prelude::*;
 
 use std::io;
+use tick_id::TickId;
 
 pub struct TestGame {
     pub position_x: i32,
@@ -58,7 +59,7 @@ impl SeerCallback<TestGameStep> for TestGame {
 fn one_predicted_step() {
     let mut game = TestGame { position_x: -44 };
     let mut seer: Seer<TestGame, TestGameStep> = Seer::default();
-    seer.push(TestGameStep::MoveRight)
+    seer.push(TickId(0), TestGameStep::MoveRight)
         .expect("should be able to move right");
     seer.update(&mut game);
     assert_eq!(game.position_x, -43);

@@ -11,10 +11,10 @@ nimble-ordered-datagram = { path = "../ordered-datagram", version = "0.0.12-dev"
 nimble-protocol-header = { path = "../protocol-header", version = "0.0.12-dev" }
 log = "0.4.22"
 monotonic-time-rs = "0.0.3"
-metricator = "0.0.2"
+metricator = "0.0.4"
 app-version = "0.0.2"
 nimble-step-types = { path = "../step-types", version = "0.0.12-dev" }
-tick-id = "0.0.7"
+tick-id = "0.0.9"
 err-rs = "0.0.4"
 hexify = { version = "0.0.3", features = ["log_equal"] }
 nimble-steps = { path = "../steps", version = "0.0.12-dev" }

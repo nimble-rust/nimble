@@ -340,7 +340,7 @@ impl Display for GameStepResponseHeader {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "game_step_response: count:{} expected-tick:{} delta-buf:{}",
+            "game_step_response: count:{} expected:{} delta-buf:{}",
             self.connection_buffer_count, self.next_expected_tick_id, self.delta_buffer
         )
     }
@@ -520,14 +520,12 @@ impl<StepT: Deserialize + Serialize + Debug + Clone + std::fmt::Display>
 }
 
 #[derive(Debug)]
-pub struct GameStepResponse<StepT: Serialize + Deserialize + Debug + Clone + std::fmt::Display> {
+pub struct GameStepResponse<StepT: Serialize + Deserialize + Debug + Clone + Display> {
     pub response_header: GameStepResponseHeader,
     pub authoritative_steps: AuthoritativeStepRanges<StepT>,
 }
 
-impl<StepT: Serialize + Deserialize + Debug + Clone + std::fmt::Display> Display
-    for GameStepResponse<StepT>
-{
+impl<StepT: Serialize + Deserialize + Debug + Clone + Display> Display for GameStepResponse<StepT> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(
             f,

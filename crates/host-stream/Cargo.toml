@@ -6,7 +6,7 @@ edition = "2021"
 [dependencies]
 nimble-host-logic = { path = "../host-logic", version = "0.0.12-dev" }
 flood-rs = "0.0.12"
-tick-id = "0.0.7"
+tick-id = "0.0.9"
 datagram-chunker = { path = "../datagram-chunker", version = "0.0.1" }
 nimble-protocol = { path = "../protocol", version = "0.0.12-dev" }
 monotonic-time-rs = "0.0.3"

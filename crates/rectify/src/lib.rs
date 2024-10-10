@@ -5,8 +5,10 @@
 pub mod prelude;
 
 use err_rs::{ErrorLevel, ErrorLevelProvider};
+use log::trace;
 use nimble_assent::{Assent, AssentCallback, UpdateState};
 use nimble_seer::{Seer, SeerCallback, SeerError};
+use nimble_steps::StepsError;
 use std::fmt::Debug;
 use tick_id::TickId;
 
@@ -17,6 +19,7 @@ pub enum RectifyError {
         encountered: TickId,
     },
     SeerError(SeerError),
+    StepsError(StepsError),
 }
 
 impl From<SeerError> for RectifyError {
@@ -25,11 +28,18 @@ impl From<SeerError> for RectifyError {
     }
 }
 
+impl From<StepsError> for RectifyError {
+    fn from(value: StepsError) -> Self {
+        Self::StepsError(value)
+    }
+}
+
 impl ErrorLevelProvider for RectifyError {
     fn error_level(&self) -> ErrorLevel {
         match self {
             Self::WrongTickId { .. } => ErrorLevel::Critical,
             Self::SeerError(err) => err.error_level(),
+            Self::StepsError(_) => ErrorLevel::Critical,
         }
     }
 }
@@ -108,11 +118,12 @@ impl<Game: RectifyCallbacks<StepT>, StepT: Clone + std::fmt::Debug + std::fmt::D
     /// # Arguments
     ///
     /// * `step` - The predicted step to be pushed.
-    pub fn push_predicted(&mut self, step: StepT) -> Result<(), RectifyError> {
+    pub fn push_predicted(&mut self, tick_id: TickId, step: StepT) -> Result<(), RectifyError> {
         if let Some(end_tick_id) = self.assent.end_tick_id() {
             self.seer.received_authoritative(end_tick_id);
         }
-        self.seer.push(step)?;
+        trace!("added predicted step {}", &step);
+        self.seer.push(tick_id, step)?;
         Ok(())
     }
 
@@ -152,7 +163,7 @@ impl<Game: RectifyCallbacks<StepT>, StepT: Clone + std::fmt::Debug + std::fmt::D
                 })?;
             }
         }
-        self.assent.push(step);
+        self.assent.push(step_for_tick_id, step)?;
         self.seer
             .received_authoritative(self.assent.end_tick_id().unwrap());
 
@@ -166,7 +177,7 @@ impl<Game: RectifyCallbacks<StepT>, StepT: Clone + std::fmt::Debug + std::fmt::D
     /// * `game` - A mutable reference to the game implementing the necessary callback traits.
     pub fn update(&mut self, game: &mut Game) {
         let consumed_all_knowledge = self.assent.update(game);
-        if consumed_all_knowledge == UpdateState::ConsumedAllKnowledge {
+        if consumed_all_knowledge != UpdateState::DidNotConsumeAllKnowledge {
             game.on_copy_from_authoritative();
             self.seer.update(game);
         }

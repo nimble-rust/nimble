@@ -19,6 +19,6 @@ impl ParticipantId {
 
 impl Display for ParticipantId {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "participant:{}", self.0)
+        write!(f, "participant({})", self.0)
     }
 }

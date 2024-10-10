@@ -18,7 +18,7 @@ impl<StepT: Deserialize + Serialize + Debug + Clone + std::fmt::Display> Display
     for CombinedSteps<StepT>
 {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}: step_count:{}", self.tick_id, self.steps.len())
+        write!(f, "[{} step_count:{}]", self.tick_id, self.steps.len())
     }
 }
 

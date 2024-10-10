@@ -4,6 +4,7 @@
  */
 use hexify::{assert_eq_slices, format_hex};
 use log::info;
+use metricator::MinMaxAvg;
 use monotonic_time_rs::Millis;
 use nimble_client_front::{ClientFront, ClientFrontError};
 use nimble_sample_step::{SampleState, SampleStep};
@@ -77,14 +78,14 @@ pub fn client() -> Result<(), ClientFrontError> {
 
     assert_eq!(
         client.latency().expect("values should be set by now"),
-        (204, 222.0, 240)
+        MinMaxAvg::new(204, 222.0, 240).with_unit("ms")
     );
 
     assert_eq!(
         client
             .datagram_drops()
             .expect("values should be set by now"),
-        (2, 2.3, 5)
+        MinMaxAvg::new(2, 2.3, 5)
     );
 
     assert_eq!(client.out_octets_per_second(), 380.0);

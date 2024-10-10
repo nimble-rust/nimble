@@ -11,7 +11,7 @@ repository = "https://github.com/nimble-rust/protocol"
 flood-rs = "0.0.12"
 nimble-blob-stream = { path = "../blob-stream", version = "0.0.12-dev" }
 nimble-participant = { path = "../participant", version = "0.0.12-dev" }
-tick-id = "0.0.7"
+tick-id = "0.0.9"
 log = "0.4.22"
 nimble-step-types = { path = "../step-types", version = "0.0.12-dev" }
 seq-map = "0.0.2"

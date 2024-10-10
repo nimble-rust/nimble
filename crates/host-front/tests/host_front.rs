@@ -141,7 +141,6 @@ fn game_step() -> Result<(), HostFrontError> {
         // Commands
         0x02, // Send Predicted steps Command
         0x00, 0x00, 0x00, 0x00, // Waiting for Tick ID
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Receive Mask for steps
         0x00, 0x00, 0x00, 0x00, // Base tick id
         0x00, // number of player streams following
     ];

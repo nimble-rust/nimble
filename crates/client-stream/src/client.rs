@@ -94,6 +94,10 @@ impl<
         self.logic.phase()
     }
 
+    pub fn logic(&self) -> &ClientLogic<StateT, StepT> {
+        &self.logic
+    }
+
     fn receive_stream(
         &mut self,
         in_stream: &mut impl ReadOctetStream,
@@ -108,8 +112,8 @@ impl<
 
     pub fn pop_all_authoritative_steps(
         &mut self,
-    ) -> Result<(TickId, AuthStepVec<StepT>), ClientStreamError> {
-        Ok(self.logic.pop_all_authoritative_steps())
+    ) -> (TickId, Vec<StepForParticipants<Step<StepT>>>) {
+        self.logic.pop_all_authoritative_steps()
     }
 
     pub fn receive(&mut self, payload: &[u8]) -> Result<(), ClientStreamError> {
@@ -124,12 +128,12 @@ impl<
         Ok(serialize_to_chunker(commands, Self::DATAGRAM_MAX_SIZE)?)
     }
 
-    pub fn game_state(&self) -> Option<&StateT> {
-        self.logic.game_state()
+    pub fn game(&self) -> Option<&StateT> {
+        self.logic.game()
     }
 
-    pub fn game_state_mut(&mut self) -> Option<&mut StateT> {
-        self.logic.game_state_mut()
+    pub fn game_mut(&mut self) -> Option<&mut StateT> {
+        self.logic.game_mut()
     }
 
     pub fn is_in_game(&self) -> bool {
@@ -137,7 +141,7 @@ impl<
     }
 
     pub fn can_push_predicted_step(&self) -> bool {
-        self.is_in_game() && self.game_state().is_some()
+        self.is_in_game() && self.game().is_some()
     }
 
     pub fn push_predicted_step(

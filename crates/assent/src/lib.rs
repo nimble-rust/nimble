@@ -7,7 +7,7 @@ pub mod prelude;
 use std::marker::PhantomData;
 
 use log::trace;
-use nimble_steps::Steps;
+use nimble_steps::{Steps, StepsError};
 use tick_id::TickId;
 
 pub trait AssentCallback<CombinedStepT> {
@@ -22,6 +22,7 @@ pub trait AssentCallback<CombinedStepT> {
 pub enum UpdateState {
     ConsumedAllKnowledge,
     DidNotConsumeAllKnowledge,
+    NoKnowledge,
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -71,8 +72,8 @@ where
         }
     }
 
-    pub fn push(&mut self, steps: CombinedStepT) {
-        self.steps.push(steps);
+    pub fn push(&mut self, tick_id: TickId, steps: CombinedStepT) -> Result<(), StepsError> {
+        self.steps.push_with_check(tick_id, steps)
     }
 
     pub fn expecting_tick_id(&self) -> TickId {
@@ -88,18 +89,24 @@ where
     }
 
     pub fn update(&mut self, callback: &mut C) -> UpdateState {
+        if self.steps.is_empty() {
+            return UpdateState::NoKnowledge;
+        }
+
         callback.on_pre_ticks();
-        trace!("assent tick start. len {}", self.steps.len());
+        trace!("tick start. {} steps in queue.", self.steps.len());
         let mut count = 0;
         while let Some(combined_step_info) = self.steps.pop() {
-            trace!("assent tick: {}", &combined_step_info);
+            trace!("tick: {}", &combined_step_info);
             callback.on_tick(&combined_step_info.step);
             count += 1;
             if count >= self.settings.max_tick_count_per_update {
+                trace!("encountered threshold, not simulating all ticks");
                 return UpdateState::DidNotConsumeAllKnowledge;
             }
         }
 
+        trace!("consumed all knowledge");
         UpdateState::ConsumedAllKnowledge
     }
 }

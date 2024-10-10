@@ -107,7 +107,7 @@ impl<StepType: Clone> Steps<StepType> {
         Ok(())
     }
 
-    pub fn push(&mut self, step: StepType) {
+    fn push(&mut self, step: StepType) {
         let info = StepInfo {
             step,
             tick_id: self.expected_write_id,

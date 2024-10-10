@@ -8,18 +8,26 @@ use nimble_participant::ParticipantId;
 
 use nimble_step::Step;
 use nimble_step_types::StepForParticipants;
-use nimble_steps::Steps;
+use nimble_steps::{Steps, StepsError};
 use tick_id::TickId;
 
 #[derive(Debug)]
 pub enum HostCombinatorError {
     NoBufferForParticipant,
+    StepsError(StepsError),
+}
+
+impl From<StepsError> for HostCombinatorError {
+    fn from(error: StepsError) -> Self {
+        Self::StepsError(error)
+    }
 }
 
 impl ErrorLevelProvider for HostCombinatorError {
     fn error_level(&self) -> ErrorLevel {
         match self {
-            HostCombinatorError::NoBufferForParticipant => ErrorLevel::Warning,
+            Self::NoBufferForParticipant => ErrorLevel::Warning,
+            Self::StepsError(_) => ErrorLevel::Critical,
         }
     }
 }
@@ -47,28 +55,19 @@ impl<T: Clone + std::fmt::Display> HostCombinator<T> {
         self.combinator.create_buffer(participant_id)
     }
 
-    pub fn receive_step(
-        &mut self,
-        participant_id: ParticipantId,
-        step: T,
-    ) -> Result<(), HostCombinatorError> {
-        if let Some(participant_buffer) = self.combinator.in_buffers.get_mut(&participant_id) {
-            participant_buffer.push(step);
-            self.produce_authoritative_steps();
-            Ok(())
-        } else {
-            Err(HostCombinatorError::NoBufferForParticipant)
-        }
+    pub fn get_mut(&mut self, participant_id: &ParticipantId) -> Option<&mut Steps<T>> {
+        self.combinator.in_buffers.get_mut(participant_id)
     }
 
     pub fn authoritative_steps(&self) -> &Steps<StepForParticipants<Step<T>>> {
         &self.authoritative_steps
     }
 
-    fn produce_authoritative_steps(&mut self) {
+    pub fn produce_authoritative_steps(&mut self) {
         for _ in 0..10 {
-            if let Ok(new_combined_step) = self.combinator.produce() {
-                self.authoritative_steps.push(new_combined_step);
+            if let Ok((produced_tick_id, new_combined_step)) = self.combinator.produce() {
+                self.authoritative_steps
+                    .push_with_check(produced_tick_id, new_combined_step);
             } else {
                 break;
             }

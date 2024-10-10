@@ -5,8 +5,10 @@
 use app_version::VersionProvider;
 use err_rs::{ErrorLevel, ErrorLevelProvider};
 use flood_rs::{BufferDeserializer, Deserialize, Serialize};
+use log::debug;
+use metricator::MinMaxAvg;
 use monotonic_time_rs::Millis;
-use nimble_client_front::{ClientFront, ClientFrontError, LocalPlayer};
+use nimble_client_front::{ClientFront, ClientFrontError, CombinedMetrics, LocalPlayer};
 use nimble_rectify::{Rectify, RectifyCallbacks, RectifyError};
 use nimble_step::Step;
 use nimble_step_types::{LocalIndex, StepForParticipants};
@@ -60,49 +62,32 @@ impl From<ClientFrontError> for ClientError {
     }
 }
 
-pub struct MinMaxValue<T> {
-    pub min: T,
-    pub avg: f32,
-    pub max: T,
-}
-
-pub struct MetricsInDirection {
-    pub datagrams_per_second: f32,
-    pub octets_per_second: f32,
-}
-
-pub struct CombinedMetrics {
-    pub outgoing: MetricsInDirection,
-    pub incoming: MetricsInDirection,
-}
-
 pub struct Client<
     GameT: GameCallbacks<StepT> + std::fmt::Debug,
     StepT: Clone + Deserialize + Serialize + Debug + std::fmt::Display,
 > {
     client: ClientFront<GameT, StepT>,
-    tick_duration_ms: u64,
+
     #[allow(unused)]
     rectify: Rectify<GameT, StepForParticipants<Step<StepT>>>,
 }
 
 impl<
         StepT: Clone + Deserialize + Serialize + Debug + std::fmt::Display,
-        GameT: GameCallbacks<StepT> + std::fmt::Debug,
+        GameT: GameCallbacks<StepT> + Debug,
     > Client<GameT, StepT>
 {
     pub fn new(now: Millis) -> Self {
         let deterministic_app_version = GameT::version();
         Self {
             client: ClientFront::<GameT, StepT>::new(deterministic_app_version, now),
-            tick_duration_ms: 16,
+
             rectify: Rectify::default(),
         }
     }
 
-    pub fn with_tick_duration(mut self, tick_duration: u64) -> Self {
-        self.tick_duration_ms = tick_duration;
-        self
+    pub fn metrics(&self) -> CombinedMetrics {
+        self.client.metrics()
     }
 
     pub fn send(&mut self, now: Millis) -> Result<Vec<Vec<u8>>, ClientError> {
@@ -123,7 +108,7 @@ impl<
     pub fn update(&mut self, now: Millis) -> Result<(), ClientError> {
         self.client.update(now);
 
-        let (first_tick_id_in_vector, auth_steps) = self.client.pop_all_authoritative_steps()?;
+        let (first_tick_id_in_vector, auth_steps) = self.client.pop_all_authoritative_steps();
         let mut current_tick_id = first_tick_id_in_vector;
         for auth_step in auth_steps {
             if current_tick_id == self.rectify.waiting_for_authoritative_tick_id() {
@@ -133,36 +118,25 @@ impl<
             current_tick_id = TickId(current_tick_id.0 + 1);
         }
 
-        if let Some(game_state) = self.client.game_state_mut() {
-            self.rectify.update(game_state);
+        if let Some(game) = self.client.game_mut() {
+            self.rectify.update(game);
         }
 
         Ok(())
     }
 
-    pub fn metrics(&self) -> CombinedMetrics {
-        CombinedMetrics {
-            outgoing: MetricsInDirection {
-                datagrams_per_second: self.client.out_datagrams_per_second(),
-                octets_per_second: self.client.out_octets_per_second(),
-            },
-            incoming: MetricsInDirection {
-                datagrams_per_second: self.client.in_datagrams_per_second(),
-                octets_per_second: self.client.in_octets_per_second(),
-            },
-        }
+    pub fn game(&self) -> Option<&GameT> {
+        self.client.game()
     }
 
-    pub fn game_state(&self) -> Option<&GameT> {
-        self.client.game_state()
-    }
-
-    pub fn want_predicted_step(&self) -> bool {
-        self.client.can_push_predicted_step()
+    pub fn need_prediction_count(&self) -> usize {
+        let v = self.client.need_prediction_count();
+        debug!("optimal count: {v}");
+        v
     }
 
     pub fn can_join_player(&self) -> bool {
-        self.client.client.game_state().is_some()
+        self.client.client.game().is_some()
     }
 
     pub fn local_players(&self) -> Vec<LocalPlayer> {
@@ -174,47 +148,17 @@ impl<
         tick_id: TickId,
         step: StepForParticipants<StepT>,
     ) -> Result<(), ClientError> {
-        /*
-            // create authoritative step from predicted step
-            let auth = AuthoritativeStep::<Step<StepT>> {
-                authoritative_participants: SeqMap::<ParticipantId, >,
-            }
-            self.rectify.push_predicted(step);
-        */
-
         self.client.push_predicted_step(tick_id, step)?;
 
         Ok(())
     }
 
-    pub fn latency(&self) -> Option<u16> {
-        if let Some((_, x, _)) = self.client.latency() {
-            Some(x as u16)
-        } else {
-            None
-        }
+    pub fn latency(&self) -> Option<MinMaxAvg<u16>> {
+        self.client.latency()
     }
 
     pub fn server_buffer_delta_ticks(&self) -> Option<i16> {
         self.client.server_buffer_delta_ticks()
-    }
-
-    #[allow(unused)]
-    fn optimal_prediction_tick_count(&self) -> usize {
-        if let Some(latency_ms) = self.latency() {
-            let latency_in_ticks = (latency_ms / self.tick_duration_ms as u16) + 1;
-            let tick_delta = self.server_buffer_delta_ticks().unwrap_or(0);
-            const MINIMUM_DELTA_TICK: u32 = 2;
-            let buffer_add = if (tick_delta as u32) < MINIMUM_DELTA_TICK {
-                ((MINIMUM_DELTA_TICK as i32) - tick_delta as i32) as u32
-            } else {
-                0
-            };
-
-            (latency_in_ticks as u32 + buffer_add) as usize
-        } else {
-            2
-        }
     }
 
     pub fn request_join_player(

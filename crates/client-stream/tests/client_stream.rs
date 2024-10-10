@@ -172,7 +172,6 @@ fn predicted_steps() -> Result<(), ClientStreamError> {
         // Commands
         0x02, // Send Predicted steps
         0x00, 0x00, 0x00, 0x00, // Waiting for Tick ID
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Receive Mask for steps
         0x00, 0x00, 0x00, 0x00, // Base Tick ID
         0x00, // number of player streams following
     ];
@@ -203,7 +202,6 @@ fn predicted_steps() -> Result<(), ClientStreamError> {
 
         // ACK
         0x00, 0x00, 0x00, 0x00, // Waiting for Tick ID
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Receive Mask for steps
 
         // Predicted steps Header
         0x00, 0x00, 0x00, 0x00, // Base TickId
@@ -255,7 +253,6 @@ fn predicted_steps() -> Result<(), ClientStreamError> {
 
         // ACK
         0x00, 0x00, 0x00, 0x00, // Waiting for authoritative step for Tick ID
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Receive Mask for steps
 
         0x00, 0x00, 0x00, 0x01, // Base TickId
 
@@ -315,7 +312,6 @@ fn predicted_steps() -> Result<(), ClientStreamError> {
 
         // ACK
         0x00, 0x00, 0x00, 0x01, // Waiting for authoritative step for Tick ID
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Receive Mask for steps
 
         // Predicted steps Header
         0x00, 0x00, 0x00, 0x01, // Start TickId

@@ -7,5 +7,5 @@ description = "Nimble Step"
 repository = "https://github.com/nimble-rust/nimble"
 
 [dependencies]
-tick-id = "0.0.7"
+tick-id = "0.0.9"
 flood-rs = "0.0.12"

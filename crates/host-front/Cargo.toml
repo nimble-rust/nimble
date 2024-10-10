@@ -9,7 +9,7 @@ nimble-protocol-header = { path = "../protocol-header", version = "0.0.12-dev" }
 nimble-host-stream = { path = "../host-stream", version = "0.0.12-dev" }
 nimble-host-logic = { path = "../host-logic", version = "0.0.12-dev" }
 flood-rs = "0.0.12"
-tick-id = "0.0.7"
+tick-id = "0.0.9"
 monotonic-time-rs = "0.0.3"
 test-log = "0.2.16"
 app-version = "0.0.2"

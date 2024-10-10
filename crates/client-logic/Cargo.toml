@@ -9,7 +9,7 @@ repository = "https://github.com/nimble-rust/client"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-tick-id = "0.0.7"
+tick-id = "0.0.9"
 flood-rs = "0.0.12"
 log = "0.4.22"
 nimble-steps = { path = "../steps", version = "0.0.12-dev" }
@@ -17,7 +17,7 @@ nimble-protocol = { path = "../protocol", version = "0.0.12-dev" }
 nimble-blob-stream = { path = "../blob-stream", version = "0.0.12-dev" }
 err-rs = "0.0.4"
 nimble-step-types = { path = "../step-types", version = "0.0.12-dev" }
-metricator = "0.0.2"
+metricator = "0.0.4"
 nimble-participant = { path = "../participant", version = "0.0.12-dev" }
 app-version = "0.0.2"
 nimble-step = { path = "../step", version = "0.0.12-dev" }

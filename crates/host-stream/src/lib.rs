@@ -70,6 +70,7 @@ pub struct HostStream<
         + std::fmt::Display,
 > {
     host_logic: HostLogic<StepT>,
+    received_some_step: bool,
 }
 
 impl<StepT: Clone + Eq + Debug + Deserialize + Serialize + std::fmt::Display> HostStream<StepT> {
@@ -79,6 +80,7 @@ impl<StepT: Clone + Eq + Debug + Deserialize + Serialize + std::fmt::Display> Ho
     ) -> Self {
         Self {
             host_logic: HostLogic::<StepT>::new(tick_id, required_deterministic_simulation_version),
+            received_some_step: false,
         }
     }
 
@@ -112,6 +114,7 @@ impl<StepT: Clone + Eq + Debug + Deserialize + Serialize + std::fmt::Display> Ho
             format_hex(datagram)
         );
 
+        self.received_some_step = false;
         let mut in_stream = InOctetStream::new(datagram);
         let mut all_commands = Vec::new();
         while !in_stream.has_reached_end() {
@@ -123,6 +126,10 @@ impl<StepT: Clone + Eq + Debug + Deserialize + Serialize + std::fmt::Display> Ho
                 now,
             )?;
             all_commands.extend(commands);
+        }
+        {
+            // TODO: FIX check self.received_some_step is set
+            self.host_logic.post_update();
         }
         Ok(serialize_to_chunker(all_commands, DATAGRAM_MAX_SIZE)?)
     }

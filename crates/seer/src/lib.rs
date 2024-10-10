@@ -9,7 +9,7 @@ use log::trace;
 use std::fmt::Debug;
 use std::marker::PhantomData;
 
-use nimble_steps::Steps;
+use nimble_steps::{Steps, StepsError};
 use tick_id::TickId;
 
 pub trait SeerCallback<CombinedStepT> {
@@ -23,12 +23,20 @@ pub trait SeerCallback<CombinedStepT> {
 #[derive(Debug)]
 pub enum SeerError {
     CanNotPushAtMaximumCapacity,
+    StepsError(StepsError),
+}
+
+impl From<StepsError> for SeerError {
+    fn from(error: StepsError) -> Self {
+        SeerError::StepsError(error)
+    }
 }
 
 impl ErrorLevelProvider for SeerError {
     fn error_level(&self) -> ErrorLevel {
         match self {
             SeerError::CanNotPushAtMaximumCapacity => ErrorLevel::Warning,
+            SeerError::StepsError(_) => ErrorLevel::Critical,
         }
     }
 }
@@ -86,34 +94,46 @@ where
     }
 
     pub fn update(&mut self, callback: &mut Callback) {
-        trace!("seer: combined steps pre_ticks");
+        if self.predicted_steps.is_empty() {
+            return;
+        }
+
+        trace!("pre_ticks");
         callback.on_pre_ticks();
 
-        trace!("seer: combined steps len:{}", self.predicted_steps.len());
+        trace!("{} predicted steps in queue.", self.predicted_steps.len());
+
         for combined_step_info in self.predicted_steps.iter() {
-            trace!("seer tick {:?}", combined_step_info);
+            trace!("tick {:?}", combined_step_info);
 
             callback.on_tick(&combined_step_info.step);
         }
 
-        trace!("seer: combined steps post_ticks");
+        trace!("post_ticks");
         callback.on_post_ticks();
         self.authoritative_has_changed = false;
     }
 
     pub fn received_authoritative(&mut self, tick: TickId) {
+        trace!("received_authoritative discarding predicted steps before {tick}");
         self.predicted_steps.pop_up_to(tick + 1);
+        trace!("predicted steps remaining {}", self.predicted_steps.len());
     }
 
     pub fn authoritative_has_changed(&mut self) {
         self.authoritative_has_changed = true;
     }
 
-    pub fn push(&mut self, predicted_step: CombinedStepT) -> Result<(), SeerError> {
+    pub fn push(
+        &mut self,
+        tick_id: TickId,
+        predicted_step: CombinedStepT,
+    ) -> Result<(), SeerError> {
         if self.predicted_steps.len() >= self.settings.max_predicted_steps_capacity {
             Err(SeerError::CanNotPushAtMaximumCapacity)?;
         }
-        self.predicted_steps.push(predicted_step);
+        self.predicted_steps
+            .push_with_check(tick_id, predicted_step)?;
         Ok(())
     }
 }

@@ -12,7 +12,7 @@ repository = "https://github.com/nimble-rust/host"
 nimble-steps = { path = "../steps", version = "0.0.12-dev" }
 nimble-participant = { path = "../participant", version = "0.0.12-dev" }
 nimble-blob-stream = { path = "../blob-stream", version = "0.0.12-dev" }
-tick-id = "0.0.7"
+tick-id = "0.0.9"
 nimble-protocol = { path = "../protocol", version = "0.0.12-dev" }
 freelist-rs = "0.0.4"
 log = "0.4.22"

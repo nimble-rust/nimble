@@ -194,7 +194,6 @@ impl<
         let steps_request = StepsRequest {
             ack: StepsAck {
                 waiting_for_tick_id: self.incoming_authoritative_steps.expected_write_tick_id(),
-                lost_steps_mask_after_last_received: 0,
             },
             combined_predicted_steps: CombinedSteps::<StepT> {
                 tick_id: self
@@ -280,6 +279,10 @@ impl<
         self.outgoing_predicted_steps.push_with_check(tick_id, step)
     }
 
+    pub fn predicted_step_count_in_queue(&self) -> usize {
+        self.outgoing_predicted_steps.len()
+    }
+
     /// Handles the reception of the join game acceptance message from the host.
     ///
     /// # Arguments
@@ -315,11 +318,11 @@ impl<
     ///
     /// # Returns
     /// An `Option` containing a reference to the received game state, if available.
-    pub fn game_state(&self) -> Option<&StateT> {
+    pub fn game(&self) -> Option<&StateT> {
         self.state.as_ref()
     }
 
-    pub fn game_state_mut(&mut self) -> Option<&mut StateT> {
+    pub fn game_mut(&mut self) -> Option<&mut StateT> {
         self.state.as_mut()
     }
 
@@ -335,6 +338,10 @@ impl<
         trace!("removing every predicted step before {host_expected_tick_id}");
         self.outgoing_predicted_steps
             .pop_up_to(host_expected_tick_id);
+        trace!(
+            "predicted steps remaining {}",
+            self.outgoing_predicted_steps.len()
+        );
     }
 
     fn on_connect(&mut self, cmd: &ConnectionAccepted) -> Result<(), ClientLogicErrorKind> {
@@ -399,8 +406,9 @@ impl<
 
         if accepted_count > 0 {
             trace!(
-                "accepted authoritative count {accepted_count}, waiting for {}",
-                self.incoming_authoritative_steps.expected_write_tick_id()
+                "accepted {accepted_count} auth steps, waiting for {}, total count: {}",
+                self.incoming_authoritative_steps.expected_write_tick_id(),
+                self.incoming_authoritative_steps.len(),
             );
         }
 
