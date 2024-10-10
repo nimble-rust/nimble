@@ -8,4 +8,4 @@ repository = "https://github.com/nimble-rust/nimble"
 
 [dependencies]
 tick-id = "0.0.7"
-flood-rs = "0.0.11"
+flood-rs = "0.0.12"

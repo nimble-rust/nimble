@@ -16,7 +16,7 @@ tick-id = "0.0.7"
 nimble-protocol = { path = "../protocol", version = "0.0.12-dev" }
 freelist-rs = "0.0.4"
 log = "0.4.22"
-flood-rs = "0.0.11"
+flood-rs = "0.0.12"
 monotonic-time-rs = "0.0.3"
 nimble-step-types = { path = "../step-types", version = "0.0.12-dev" }
 seq-map = "0.0.2"

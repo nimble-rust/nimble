@@ -9,7 +9,7 @@ repository = "https://github.com/nimble-rust/nimble"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-flood-rs = "0.0.11"
+flood-rs = "0.0.12"
 
 [dev-dependencies]
 test-log = "0.2.16"

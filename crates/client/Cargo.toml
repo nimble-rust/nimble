@@ -12,7 +12,7 @@ nimble-rectify = { path = "../rectify", version = "0.0.12-dev" }
 nimble-step-types = { path = "../step-types", version = "0.0.12-dev" }
 nimble-steps = { path = "../steps", version = "0.0.12-dev" }
 nimble-step = { path = "../step", version = "0.0.12-dev" }
-flood-rs = "0.0.11"
+flood-rs = "0.0.12"
 log = "0.4.22"
 monotonic-time-rs = "0.0.3"
 metricator = "0.0.2"

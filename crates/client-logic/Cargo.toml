@@ -10,7 +10,7 @@ repository = "https://github.com/nimble-rust/client"
 
 [dependencies]
 tick-id = "0.0.7"
-flood-rs = "0.0.11"
+flood-rs = "0.0.12"
 log = "0.4.22"
 nimble-steps = { path = "../steps", version = "0.0.12-dev" }
 nimble-protocol = { path = "../protocol", version = "0.0.12-dev" }
