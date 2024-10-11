@@ -12,7 +12,7 @@ bit-array-rs = "0.0.3"
 flood-rs = "0.0.12"
 log = "0.4.22"
 err-rs = "0.0.4"
-monotonic-time-rs = "0.0.4"
+monotonic-time-rs = "0.0.5"
 
 [dev-dependencies]
 rand = "0.8.5"

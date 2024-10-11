@@ -25,7 +25,7 @@ nimble-client-logic = { path = "../client-logic", version = "0.0.12-dev" }
 log = "0.4.22"
 nimble-step-types = { path = "../step-types", version = "0.0.12-dev" }
 nimble-sample-game = { path = "../sample-game-type", version = "0.0.12-dev" }
-monotonic-time-rs = "0.0.4"
+monotonic-time-rs = "0.0.5"
 
 
 [dev-dependencies]

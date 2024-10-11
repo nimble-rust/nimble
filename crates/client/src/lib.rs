@@ -139,6 +139,7 @@ impl<
     }
 
     pub fn update(&mut self, now: Millis) -> Result<(), ClientError> {
+        trace!("client: update {now}");
         self.adjust_prediction_ticker();
         self.client.update(now);
 

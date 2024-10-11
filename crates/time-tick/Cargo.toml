@@ -4,5 +4,5 @@ version = "0.0.1"
 edition = "2021"
 
 [dependencies]
-monotonic-time-rs = "0.0.4"
+monotonic-time-rs = "0.0.5"
 log = "0.4.22"

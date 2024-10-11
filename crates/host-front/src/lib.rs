@@ -118,7 +118,7 @@ impl<StepT: Clone + Deserialize + Serialize + Eq + Debug + std::fmt::Display> Ho
         state_provider: &impl GameStateProvider,
     ) -> Result<Vec<Vec<u8>>, HostFrontError> {
         trace!(
-            "host received for connection:{} payload:\n{}",
+            "time:{now}: host received for connection:{} payload:\n{}",
             connection_id.0,
             format_hex(datagram)
         );
