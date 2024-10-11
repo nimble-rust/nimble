@@ -260,6 +260,16 @@ impl<
         commands
     }
 
+    pub fn can_push_predicted_step(&self) -> bool {
+        self.is_in_game() && self.game().is_some()
+    }
+
+    pub fn is_in_game(&self) -> bool {
+        self.phase == ClientLogicPhase::SendPredictedSteps
+            && self.joining_player.is_none()
+            && !self.local_players.is_empty()
+    }
+
     /// Adds a predicted step to the outgoing steps queue.
     ///
     /// # Arguments

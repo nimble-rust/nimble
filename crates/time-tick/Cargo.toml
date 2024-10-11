@@ -1,0 +1,8 @@
+[package]
+name = "time-tick"
+version = "0.0.1"
+edition = "2021"
+
+[dependencies]
+monotonic-time-rs = "0.0.4"
+log = "0.4.22"

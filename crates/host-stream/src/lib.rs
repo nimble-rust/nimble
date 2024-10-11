@@ -61,14 +61,7 @@ impl From<io::Error> for HostStreamError {
     }
 }
 
-pub struct HostStream<
-    StepT: Clone
-        + std::fmt::Debug
-        + std::cmp::Eq
-        + flood_rs::Deserialize
-        + flood_rs::Serialize
-        + std::fmt::Display,
-> {
+pub struct HostStream<StepT: Clone + Debug + Eq + Deserialize + Serialize + std::fmt::Display> {
     host_logic: HostLogic<StepT>,
     received_some_step: bool,
 }

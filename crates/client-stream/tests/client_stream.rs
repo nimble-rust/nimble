@@ -20,7 +20,7 @@ use tick_id::TickId;
 
 fn connect<
     StateT: BufferDeserializer + std::fmt::Debug,
-    StepT: Clone + flood_rs::Deserialize + flood_rs::Serialize + std::fmt::Debug + std::fmt::Display,
+    StepT: Clone + flood_rs::Deserialize + flood_rs::Serialize + std::fmt::Debug + Display,
 >(
     stream: &mut ClientStream<StateT, StepT>,
 ) -> Result<(), ClientStreamError> {
@@ -71,7 +71,7 @@ fn connect<
 
 fn download_state<
     StateT: BufferDeserializer + std::fmt::Debug,
-    StepT: Clone + flood_rs::Deserialize + flood_rs::Serialize + std::fmt::Debug + std::fmt::Display,
+    StepT: Clone + flood_rs::Deserialize + flood_rs::Serialize + std::fmt::Debug + Display,
 >(
     stream: &mut ClientStream<StateT, StepT>,
 ) -> Result<(), ClientStreamError> {

@@ -10,7 +10,7 @@ nimble-host-stream = { path = "../host-stream", version = "0.0.12-dev" }
 nimble-host-logic = { path = "../host-logic", version = "0.0.12-dev" }
 flood-rs = "0.0.12"
 tick-id = "0.0.9"
-monotonic-time-rs = "0.0.3"
+monotonic-time-rs = "0.0.4"
 test-log = "0.2.16"
 app-version = "0.0.2"
 log = "0.4.22"

@@ -62,7 +62,7 @@ where
 impl<C, CombinedStepT> Assent<C, CombinedStepT>
 where
     C: AssentCallback<CombinedStepT>,
-    CombinedStepT: std::clone::Clone + std::fmt::Debug + std::fmt::Display,
+    CombinedStepT: Clone + std::fmt::Debug + std::fmt::Display,
 {
     pub fn new(settings: Settings) -> Self {
         Assent {

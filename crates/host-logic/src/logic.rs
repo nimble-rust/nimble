@@ -135,11 +135,11 @@ impl<StepT: Clone + Eq + Debug + Deserialize + Serialize + std::fmt::Display> Co
     pub fn on_connect(
         &mut self,
         connect_request: &ConnectRequest,
-        required_deterministic_simulation_version: &app_version::Version,
+        required_deterministic_simulation_version: &Version,
     ) -> Result<Vec<HostToClientCommands<Step<StepT>>>, HostLogicError> {
         self.phase = Phase::Connected;
 
-        let connect_version = app_version::Version::new(
+        let connect_version = Version::new(
             connect_request.application_version.major,
             connect_request.application_version.minor,
             connect_request.application_version.patch,
@@ -422,23 +422,16 @@ impl From<OutStreamError> for HostLogicError {
 #[derive(Debug, Copy, Clone)]
 pub struct HostConnectionId(pub u8);
 
-pub struct HostLogic<
-    StepT: Clone
-        + std::cmp::Eq
-        + std::fmt::Debug
-        + flood_rs::Deserialize
-        + flood_rs::Serialize
-        + std::fmt::Display,
-> {
+pub struct HostLogic<StepT: Clone + Eq + Debug + Deserialize + Serialize + std::fmt::Display> {
     #[allow(unused)]
     connections: HashMap<u8, Connection<StepT>>,
     session: GameSession<StepT>,
     free_list: FreeList<u8>,
-    deterministic_simulation_version: app_version::Version,
+    deterministic_simulation_version: Version,
 }
 
 impl<StepT: Clone + Eq + Debug + Deserialize + Serialize + std::fmt::Display> HostLogic<StepT> {
-    pub fn new(tick_id: TickId, deterministic_simulation_version: app_version::Version) -> Self {
+    pub fn new(tick_id: TickId, deterministic_simulation_version: Version) -> Self {
         Self {
             connections: HashMap::new(),
             session: GameSession::new(tick_id),

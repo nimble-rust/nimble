@@ -75,7 +75,7 @@ impl TryFrom<u8> for SenderToReceiverFrontCommand {
             0x01 => Self::SetChunk,
             0x02 => Self::StartTransfer,
             _ => Err(io::Error::new(
-                io::ErrorKind::InvalidData,
+                ErrorKind::InvalidData,
                 format!("Unknown SenderToReceiverFrontCommand {value}"),
             ))?,
         })

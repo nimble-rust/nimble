@@ -37,7 +37,7 @@ fn log_err<T: ErrorLevelProvider + Debug>(error: &T) {
 }
 
 fn communicate<
-    GameT: GameCallbacks<SampleStep> + std::fmt::Debug,
+    GameT: GameCallbacks<SampleStep> + Debug,
     //    SampleStep: Clone + Deserialize + Serialize + Debug + Eq,
 >(
     host: &mut HostFront<SampleStep>,
@@ -129,7 +129,7 @@ fn communicate<
         }
 
         client.update(*now).expect("update should work");
-        *now += MillisDuration::from_millis(16 * 5);
+        *now += MillisDuration::from_millis(16);
     }
     Ok(())
 }
@@ -138,7 +138,15 @@ use nimble_participant::ParticipantId;
 use nimble_step_types::StepForParticipants;
 use seq_map::SeqMap;
 
-// #[test_log::test] // TODO: bring this back
+fn assert_eq_with_epsilon(a: f32, b: f32, epsilon: f32) {
+    assert!(
+        (a - b).abs() <= epsilon,
+        "Values are not equal within the given epsilon: a = {:?}, b = {:?}",
+        a,
+        b
+    );
+}
+#[test_log::test] // TODO: bring this back
 fn client_to_host() -> Result<(), ClientError> {
     let mut now = Millis::new(0);
     let mut client = Client::<SampleGame, SampleStep>::new(now);
@@ -182,15 +190,14 @@ fn client_to_host() -> Result<(), ClientError> {
         connection_id,
         &mut client,
         &mut now,
-        31,
+        153,
     )
     .expect("should communicate");
 
     // let host_connection = host.get_stream(connection_id).expect("should find connection");
     // let x = host.session().participants.get(&ParticipantId(0)).expect("should find participant");
 
-    let expected_game_state = SampleGameState { x: 4, y: 42 };
-    let expected_predicted_state_with_no_prediction = SampleGameState { x: -11 + 6, y: 42 };
+    let expected_game_state = SampleGameState { x: 0, y: 42 };
 
     assert_eq!(
         client
@@ -200,23 +207,18 @@ fn client_to_host() -> Result<(), ClientError> {
         expected_game_state
     );
 
-    assert_eq!(
-        client.game().expect("game state should be set").predicted,
-        expected_predicted_state_with_no_prediction
-    );
-
-    let expected_predicted_state_with_prediction = SampleGameState { x: 27, y: 42 };
+    let expected_predicted_state_with_prediction = SampleGameState { x: 5, y: 42 };
 
     assert_eq!(
         client.game().expect("game state should be set").predicted,
         expected_predicted_state_with_prediction
     );
 
-    assert_eq!(client.metrics().incoming.datagrams_per_second, 12.5);
-    assert_eq!(client.metrics().incoming.octets_per_second, 2050.0); // 16 kbps. (normal maximum is 120 Kbps, extreme is 575 Kbps)
+    assert_eq_with_epsilon(client.metrics().incoming.datagrams_per_second, 62.5, 0.001);
+    assert_eq!(client.metrics().incoming.octets_per_second, 3312.5); // 16 kbps. (normal maximum is 120 Kbps, extreme is 575 Kbps)
 
-    assert_eq!(client.metrics().outgoing.datagrams_per_second, 12.5);
-    assert_eq!(client.metrics().outgoing.octets_per_second, 350.0); // 2.8 Kbps
+    assert_eq_with_epsilon(client.metrics().outgoing.datagrams_per_second, 62.5, 0.001);
+    assert_eq!(client.metrics().outgoing.octets_per_second, 2187.5); // 2.8 Kbps
 
     Ok(())
 }

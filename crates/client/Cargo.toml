@@ -14,11 +14,14 @@ nimble-steps = { path = "../steps", version = "0.0.12-dev" }
 nimble-step = { path = "../step", version = "0.0.12-dev" }
 flood-rs = "0.0.12"
 log = "0.4.22"
-monotonic-time-rs = "0.0.3"
-metricator = "0.0.4"
+monotonic-time-rs = "0.0.4"
+metricator = "0.0.5"
 app-version = "0.0.2"
 tick-id = "0.0.9"
 err-rs = "0.0.4"
+seq-map = "0.0.2"
+nimble-participant = { path = "../participant", version = "0.0.12-dev" }
+time-tick = { path = "../time-tick", version = "0.0.1"}
 
 [dev-dependencies]
 test-log = "0.2.16"

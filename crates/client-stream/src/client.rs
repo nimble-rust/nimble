@@ -136,14 +136,6 @@ impl<
         self.logic.game_mut()
     }
 
-    pub fn is_in_game(&self) -> bool {
-        *self.logic.phase() == ClientLogicPhase::SendPredictedSteps
-    }
-
-    pub fn can_push_predicted_step(&self) -> bool {
-        self.is_in_game() && self.game().is_some()
-    }
-
     pub fn push_predicted_step(
         &mut self,
         tick_id: TickId,

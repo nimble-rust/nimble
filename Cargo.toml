@@ -20,6 +20,6 @@ members = [
     "crates/client",
     "crates/host-stream",
     "crates/datagram-chunker",
-    "crates/host-front", "crates/step", "crates/wrapped-step",
+    "crates/host-front", "crates/step", "crates/wrapped-step", "crates/time-tick",
 ]
 resolver = "2"
