@@ -5,6 +5,11 @@
 cargo release "0.0.0-dev" -v --workspace --no-publish --no-tag --no-push --execute
 ```
 
+
+```console
+cargo release "0.0.13-dev" -v --workspace --no-tag --no-push --execute
+```
+
 Publish order:
 
 * nimble-steps
@@ -21,6 +26,12 @@ Publish order:
 * nimble-host
 * nimble-ordered-datagram
 * datagram-pinger
-* nimble-client-connecting
 * nimble-client
 * nimble-rust
+
+
+## Check line counts
+
+```console
+tokei crates/ --files --sort lines --type rust
+```
