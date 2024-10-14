@@ -25,7 +25,7 @@ log = "0.4.22"
 nimble-step-types = { path = "../step-types", version = "0.0.14-dev" }
 nimble-sample-game = { path = "../sample-game-type", version = "0.0.14-dev" }
 monotonic-time-rs = "0.0.5"
-
+nimble-wrapped-step = { path = "../wrapped-step", version = "0.0.14-dev" }
 
 [dev-dependencies]
 test-log = "0.2.16"

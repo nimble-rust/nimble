@@ -34,6 +34,5 @@ Add Nimble to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-nimble = "^0.0.1"
+nimble-rust = "0.0.1"
 ```
-

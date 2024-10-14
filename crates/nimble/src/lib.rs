@@ -10,3 +10,4 @@ pub use nimble_sample_game::*;
 pub use nimble_seer::prelude::*;
 pub use nimble_step_types::*;
 pub use nimble_steps::*;
+pub use nimble_wrapped_step::*;

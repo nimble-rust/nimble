@@ -21,7 +21,7 @@ use nimble_step::Step;
 use nimble_step_types::{LocalIndex, StepForParticipants};
 use seq_map::SeqMap;
 use std::cmp::min;
-use std::fmt::Debug;
+use std::fmt::{Debug, Display};
 use tick_id::TickId;
 use time_tick::TimeTick;
 
@@ -58,7 +58,7 @@ impl<V: PartialOrd, F> RangeToFactor<V, F> {
     }
 }
 
-pub trait GameCallbacks<StepT: std::fmt::Display>:
+pub trait GameCallbacks<StepT: Display>:
     RectifyCallbacks<StepForParticipants<Step<StepT>>> + VersionProvider + BufferDeserializer
 {
 }
@@ -66,7 +66,7 @@ pub trait GameCallbacks<StepT: std::fmt::Display>:
 impl<T, StepT> GameCallbacks<StepT> for T
 where
     T: RectifyCallbacks<StepForParticipants<Step<StepT>>> + VersionProvider + BufferDeserializer,
-    StepT: std::fmt::Display,
+    StepT: Display,
 {
 }
 
