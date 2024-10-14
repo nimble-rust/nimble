@@ -90,6 +90,7 @@ where
 
     pub fn update(&mut self, callback: &mut C) -> UpdateState {
         if self.steps.is_empty() {
+            trace!("notice: assent steps are empty");
             return UpdateState::NoKnowledge;
         }
 

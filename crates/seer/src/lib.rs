@@ -7,7 +7,7 @@ pub mod prelude;
 use err_rs::{ErrorLevel, ErrorLevelProvider};
 use log::trace;
 use nimble_steps::{Steps, StepsError};
-use std::fmt::Debug;
+use std::fmt::{Debug, Display};
 use std::marker::PhantomData;
 use tick_id::TickId;
 
@@ -41,7 +41,7 @@ impl ErrorLevelProvider for SeerError {
 }
 
 // Define the Assent struct
-impl<Callback, CombinedStepT: Clone + Debug> Default for Seer<Callback, CombinedStepT>
+impl<Callback, CombinedStepT: Clone + Debug + Display> Default for Seer<Callback, CombinedStepT>
 where
     Callback: SeerCallback<CombinedStepT>,
 {
@@ -77,7 +77,7 @@ where
 impl<Callback, CombinedStepT> Seer<Callback, CombinedStepT>
 where
     Callback: SeerCallback<CombinedStepT>,
-    CombinedStepT: Clone + Debug,
+    CombinedStepT: Clone + Debug + Display,
 {
     pub fn new(settings: Settings) -> Self {
         Seer {

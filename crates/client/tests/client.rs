@@ -159,8 +159,7 @@ fn assert_eq_with_epsilon(a: f32, b: f32, epsilon: f32) {
 }
 
 #[allow(unused)]
-
-// TODO: #[test_log::test] // TODO: bring this back
+#[test_log::test]
 fn client_to_host() -> Result<(), ClientError> {
     let mut now = Millis::new(0);
     let mut client = Client::<SampleGame, SampleStep>::new(now);
@@ -231,11 +230,11 @@ fn client_to_host() -> Result<(), ClientError> {
         expected_predicted_state_with_prediction
     );
 
-    assert_eq_with_epsilon(client.metrics().incoming.datagrams_per_second, 62.5, 0.001);
-    // assert_eq!(client.metrics().incoming.octets_per_second, 3312.5); // 16 kbps. (normal maximum is 120 Kbps, extreme is 575 Kbps)
+    assert_eq_with_epsilon(client.metrics().outgoing.datagrams_per_second, 62.5, 0.001);
+    assert_eq!(client.metrics().outgoing.octets_per_second, 1937.5); // 2.8 Kbps
 
-    //assert_eq_with_epsilon(client.metrics().outgoing.datagrams_per_second, 62.5, 0.001);
-    //assert_eq!(client.metrics().outgoing.octets_per_second, 2187.5); // 2.8 Kbps
+    assert_eq_with_epsilon(client.metrics().incoming.datagrams_per_second, 53.57, 0.01);
+    assert_eq!(client.metrics().incoming.octets_per_second, 12946.428); // 103 kbps. (normal maximum is 120 Kbps, extreme is 575 Kbps)
 
     Ok(())
 }

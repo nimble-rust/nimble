@@ -4,6 +4,7 @@
  */
 use flood_rs::prelude::*;
 use nimble_seer::prelude::*;
+use std::fmt::Display;
 
 use std::io;
 use tick_id::TickId;
@@ -16,6 +17,12 @@ pub struct TestGame {
 pub enum TestGameStep {
     MoveLeft,
     MoveRight,
+}
+
+impl Display for TestGameStep {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?}", self)
+    }
 }
 
 impl Deserialize for TestGameStep {

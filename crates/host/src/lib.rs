@@ -100,6 +100,8 @@ impl<StepT: Clone + Deserialize + Serialize + Eq + Debug + Display> Host<StepT> 
             all_commands_to_send.extend(commands_to_send);
         }
 
+        self.logic.post_update();
+
         let mut datagram_chunker = DatagramChunker::new(1024);
         for cmd in all_commands_to_send {
             let mut out_stream = OutOctetStream::new();

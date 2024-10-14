@@ -14,9 +14,9 @@ pub struct StepInfo<T> {
     pub tick_id: TickId,
 }
 
-impl<T: Debug> Display for StepInfo<T> {
+impl<T: Display> Display for StepInfo<T> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}: {:?}", self.tick_id, self.step)
+        write!(f, "{}: {}", self.tick_id, self.step)
     }
 }
 
