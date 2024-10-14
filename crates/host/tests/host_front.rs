@@ -5,7 +5,7 @@
 
 use hexify::assert_eq_slices;
 use monotonic_time_rs::Millis;
-use nimble_host::{Host, HostError};
+use nimble_host::{err::HostError, Host};
 use nimble_host_logic::{GameStateProvider, HostConnectionId};
 use nimble_participant::ParticipantId;
 use nimble_sample_step::SampleStep;

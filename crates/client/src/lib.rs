@@ -2,23 +2,23 @@
  * Copyright (c) Peter Bjorklund. All rights reserved. https://github.com/nimble-rust/nimble
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
+pub mod err;
+pub mod prelude;
+
+use crate::err::ClientError;
 use app_version::VersionProvider;
-use datagram_chunker::DatagramChunkerError;
-use err_rs::{ErrorLevel, ErrorLevelProvider};
 use flood_rs::{BufferDeserializer, Deserialize, Serialize};
 use log::trace;
 use metricator::MinMaxAvg;
 use monotonic_time_rs::{Millis, MillisDuration};
 use network_metrics::{CombinedMetrics, NetworkMetrics};
-use nimble_client_logic::err::ClientLogicError;
-use nimble_client_logic::logic::{ClientLogic, ClientLogicPhase, LocalPlayer};
-use nimble_layer::{NimbleLayerClient, NimbleLayerError};
+use nimble_client_logic::{ClientLogic, ClientLogicPhase, LocalPlayer};
+use nimble_layer::NimbleLayerClient;
 use nimble_participant::ParticipantId;
 use nimble_protocol::prelude::HostToClientCommands;
-use nimble_rectify::{Rectify, RectifyCallbacks, RectifyError};
+use nimble_rectify::{Rectify, RectifyCallbacks};
 use nimble_step::Step;
 use nimble_step_types::{LocalIndex, StepForParticipants};
-use nimble_steps::StepsError;
 use seq_map::SeqMap;
 use std::cmp::min;
 use std::fmt::Debug;
@@ -35,65 +35,6 @@ where
     T: RectifyCallbacks<StepForParticipants<Step<StepT>>> + VersionProvider + BufferDeserializer,
     StepT: std::fmt::Display,
 {
-}
-
-#[derive(Debug)]
-pub enum ClientError {
-    IoError(std::io::Error),
-    RectifyError(RectifyError),
-    ClientLogicErrorKind(ClientLogicError),
-    StepsError(StepsError),
-    DatagramChunkerError(DatagramChunkerError),
-    NimbleLayerError(NimbleLayerError),
-}
-
-impl From<DatagramChunkerError> for ClientError {
-    fn from(value: DatagramChunkerError) -> Self {
-        Self::DatagramChunkerError(value)
-    }
-}
-
-impl From<NimbleLayerError> for ClientError {
-    fn from(value: NimbleLayerError) -> Self {
-        Self::NimbleLayerError(value)
-    }
-}
-
-impl ErrorLevelProvider for ClientError {
-    fn error_level(&self) -> ErrorLevel {
-        match self {
-            Self::IoError(_) => ErrorLevel::Info,
-            Self::RectifyError(err) => err.error_level(),
-            Self::ClientLogicErrorKind(_) => ErrorLevel::Info,
-            Self::StepsError(_) => ErrorLevel::Info,
-            Self::DatagramChunkerError(_) => ErrorLevel::Info,
-            Self::NimbleLayerError(_) => ErrorLevel::Info,
-        }
-    }
-}
-
-impl From<RectifyError> for ClientError {
-    fn from(err: RectifyError) -> Self {
-        ClientError::RectifyError(err)
-    }
-}
-
-impl From<StepsError> for ClientError {
-    fn from(err: StepsError) -> Self {
-        Self::StepsError(err)
-    }
-}
-
-impl From<std::io::Error> for ClientError {
-    fn from(err: std::io::Error) -> Self {
-        Self::IoError(err)
-    }
-}
-
-impl From<ClientLogicError> for ClientError {
-    fn from(err: ClientLogicError) -> Self {
-        Self::ClientLogicErrorKind(err)
-    }
 }
 
 #[derive(Debug, PartialEq)]
@@ -123,7 +64,7 @@ pub struct Client<
 }
 
 impl<
-        StepT: Clone + Deserialize + Serialize + Debug + std::fmt::Display + std::cmp::Eq,
+        StepT: Clone + Deserialize + Serialize + Debug + std::fmt::Display + Eq,
         GameT: GameCallbacks<StepT> + Debug,
     > Client<GameT, StepT>
 {

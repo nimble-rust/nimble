@@ -6,7 +6,7 @@ use app_version::Version;
 use flood_rs::{BufferDeserializer, Deserialize, Serialize};
 use log::trace;
 use monotonic_time_rs::Millis;
-use nimble_client_logic::logic::ClientLogic;
+use nimble_client_logic::ClientLogic;
 use nimble_host_logic::{GameStateProvider, HostConnectionId, HostLogic};
 use nimble_sample_game::{SampleGame, SampleGameState, SampleStep};
 use nimble_step::Step;

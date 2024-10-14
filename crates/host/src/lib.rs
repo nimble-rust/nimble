@@ -2,19 +2,21 @@
  * Copyright (c) Peter Bjorklund. All rights reserved. https://github.com/nimble-rust/nimble
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
+pub mod err;
+pub mod prelude;
 
-use datagram_chunker::{DatagramChunker, DatagramChunkerError};
-use err_rs::{ErrorLevel, ErrorLevelProvider};
+use crate::err::HostError;
+use datagram_chunker::DatagramChunker;
 use flood_rs::prelude::OutOctetStream;
 use flood_rs::{Deserialize, Serialize};
 use hexify::format_hex;
 use log::{debug, trace};
 use monotonic_time_rs::Millis;
-use nimble_host_logic::{Connection, GameSession, GameStateProvider, HostLogic, HostLogicError};
-use nimble_layer::{NimbleLayer, NimbleLayerError};
+use nimble_host_logic::{connection::Connection, GameSession, GameStateProvider, HostLogic};
+use nimble_layer::NimbleLayer;
 use nimble_protocol::prelude::ClientToHostCommands;
 use std::collections::HashMap;
-use std::fmt::Debug;
+use std::fmt::{Debug, Display};
 use tick_id::TickId;
 
 #[derive(Default, Debug)]
@@ -29,51 +31,6 @@ impl HostConnection {
     }
 }
 
-#[derive(Debug)]
-pub enum HostError {
-    ConnectionNotFound(u8),
-    IoError(std::io::Error),
-    NimbleLayerError(NimbleLayerError),
-    HostLogicError(HostLogicError),
-    DatagramChunkerError(DatagramChunkerError),
-}
-
-impl ErrorLevelProvider for HostError {
-    fn error_level(&self) -> ErrorLevel {
-        match self {
-            Self::IoError(_) => ErrorLevel::Warning,
-            Self::ConnectionNotFound(_) => ErrorLevel::Warning,
-            Self::NimbleLayerError(_) => ErrorLevel::Warning,
-            Self::HostLogicError(err) => err.error_level(),
-            Self::DatagramChunkerError(err) => err.error_level(),
-        }
-    }
-}
-
-impl From<DatagramChunkerError> for HostError {
-    fn from(err: DatagramChunkerError) -> Self {
-        Self::DatagramChunkerError(err)
-    }
-}
-
-impl From<HostLogicError> for HostError {
-    fn from(err: HostLogicError) -> Self {
-        Self::HostLogicError(err)
-    }
-}
-
-impl From<NimbleLayerError> for HostError {
-    fn from(e: NimbleLayerError) -> Self {
-        Self::NimbleLayerError(e)
-    }
-}
-
-impl From<std::io::Error> for HostError {
-    fn from(err: std::io::Error) -> Self {
-        Self::IoError(err)
-    }
-}
-
 pub struct ConnectionId(u8);
 
 impl ConnectionId {
@@ -82,12 +39,12 @@ impl ConnectionId {
     }
 }
 
-pub struct Host<StepT: Clone + Debug + Eq + Deserialize + Serialize + std::fmt::Display> {
+pub struct Host<StepT: Clone + Debug + Eq + Deserialize + Serialize + Display> {
     logic: HostLogic<StepT>,
     connections: HashMap<u8, HostConnection>,
 }
 
-impl<StepT: Clone + Deserialize + Serialize + Eq + Debug + std::fmt::Display> Host<StepT> {
+impl<StepT: Clone + Deserialize + Serialize + Eq + Debug + Display> Host<StepT> {
     pub fn new(app_version: app_version::Version, tick_id: TickId) -> Self {
         Self {
             logic: HostLogic::<StepT>::new(tick_id, app_version),
@@ -122,7 +79,7 @@ impl<StepT: Clone + Deserialize + Serialize + Eq + Debug + std::fmt::Display> Ho
             connection_id.0,
             format_hex(datagram)
         );
-        //        let mut in_stream = InOctetStream::new(datagram);
+
         let found_connection = self
             .connections
             .get_mut(&connection_id.0)

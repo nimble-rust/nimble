@@ -4,7 +4,7 @@
  */
 use flood_rs::{BufferDeserializer, Deserialize, Serialize};
 use nimble_client_logic::err::ClientLogicError;
-use nimble_client_logic::logic::{ClientLogic, ClientLogicPhase};
+use nimble_client_logic::{ClientLogic, ClientLogicPhase};
 use nimble_participant::ParticipantId;
 use nimble_protocol::client_to_host::{ConnectRequest, DownloadGameStateRequest};
 use nimble_protocol::host_to_client::{

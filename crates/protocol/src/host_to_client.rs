@@ -202,7 +202,7 @@ impl<StepT: Clone + Debug + Serialize + Deserialize + std::fmt::Display> Deseria
     fn deserialize(stream: &mut impl ReadOctetStream) -> io::Result<Self> {
         let command_value = stream.read_u8()?;
         let command = HostToClientCommand::try_from(command_value)?;
-        let x = match command {
+        Ok(match command {
             HostToClientCommand::JoinGame => Self::JoinGame(JoinGameAccepted::from_stream(stream)?),
             HostToClientCommand::GameStep => Self::GameStep(GameStepResponse::from_stream(stream)?),
             HostToClientCommand::DownloadGameState => {
@@ -214,8 +214,7 @@ impl<StepT: Clone + Debug + Serialize + Deserialize + std::fmt::Display> Deseria
             HostToClientCommand::Connect => {
                 Self::ConnectType(ConnectionAccepted::from_stream(stream)?)
             }
-        };
-        Ok(x)
+        })
     }
 }
 

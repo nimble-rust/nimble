@@ -9,7 +9,7 @@ use log::info;
 use metricator::MinMaxAvg;
 use monotonic_time_rs::Millis;
 use nimble_client_logic::err::ClientLogicError;
-use nimble_client_logic::logic::ClientLogic;
+use nimble_client_logic::ClientLogic;
 use nimble_layer::{NimbleLayerClient, NimbleLayerError};
 use nimble_sample_step::{SampleState, SampleStep};
 
