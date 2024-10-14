@@ -8,7 +8,7 @@ use log::debug;
 use monotonic_time_rs::Millis;
 use nimble_blob_stream::in_logic_front::FrontLogic;
 use nimble_blob_stream::prelude::{ReceiverToSenderFrontCommands, SenderToReceiverFrontCommands};
-use nimble_host_logic::logic::HostLogic;
+use nimble_host_logic::HostLogic;
 use nimble_protocol::client_to_host::{ConnectRequest, DownloadGameStateRequest};
 use nimble_protocol::prelude::{ClientToHostCommands, HostToClientCommands};
 use nimble_protocol::ClientRequestId;

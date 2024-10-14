@@ -3,7 +3,7 @@
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
 use std::collections::VecDeque;
-use std::fmt::{Display, Formatter};
+use std::fmt::{Debug, Display, Formatter};
 use tick_id::TickId;
 
 pub mod pending_steps;
@@ -14,9 +14,9 @@ pub struct StepInfo<T> {
     pub tick_id: TickId,
 }
 
-impl<T: Display> Display for StepInfo<T> {
+impl<T: Debug> Display for StepInfo<T> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}: {}", self.tick_id, self.step)
+        write!(f, "{}: {:?}", self.tick_id, self.step)
     }
 }
 

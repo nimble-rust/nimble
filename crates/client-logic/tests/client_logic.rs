@@ -3,7 +3,7 @@
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
 use flood_rs::{BufferDeserializer, Deserialize, Serialize};
-use nimble_client_logic::err::ClientLogicErrorKind;
+use nimble_client_logic::err::ClientLogicError;
 use nimble_client_logic::logic::{ClientLogic, ClientLogicPhase};
 use nimble_participant::ParticipantId;
 use nimble_protocol::client_to_host::{ConnectRequest, DownloadGameStateRequest};
@@ -143,7 +143,7 @@ fn setup_sample_steps() -> AuthoritativeStepRanges<Step<SampleStep>> {
     ranges_to_send
 }
 #[test_log::test]
-fn receive_authoritative_steps() -> Result<(), ClientLogicErrorKind> {
+fn receive_authoritative_steps() -> Result<(), ClientLogicError> {
     let mut client_logic = setup_logic::<SampleState, SampleStep>();
 
     // Create a GameStep command
@@ -321,7 +321,7 @@ fn receive_invalid_connection_accepted_nonce() {
     let result = client.receive(&command);
 
     match result {
-        Err(ClientLogicErrorKind::WrongConnectResponseRequestId(n)) => {
+        Err(ClientLogicError::WrongConnectResponseRequestId(n)) => {
             assert_eq!(n, wrong_request_id);
         }
         _ => panic!("Expected WrongConnectResponseNonce error"),
@@ -341,7 +341,7 @@ fn receive_response_without_request() {
     let result = client.receive(&command);
 
     match result {
-        Err(ClientLogicErrorKind::WrongConnectResponseRequestId(_)) => {}
+        Err(ClientLogicError::WrongConnectResponseRequestId(_)) => {}
         _ => panic!("Expected WrongConnectResponseNonce error {result:?}"),
     }
 }

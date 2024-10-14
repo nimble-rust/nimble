@@ -5,8 +5,8 @@
 
 use hexify::assert_eq_slices;
 use monotonic_time_rs::Millis;
-use nimble_host_front::{HostFront, HostFrontError};
-use nimble_host_logic::logic::{GameStateProvider, HostConnectionId};
+use nimble_host::{Host, HostError};
+use nimble_host_logic::{GameStateProvider, HostConnectionId};
 use nimble_participant::ParticipantId;
 use nimble_sample_step::SampleStep;
 use tick_id::TickId;
@@ -29,7 +29,7 @@ fn create_and_connect<
         + std::cmp::Eq
         + flood_rs::Deserialize
         + flood_rs::Serialize,
->() -> Result<(HostFront<StepT>, HostConnectionId, TestStateProvider), HostFrontError> {
+>() -> Result<(Host<StepT>, HostConnectionId, TestStateProvider), HostError> {
     #[rustfmt::skip]
     let connect_datagram: &[u8] = &[
         // Header
@@ -45,7 +45,7 @@ fn create_and_connect<
     ];
 
     let application_version = app_version::Version::new(0, 1, 2);
-    let mut host = HostFront::<StepT>::new(application_version, TickId(0));
+    let mut host = Host::<StepT>::new(application_version, TickId(0));
 
     let not_used_connection_id = host
         .create_connection()
@@ -69,7 +69,7 @@ fn create_and_connect<
 }
 
 #[test_log::test]
-fn join_game() -> Result<(), HostFrontError> {
+fn join_game() -> Result<(), HostError> {
     let (mut host, connection_id, state_provider) = create_and_connect::<SampleStep>()?;
 
     #[rustfmt::skip]
@@ -130,7 +130,7 @@ fn join_game() -> Result<(), HostFrontError> {
 }
 
 #[test_log::test]
-fn game_step() -> Result<(), HostFrontError> {
+fn game_step() -> Result<(), HostError> {
     let (mut host, connection_id, state_provider) = create_and_connect::<SampleStep>()?;
     #[rustfmt::skip]
     let feed_predicted_steps = &[

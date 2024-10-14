@@ -1,4 +1,4 @@
-use nimble_host_logic::logic::GameStateProvider;
+use nimble_host_logic::GameStateProvider;
 use tick_id::TickId;
 
 pub struct TestStateProvider {

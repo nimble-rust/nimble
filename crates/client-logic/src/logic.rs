@@ -2,7 +2,7 @@
  * Copyright (c) Peter Bjorklund. All rights reserved. https://github.com/nimble-rust/nimble
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
-use crate::err::ClientLogicErrorKind;
+use crate::err::ClientLogicError;
 use flood_rs::BufferDeserializer;
 use flood_rs::{Deserialize, Serialize};
 use log::{debug, trace};
@@ -215,6 +215,7 @@ impl<
     ///
     /// # Returns
     /// A vector of `ClientToHostCommands` representing all the commands to be sent to the host.
+    #[must_use]
     pub fn send(&mut self) -> Vec<ClientToHostCommands<StepT>> {
         let mut commands: Vec<ClientToHostCommands<StepT>> = vec![];
 
@@ -300,11 +301,11 @@ impl<
     ///
     /// # Errors
     /// Returns a [`ClientErrorKind`] if the join game process encounters an error.
-    fn on_join_game(&mut self, cmd: &JoinGameAccepted) -> Result<(), ClientLogicErrorKind> {
+    fn on_join_game(&mut self, cmd: &JoinGameAccepted) -> Result<(), ClientLogicError> {
         debug!("join game accepted: {:?}", cmd);
 
         if cmd.client_request_id != self.joining_request_id {
-            Err(ClientLogicErrorKind::WrongJoinResponseRequestId {
+            Err(ClientLogicError::WrongJoinResponseRequestId {
                 encountered: cmd.client_request_id,
                 expected: self.joining_request_id,
             })?;
@@ -354,17 +355,17 @@ impl<
         );
     }
 
-    fn on_connect(&mut self, cmd: &ConnectionAccepted) -> Result<(), ClientLogicErrorKind> {
+    fn on_connect(&mut self, cmd: &ConnectionAccepted) -> Result<(), ClientLogicError> {
         if self.phase != ClientLogicPhase::RequestConnect {
-            Err(ClientLogicErrorKind::ReceivedConnectResponseWhenNotConnecting)?
+            Err(ClientLogicError::ReceivedConnectResponseWhenNotConnecting)?
         }
 
         if self.connect_request_id.is_none() {
-            Err(ClientLogicErrorKind::ReceivedConnectResponseWhenNotConnecting)?;
+            Err(ClientLogicError::ReceivedConnectResponseWhenNotConnecting)?;
         }
 
         if cmd.response_to_request != self.connect_request_id.unwrap() {
-            Err(ClientLogicErrorKind::WrongConnectResponseRequestId(
+            Err(ClientLogicError::WrongConnectResponseRequestId(
                 cmd.response_to_request,
             ))?
         }
@@ -385,7 +386,7 @@ impl<
     fn on_game_step(
         &mut self,
         cmd: &GameStepResponse<Step<StepT>>,
-    ) -> Result<(), ClientLogicErrorKind> {
+    ) -> Result<(), ClientLogicError> {
         trace!("game step response: {}", cmd);
 
         self.handle_game_step_header(&cmd.response_header);
@@ -435,16 +436,16 @@ impl<
     fn on_download_state_response(
         &mut self,
         download_response: &DownloadGameStateResponse,
-    ) -> Result<(), ClientLogicErrorKind> {
+    ) -> Result<(), ClientLogicError> {
         match self.phase {
             ClientLogicPhase::RequestDownloadState {
                 download_state_request_id,
             } => {
                 if download_response.client_request != download_state_request_id {
-                    Err(ClientLogicErrorKind::WrongDownloadRequestId)?;
+                    Err(ClientLogicError::WrongDownloadRequestId)?;
                 }
             }
-            _ => Err(ClientLogicErrorKind::DownloadResponseWasUnexpected)?,
+            _ => Err(ClientLogicError::DownloadResponseWasUnexpected)?,
         }
 
         self.phase = ClientLogicPhase::DownloadingState(download_response.tick_id);
@@ -462,7 +463,7 @@ impl<
     fn on_blob_stream(
         &mut self,
         blob_stream_command: &SenderToReceiverFrontCommands,
-    ) -> Result<(), ClientLogicErrorKind> {
+    ) -> Result<(), ClientLogicError> {
         match self.phase {
             ClientLogicPhase::DownloadingState(_) => {
                 self.blob_stream_client.receive(blob_stream_command)?;
@@ -473,7 +474,7 @@ impl<
                     self.state = Some(deserialized);
                 }
             }
-            _ => Err(ClientLogicErrorKind::UnexpectedBlobChannelCommand)?,
+            _ => Err(ClientLogicError::UnexpectedBlobChannelCommand)?,
         }
         Ok(())
     }
@@ -488,7 +489,7 @@ impl<
     pub fn receive(
         &mut self,
         command: &HostToClientCommands<Step<StepT>>,
-    ) -> Result<(), ClientLogicErrorKind> {
+    ) -> Result<(), ClientLogicError> {
         match command {
             HostToClientCommands::JoinGame(ref join_game_response) => {
                 self.on_join_game(join_game_response)?

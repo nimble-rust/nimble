@@ -1,4 +1,3 @@
-use log::trace;
 use monotonic_time_rs::{Millis, MillisDuration};
 
 #[derive(Debug)]
@@ -29,7 +28,7 @@ impl TimeTick {
     pub fn update(&mut self, now: Millis) -> u16 {
         let time_ahead = now - self.consumed_absolute_time;
         let tick_count = (time_ahead.as_millis() / self.tick_time_duration.as_millis()) as u16;
-        trace!("time ahead is: {time_ahead} tick_count:{tick_count}");
+        //        trace!("time ahead is: {time_ahead} tick_count:{tick_count}");
         if tick_count >= self.max_tick_per_update {
             self.max_tick_per_update
         } else {

@@ -84,7 +84,7 @@ impl DownloadGameStateRequest {
 }
 
 #[derive(Debug, Clone)]
-pub enum ClientToHostCommands<StepT: Clone + Debug + Serialize + Deserialize + std::fmt::Display> {
+pub enum ClientToHostCommands<StepT: Clone + Debug + Serialize + Deserialize + Display> {
     JoinGameType(JoinGameRequest),
     Steps(StepsRequest<StepT>),
     DownloadGameState(DownloadGameStateRequest),
@@ -92,7 +92,7 @@ pub enum ClientToHostCommands<StepT: Clone + Debug + Serialize + Deserialize + s
     ConnectType(ConnectRequest),
 }
 
-impl<StepT: Clone + Debug + Serialize + Deserialize + std::fmt::Display> Serialize
+impl<StepT: Clone + Debug + Serialize + Deserialize + Display> Serialize
     for ClientToHostCommands<StepT>
 {
     fn serialize(&self, stream: &mut impl WriteOctetStream) -> io::Result<()> {

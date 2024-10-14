@@ -10,7 +10,7 @@ use nimble_steps::StepsError;
 use std::{fmt, io};
 
 #[derive(Debug)]
-pub enum ClientLogicErrorKind {
+pub enum ClientLogicError {
     IoErr(io::Error),
     WrongJoinResponseRequestId {
         expected: ClientRequestId,
@@ -26,31 +26,31 @@ pub enum ClientLogicErrorKind {
     ReceivedConnectResponseWhenNotConnecting,
 }
 
-impl From<BlobError> for ClientLogicErrorKind {
+impl From<BlobError> for ClientLogicError {
     fn from(err: BlobError) -> Self {
         Self::BlobError(err)
     }
 }
 
-impl From<StepsError> for ClientLogicErrorKind {
+impl From<StepsError> for ClientLogicError {
     fn from(err: StepsError) -> Self {
         Self::StepsError(err)
     }
 }
 
-impl From<FrontLogicError> for ClientLogicErrorKind {
+impl From<FrontLogicError> for ClientLogicError {
     fn from(err: FrontLogicError) -> Self {
         Self::FrontLogicErr(err)
     }
 }
 
-impl From<io::Error> for ClientLogicErrorKind {
+impl From<io::Error> for ClientLogicError {
     fn from(err: io::Error) -> Self {
         Self::IoErr(err)
     }
 }
 
-impl ErrorLevelProvider for ClientLogicErrorKind {
+impl ErrorLevelProvider for ClientLogicError {
     fn error_level(&self) -> ErrorLevel {
         match self {
             Self::IoErr(_) => ErrorLevel::Critical,
@@ -67,7 +67,7 @@ impl ErrorLevelProvider for ClientLogicErrorKind {
     }
 }
 
-impl fmt::Display for ClientLogicErrorKind {
+impl fmt::Display for ClientLogicError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::IoErr(io_err) => {
@@ -100,4 +100,4 @@ impl fmt::Display for ClientLogicErrorKind {
     }
 }
 
-impl std::error::Error for ClientLogicErrorKind {} // it implements Debug and Display
+impl std::error::Error for ClientLogicError {} // it implements Debug and Display

@@ -3,18 +3,22 @@
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
 use app_version::VersionProvider;
+use datagram_chunker::DatagramChunkerError;
 use err_rs::{ErrorLevel, ErrorLevelProvider};
 use flood_rs::{BufferDeserializer, Deserialize, Serialize};
 use log::trace;
 use metricator::MinMaxAvg;
 use monotonic_time_rs::{Millis, MillisDuration};
-use nimble_client_front::{
-    ClientFront, ClientFrontError, ClientLogicPhase, CombinedMetrics, LocalPlayer,
-};
+use network_metrics::{CombinedMetrics, NetworkMetrics};
+use nimble_client_logic::err::ClientLogicError;
+use nimble_client_logic::logic::{ClientLogic, ClientLogicPhase, LocalPlayer};
+use nimble_layer::{NimbleLayerClient, NimbleLayerError};
 use nimble_participant::ParticipantId;
+use nimble_protocol::prelude::HostToClientCommands;
 use nimble_rectify::{Rectify, RectifyCallbacks, RectifyError};
 use nimble_step::Step;
 use nimble_step_types::{LocalIndex, StepForParticipants};
+use nimble_steps::StepsError;
 use seq_map::SeqMap;
 use std::cmp::min;
 use std::fmt::Debug;
@@ -35,17 +39,35 @@ where
 
 #[derive(Debug)]
 pub enum ClientError {
-    ClientFrontError(ClientFrontError),
     IoError(std::io::Error),
     RectifyError(RectifyError),
+    ClientLogicErrorKind(ClientLogicError),
+    StepsError(StepsError),
+    DatagramChunkerError(DatagramChunkerError),
+    NimbleLayerError(NimbleLayerError),
+}
+
+impl From<DatagramChunkerError> for ClientError {
+    fn from(value: DatagramChunkerError) -> Self {
+        Self::DatagramChunkerError(value)
+    }
+}
+
+impl From<NimbleLayerError> for ClientError {
+    fn from(value: NimbleLayerError) -> Self {
+        Self::NimbleLayerError(value)
+    }
 }
 
 impl ErrorLevelProvider for ClientError {
     fn error_level(&self) -> ErrorLevel {
         match self {
-            ClientError::ClientFrontError(err) => err.error_level(),
-            ClientError::IoError(_) => ErrorLevel::Info,
-            ClientError::RectifyError(err) => err.error_level(),
+            Self::IoError(_) => ErrorLevel::Info,
+            Self::RectifyError(err) => err.error_level(),
+            Self::ClientLogicErrorKind(_) => ErrorLevel::Info,
+            Self::StepsError(_) => ErrorLevel::Info,
+            Self::DatagramChunkerError(_) => ErrorLevel::Info,
+            Self::NimbleLayerError(_) => ErrorLevel::Info,
         }
     }
 }
@@ -56,15 +78,21 @@ impl From<RectifyError> for ClientError {
     }
 }
 
+impl From<StepsError> for ClientError {
+    fn from(err: StepsError) -> Self {
+        Self::StepsError(err)
+    }
+}
+
 impl From<std::io::Error> for ClientError {
     fn from(err: std::io::Error) -> Self {
         Self::IoError(err)
     }
 }
 
-impl From<ClientFrontError> for ClientError {
-    fn from(err: ClientFrontError) -> Self {
-        Self::ClientFrontError(err)
+impl From<ClientLogicError> for ClientError {
+    fn from(err: ClientLogicError) -> Self {
+        Self::ClientLogicErrorKind(err)
     }
 }
 
@@ -78,7 +106,9 @@ pub struct Client<
     GameT: GameCallbacks<StepT> + Debug,
     StepT: Clone + Deserialize + Serialize + Debug + std::fmt::Display,
 > {
-    client: ClientFront<GameT, StepT>,
+    nimble_layer: NimbleLayerClient,
+    logic: ClientLogic<GameT, StepT>,
+    metrics: NetworkMetrics,
 
     #[allow(unused)]
     rectify: Rectify<GameT, StepForParticipants<Step<StepT>>>,
@@ -93,14 +123,17 @@ pub struct Client<
 }
 
 impl<
-        StepT: Clone + Deserialize + Serialize + Debug + std::fmt::Display,
+        StepT: Clone + Deserialize + Serialize + Debug + std::fmt::Display + std::cmp::Eq,
         GameT: GameCallbacks<StepT> + Debug,
     > Client<GameT, StepT>
 {
     pub fn new(now: Millis) -> Self {
         let deterministic_app_version = GameT::version();
         Self {
-            client: ClientFront::<GameT, StepT>::new(deterministic_app_version, now),
+            nimble_layer: NimbleLayerClient::new(now),
+            logic: ClientLogic::<GameT, StepT>::new(deterministic_app_version),
+            metrics: NetworkMetrics::new(now),
+
             authoritative_range_to_tick_duration_ms: RangeToFactor::new(2, 5, 0.9, 1.0, 2.0), // 0.9 is faster, since it is a multiplier to tick_duration
             authoritative_time_tick: TimeTick::new(now, MillisDuration::from_millis(16), 4),
             prediction_range_to_tick_duration_ms: RangeToFactor::new(-2, 2, 0.9, 1.0, 2.0), // 0.9 is faster, since it is a multiplier to tick_duration
@@ -119,18 +152,29 @@ impl<
         self
     }
 
-    pub fn metrics(&self) -> CombinedMetrics {
-        self.client.metrics()
-    }
+    const MAX_DATAGRAM_SIZE: usize = 1024;
 
     pub fn send(&mut self, now: Millis) -> Result<Vec<Vec<u8>>, ClientError> {
-        Ok(self.client.send(now)?)
+        let messages = self.logic.send();
+        let datagrams =
+            datagram_chunker::serialize_to_datagrams(messages, Self::MAX_DATAGRAM_SIZE)?;
+        self.metrics.send(&datagrams);
+
+        let datagrams_with_header = self.nimble_layer.send(now, datagrams)?;
+
+        Ok(datagrams_with_header)
     }
 
     pub fn receive(&mut self, millis: Millis, datagram: &[u8]) -> Result<(), ClientError> {
-        self.client.receive(millis, datagram)?;
-        //let auth_steps = self.client.pop_all_authoritative_steps()?;
-        //trace!("found auth_steps: {}", auth_steps);
+        self.metrics.receive(datagram);
+        let datagram_without_header = self.nimble_layer.receive(millis, datagram)?;
+        let commands = datagram_chunker::deserialize_datagram::<HostToClientCommands<Step<StepT>>>(
+            datagram_without_header,
+        )?;
+        for command in commands {
+            self.logic.receive(&command)?;
+        }
+
         Ok(())
     }
 
@@ -140,15 +184,10 @@ impl<
 
     pub fn update(&mut self, now: Millis) -> Result<(), ClientError> {
         trace!("client: update {now}");
-        self.adjust_prediction_ticker();
-        self.client.update(now);
+        self.nimble_layer.update(now);
+        self.metrics.update(now);
 
-        let auth_buffer_count = self
-            .client
-            .client
-            .logic()
-            .server_buffer_count()
-            .unwrap_or(0);
+        let auth_buffer_count = self.logic.server_buffer_count().unwrap_or(0);
         let factor = self
             .authoritative_range_to_tick_duration_ms
             .calculate(auth_buffer_count);
@@ -156,7 +195,7 @@ impl<
             .set_time_period(*factor * self.tick_duration_ms);
         self.authoritative_time_tick.update(now);
 
-        let (first_tick_id_in_vector, auth_steps) = self.client.pop_all_authoritative_steps();
+        let (first_tick_id_in_vector, auth_steps) = self.logic.pop_all_authoritative_steps();
         let mut current_tick_id = first_tick_id_in_vector;
         for auth_step in auth_steps {
             if current_tick_id == self.rectify.waiting_for_authoritative_tick_id() {
@@ -166,7 +205,7 @@ impl<
             current_tick_id = TickId(current_tick_id.0 + 1);
         }
 
-        match self.client.client.logic().phase() {
+        match self.logic.phase() {
             ClientLogicPhase::RequestConnect => {}
             ClientLogicPhase::RequestDownloadState { .. } => {}
             ClientLogicPhase::DownloadingState(_) => {}
@@ -178,26 +217,30 @@ impl<
             }
         }
 
-        self.last_need_prediction_count = self.prediction_time_tick.update(now);
-        if self.client.client.logic().predicted_step_count_in_queue() >= self.max_prediction_count {
-            self.last_need_prediction_count = 0;
-            self.prediction_time_tick.reset(now);
-        }
+        match self.phase {
+            ClientPhase::Normal => {}
+            ClientPhase::CanSendPredicted => {
+                self.adjust_prediction_ticker();
+                self.last_need_prediction_count = self.prediction_time_tick.update(now);
+                if self.logic.predicted_step_count_in_queue() >= self.max_prediction_count {
+                    self.last_need_prediction_count = 0;
+                    self.prediction_time_tick.reset(now);
+                }
 
-        trace!("prediction count: {}", self.last_need_prediction_count);
-
-        if let Some(game) = self.client.game_mut() {
-            self.rectify.update(game);
+                trace!("prediction count: {}", self.last_need_prediction_count);
+                if let Some(game) = self.logic.game_mut() {
+                    self.rectify.update(game);
+                }
+            }
         }
 
         Ok(())
     }
 
     fn delta_prediction_count(&self) -> i32 {
-        if self.client.client.logic().can_push_predicted_step() {
+        if self.logic.can_push_predicted_step() {
             let optimal_prediction_tick_count = self.optimal_prediction_tick_count();
-            let prediction_count_in_queue =
-                self.client.client.logic().predicted_step_count_in_queue();
+            let prediction_count_in_queue = self.logic.predicted_step_count_in_queue();
             trace!("optimal according to latency {optimal_prediction_tick_count}, outgoing queue {prediction_count_in_queue}");
 
             prediction_count_in_queue as i32 - optimal_prediction_tick_count as i32
@@ -243,11 +286,11 @@ impl<
     }
 
     pub fn game(&self) -> Option<&GameT> {
-        self.client.game()
+        self.logic.game()
     }
 
     pub fn need_prediction_count(&self) -> usize {
-        if !self.client.client.logic().can_push_predicted_step() {
+        if !self.logic.can_push_predicted_step() {
             0
         } else {
             self.last_need_prediction_count as usize
@@ -255,11 +298,11 @@ impl<
     }
 
     pub fn can_join_player(&self) -> bool {
-        self.client.client.game().is_some()
+        self.game().is_some()
     }
 
     pub fn local_players(&self) -> Vec<LocalPlayer> {
-        self.client.client.local_players()
+        self.logic.local_players()
     }
 
     pub fn push_predicted_step(
@@ -273,7 +316,7 @@ impl<
         }
         self.prediction_time_tick.performed_tick_count(count as u16);
 
-        self.client.push_predicted_step(tick_id, step.clone())?;
+        self.logic.push_predicted_step(tick_id, step.clone())?;
 
         let mut seq_map = SeqMap::<ParticipantId, Step<StepT>>::new();
 
@@ -293,18 +336,22 @@ impl<
     }
 
     pub fn latency(&self) -> Option<MinMaxAvg<u16>> {
-        self.client.latency()
+        self.nimble_layer.latency()
+    }
+
+    pub fn metrics(&self) -> CombinedMetrics {
+        self.metrics.metrics()
     }
 
     pub fn server_buffer_delta_ticks(&self) -> Option<i16> {
-        self.client.server_buffer_delta_ticks()
+        self.logic.server_buffer_delta_ticks()
     }
 
     pub fn request_join_player(
         &mut self,
         local_players: Vec<LocalIndex>,
     ) -> Result<(), ClientError> {
-        self.client.request_join_player(local_players)?;
+        self.logic.set_joining_player(local_players);
         Ok(())
     }
 }

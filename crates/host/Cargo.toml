@@ -1,12 +1,10 @@
 [package]
-name = "nimble-host-front"
+name = "nimble-host"
 version = "0.0.12-dev"
 edition = "2021"
 
 [dependencies]
-nimble-ordered-datagram = { path = "../ordered-datagram", version = "0.0.12-dev" }
-nimble-protocol-header = { path = "../protocol-header", version = "0.0.12-dev" }
-nimble-host-stream = { path = "../host-stream", version = "0.0.12-dev" }
+# nimble-ordered-datagram = { path = "../ordered-datagram", version = "0.0.12-dev" }
 nimble-host-logic = { path = "../host-logic", version = "0.0.12-dev" }
 flood-rs = "0.0.12"
 tick-id = "0.0.9"
@@ -16,6 +14,9 @@ app-version = "0.0.2"
 log = "0.4.22"
 hexify = "0.0.3"
 err-rs = "0.0.4"
+nimble-layer = { path = "../layer", version = "0.0.12-dev" }
+datagram-chunker = "0.0.1"
+nimble-protocol = { path = "../protocol", version = "0.0.12-dev" }
 
 [dev-dependencies]
 test-log = "0.2.16"

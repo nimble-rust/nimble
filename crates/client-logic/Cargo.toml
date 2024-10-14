@@ -12,18 +12,22 @@ repository = "https://github.com/nimble-rust/client"
 tick-id = "0.0.9"
 flood-rs = "0.0.12"
 log = "0.4.22"
+err-rs = "0.0.4"
+metricator = "0.0.6"
+app-version = "0.0.2"
+
+nimble-step-types = { path = "../step-types", version = "0.0.12-dev" }
+nimble-step = { path = "../step", version = "0.0.12-dev" }
 nimble-steps = { path = "../steps", version = "0.0.12-dev" }
 nimble-protocol = { path = "../protocol", version = "0.0.12-dev" }
 nimble-blob-stream = { path = "../blob-stream", version = "0.0.12-dev" }
-err-rs = "0.0.4"
-nimble-step-types = { path = "../step-types", version = "0.0.12-dev" }
-metricator = "0.0.6"
 nimble-participant = { path = "../participant", version = "0.0.12-dev" }
-app-version = "0.0.2"
-nimble-step = { path = "../step", version = "0.0.12-dev" }
 
 [dev-dependencies]
 test-log = "0.2.16"
 nimble-sample-step = { path = "../sample-step", version = "0.0.12-dev" }
 criterion = "0.5.1"
 seq-map = "0.0.2"
+datagram-chunker = "0.0.1"
+hexify = "0.0.3"
+rand = "0.8.5"

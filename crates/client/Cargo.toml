@@ -5,13 +5,16 @@ edition = "2021"
 
 [dependencies]
 nimble-protocol = { path = "../protocol", version = "0.0.12-dev" }
-nimble-client-front = { path = "../client-front", version = "0.0.12-dev" }
+nimble-layer = { path = "../layer", version = "0.0.12-dev" }
+nimble-client-logic = { path = "../client-logic", version = "0.0.12-dev" }
+network-metrics = { path = "../network-metrics", version = "0.0.12-dev" }
 nimble-assent = { path = "../assent", version = "0.0.12-dev " }
 nimble-seer = { path = "../seer", version = "0.0.12-dev" }
 nimble-rectify = { path = "../rectify", version = "0.0.12-dev" }
 nimble-step-types = { path = "../step-types", version = "0.0.12-dev" }
 nimble-steps = { path = "../steps", version = "0.0.12-dev" }
 nimble-step = { path = "../step", version = "0.0.12-dev" }
+datagram-chunker = "0.0.1"
 flood-rs = "0.0.12"
 log = "0.4.22"
 monotonic-time-rs = "0.0.5"
@@ -21,17 +24,16 @@ tick-id = "0.0.9"
 err-rs = "0.0.4"
 seq-map = "0.0.2"
 nimble-participant = { path = "../participant", version = "0.0.12-dev" }
-time-tick = { path = "../time-tick", version = "0.0.1"}
+time-tick = { path = "../time-tick", version = "0.0.1" }
 
 [dev-dependencies]
 test-log = "0.2.16"
 nimble-sample-step = { path = "../sample-step", version = "0.0.12-dev" }
 nimble-sample-game = { path = "../sample-game-type", version = "0.0.12-dev" }
-nimble-host-stream = { path = "../host-stream", version = "0.0.12-dev" }
-nimble-host-front = { path = "../host-front", version = "0.0.12-dev" }
+nimble-host = { path = "../host", version = "0.0.12-dev" }
 nimble-host-logic = { path = "../host-logic", version = "0.0.12-dev" }
 tick-id = "0.0.9"
-hazy-transport = "0.0.3"
+hazy-transport = "0.0.4"
 rand = "0.8.5"
 seq-map = "0.0.2"
 nimble-participant = { path = "../participant", version = "0.0.12-dev" }

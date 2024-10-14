@@ -6,10 +6,9 @@ pub mod prelude;
 
 use err_rs::{ErrorLevel, ErrorLevelProvider};
 use log::trace;
+use nimble_steps::{Steps, StepsError};
 use std::fmt::Debug;
 use std::marker::PhantomData;
-
-use nimble_steps::{Steps, StepsError};
 use tick_id::TickId;
 
 pub trait SeerCallback<CombinedStepT> {
@@ -104,7 +103,7 @@ where
         trace!("{} predicted steps in queue.", self.predicted_steps.len());
 
         for combined_step_info in self.predicted_steps.iter() {
-            trace!("tick {:?}", combined_step_info);
+            trace!("tick {}", combined_step_info);
 
             callback.on_tick(&combined_step_info.step);
         }
