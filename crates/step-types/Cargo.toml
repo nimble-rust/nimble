@@ -1,11 +1,11 @@
 [package]
 name = "nimble-step-types"
-version = "0.0.12-dev"
+version = "0.0.14-dev"
 edition = "2021"
 license = "MIT"
 description = "Nimble Step Types"
 repository = "https://github.com/nimble-rust/nimble"
 
 [dependencies]
-nimble-participant = { path = "../participant", version = "0.0.12-dev" }
+nimble-participant = { path = "../participant", version = "0.0.14-dev" }
 seq-map = "0.0.2"

@@ -1,11 +1,11 @@
 [package]
 name = "nimble-host"
-version = "0.0.12-dev"
+version = "0.0.14-dev"
 edition = "2021"
 
 [dependencies]
 # nimble-ordered-datagram = { path = "../ordered-datagram", version = "0.0.12-dev" }
-nimble-host-logic = { path = "../host-logic", version = "0.0.12-dev" }
+nimble-host-logic = { path = "../host-logic", version = "0.0.14-dev" }
 flood-rs = "0.0.12"
 tick-id = "0.0.9"
 monotonic-time-rs = "0.0.5"
@@ -14,11 +14,11 @@ app-version = "0.0.2"
 log = "0.4.22"
 hexify = "0.0.3"
 err-rs = "0.0.4"
-nimble-layer = { path = "../layer", version = "0.0.12-dev" }
+nimble-layer = { path = "../layer", version = "0.0.14-dev" }
 datagram-chunker = "0.0.1"
-nimble-protocol = { path = "../protocol", version = "0.0.12-dev" }
+nimble-protocol = { path = "../protocol", version = "0.0.14-dev" }
 
 [dev-dependencies]
 test-log = "0.2.16"
-nimble-sample-step = { path = "../sample-step", version = "0.0.12-dev" }
-nimble-participant = { path = "../participant", version = "0.0.12-dev" }
+nimble-sample-step = { path = "../sample-step", version = "0.0.14-dev" }
+nimble-participant = { path = "../participant", version = "0.0.14-dev" }

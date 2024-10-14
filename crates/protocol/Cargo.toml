@@ -1,6 +1,6 @@
 [package]
 name = "nimble-protocol"
-version = "0.0.12-dev"
+version = "0.0.14-dev"
 edition = "2021"
 license = "MIT"
 description = "Nimble Protocol"
@@ -9,13 +9,13 @@ repository = "https://github.com/nimble-rust/protocol"
 
 [dependencies]
 flood-rs = "0.0.12"
-nimble-blob-stream = { path = "../blob-stream", version = "0.0.12-dev" }
-nimble-participant = { path = "../participant", version = "0.0.12-dev" }
+nimble-blob-stream = { path = "../blob-stream", version = "0.0.14-dev" }
+nimble-participant = { path = "../participant", version = "0.0.14-dev" }
 tick-id = "0.0.9"
 log = "0.4.22"
-nimble-step-types = { path = "../step-types", version = "0.0.12-dev" }
+nimble-step-types = { path = "../step-types", version = "0.0.14-dev" }
 seq-map = "0.0.2"
 
 [dev-dependencies]
 test-log = "0.2.16"
-nimble-sample-step = { path = "../sample-step", version = "0.0.12-dev" }
+nimble-sample-step = { path = "../sample-step", version = "0.0.14-dev" }

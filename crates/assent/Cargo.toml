@@ -1,6 +1,6 @@
 [package]
 name = "nimble-assent"
-version = "0.0.12-dev"
+version = "0.0.14-dev"
 edition = "2021"
 license = "MIT"
 description = "Authoritative state"
@@ -9,7 +9,7 @@ repository = "https://github.com/nimble-rust/assent"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-nimble-steps = { path = "../steps", version = "0.0.12-dev" }
+nimble-steps = { path = "../steps", version = "0.0.14-dev" }
 tick-id = "0.0.9"
 log = "0.4.22"
 
