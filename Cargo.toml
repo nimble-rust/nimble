@@ -20,7 +20,5 @@ members = [
     "crates/host",
     "crates/step",
     "crates/wrapped-step",
-    "crates/time-tick",
-    "crates/network-metrics",
 ]
 resolver = "2"

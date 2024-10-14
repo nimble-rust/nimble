@@ -23,7 +23,40 @@ use seq_map::SeqMap;
 use std::cmp::min;
 use std::fmt::Debug;
 use tick_id::TickId;
-use time_tick::{RangeToFactor, TimeTick};
+use time_tick::TimeTick;
+
+pub type MillisDurationRange = RangeToFactor<MillisDuration, MillisDuration>;
+
+pub struct RangeToFactor<V, F> {
+    range_min: V,
+    min_factor: F,
+    range_max: V,
+    max_factor: F,
+    factor: F,
+}
+
+impl<V: PartialOrd, F> RangeToFactor<V, F> {
+    pub const fn new(range_min: V, range_max: V, min_factor: F, factor: F, max_factor: F) -> Self {
+        Self {
+            range_min,
+            min_factor,
+            range_max,
+            max_factor,
+            factor,
+        }
+    }
+
+    #[inline]
+    pub fn get_factor(&self, input: V) -> &F {
+        if input < self.range_min {
+            &self.min_factor
+        } else if input > self.range_max {
+            &self.max_factor
+        } else {
+            &self.factor
+        }
+    }
+}
 
 pub trait GameCallbacks<StepT: std::fmt::Display>:
     RectifyCallbacks<StepForParticipants<Step<StepT>>> + VersionProvider + BufferDeserializer
@@ -99,7 +132,7 @@ impl<
         let messages = self.logic.send();
         let datagrams =
             datagram_chunker::serialize_to_datagrams(messages, Self::MAX_DATAGRAM_SIZE)?;
-        self.metrics.send(&datagrams);
+        self.metrics.sent_datagrams(&datagrams);
 
         let datagrams_with_header = self.nimble_layer.send(now, datagrams)?;
 
@@ -107,7 +140,7 @@ impl<
     }
 
     pub fn receive(&mut self, millis: Millis, datagram: &[u8]) -> Result<(), ClientError> {
-        self.metrics.receive(datagram);
+        self.metrics.received_datagram(datagram);
         let datagram_without_header = self.nimble_layer.receive(millis, datagram)?;
         let commands = datagram_chunker::deserialize_datagram::<HostToClientCommands<Step<StepT>>>(
             datagram_without_header,
@@ -126,15 +159,15 @@ impl<
     pub fn update(&mut self, now: Millis) -> Result<(), ClientError> {
         trace!("client: update {now}");
         self.nimble_layer.update(now);
-        self.metrics.update(now);
+        self.metrics.update_metrics(now);
 
         let auth_buffer_count = self.logic.server_buffer_count().unwrap_or(0);
         let factor = self
             .authoritative_range_to_tick_duration_ms
-            .calculate(auth_buffer_count);
+            .get_factor(auth_buffer_count);
         self.authoritative_time_tick
-            .set_time_period(*factor * self.tick_duration_ms);
-        self.authoritative_time_tick.update(now);
+            .set_tick_duration(*factor * self.tick_duration_ms);
+        self.authoritative_time_tick.calculate_ticks(now);
 
         let (first_tick_id_in_vector, auth_steps) = self.logic.pop_all_authoritative_steps();
         let mut current_tick_id = first_tick_id_in_vector;
@@ -162,7 +195,7 @@ impl<
             ClientPhase::Normal => {}
             ClientPhase::CanSendPredicted => {
                 self.adjust_prediction_ticker();
-                self.last_need_prediction_count = self.prediction_time_tick.update(now);
+                self.last_need_prediction_count = self.prediction_time_tick.calculate_ticks(now);
                 if self.logic.predicted_step_count_in_queue() >= self.max_prediction_count {
                     self.last_need_prediction_count = 0;
                     self.prediction_time_tick.reset(now);
@@ -194,14 +227,14 @@ impl<
         let delta_prediction = self.delta_prediction_count();
         let factor = self
             .prediction_range_to_tick_duration_ms
-            .calculate(delta_prediction);
+            .get_factor(delta_prediction);
         trace!(
             "delta-prediction: {delta_prediction} resulted in factor: {factor} for latency {}",
             self.latency().unwrap_or(MinMaxAvg::new(0, 0.0, 0))
         );
 
         self.prediction_time_tick
-            .set_time_period(*factor * self.tick_duration_ms)
+            .set_tick_duration(*factor * self.tick_duration_ms)
     }
 
     #[allow(unused)]
@@ -255,7 +288,7 @@ impl<
         if count > self.need_prediction_count() {
             panic!("not great")
         }
-        self.prediction_time_tick.performed_tick_count(count as u16);
+        self.prediction_time_tick.performed_ticks(count as u16);
 
         self.logic.push_predicted_step(tick_id, step.clone())?;
 
