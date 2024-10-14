@@ -110,13 +110,14 @@ impl<
 
             authoritative_range_to_tick_duration_ms: RangeToFactor::new(2, 5, 0.9, 1.0, 2.0), // 0.9 is faster, since it is a multiplier to tick_duration
             authoritative_time_tick: TimeTick::new(now, MillisDuration::from_millis(16), 4),
-            prediction_range_to_tick_duration_ms: RangeToFactor::new(-2, 2, 0.9, 1.0, 2.0), // 0.9 is faster, since it is a multiplier to tick_duration
+
+            prediction_range_to_tick_duration_ms: RangeToFactor::new(-1, 3, 0.85, 1.0, 2.0), // 0.9 is faster, since it is a multiplier to tick_duration
             prediction_time_tick: TimeTick::new(now, MillisDuration::from_millis(16), 4),
 
             rectify: Rectify::default(),
             last_need_prediction_count: 0,
             phase: ClientPhase::Normal,
-            max_prediction_count: 6,
+            max_prediction_count: 10, // TODO: Settings
             tick_duration_ms: MillisDuration::from_millis(16),
         }
     }
@@ -161,10 +162,9 @@ impl<
         self.nimble_layer.update(now);
         self.metrics.update_metrics(now);
 
-        let auth_buffer_count = self.logic.server_buffer_count().unwrap_or(0);
         let factor = self
             .authoritative_range_to_tick_duration_ms
-            .get_factor(auth_buffer_count);
+            .get_factor(self.logic.debug_authoritative_steps().len() as u8);
         self.authoritative_time_tick
             .set_tick_duration(*factor * self.tick_duration_ms);
         self.authoritative_time_tick.calculate_ticks(now);
@@ -197,6 +197,10 @@ impl<
                 self.adjust_prediction_ticker();
                 self.last_need_prediction_count = self.prediction_time_tick.calculate_ticks(now);
                 if self.logic.predicted_step_count_in_queue() >= self.max_prediction_count {
+                    trace!(
+                        "prediction queue is maxed out: {}",
+                        self.max_prediction_count
+                    );
                     self.last_need_prediction_count = 0;
                     self.prediction_time_tick.reset(now);
                 }

@@ -74,6 +74,10 @@ impl NimbleLayerClient {
             .ok_or_else(|| NimbleLayerError::AbsoluteTimeError)?;
 
         self.latency.add(duration_ms.as_millis() as u16);
+        trace!(
+            "nimble-layer client received without header\n{}",
+            format_hex(slice)
+        );
 
         Ok(slice)
     }
@@ -155,14 +159,18 @@ impl NimbleLayer {
         &mut self,
         datagram: &'a [u8],
     ) -> Result<(&'a [u8], ClientTime), NimbleLayerError> {
-        trace!("client-front received\n{}", format_hex(datagram));
         let mut in_stream = InOctetStream::new(datagram);
         let dropped_packets = self.ordered_in.read_and_verify(&mut in_stream)?;
         self.datagram_drops.add(dropped_packets.inner());
 
         let client_time = ClientTime::deserialize(&mut in_stream)?;
 
-        Ok((&datagram[4..], client_time))
+        let slice = &datagram[4..];
+        trace!(
+            "nimble-layer host received without header\n{}",
+            format_hex(slice)
+        );
+        Ok((slice, client_time))
     }
 
     pub fn datagram_drops(&self) -> Option<MinMaxAvg<u16>> {

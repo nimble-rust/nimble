@@ -210,7 +210,7 @@ fn client_to_host() -> Result<(), ClientError> {
     // let host_connection = host.get_stream(connection_id).expect("should find connection");
     // let x = host.session().participants.get(&ParticipantId(0)).expect("should find participant");
 
-    let expected_game_state = SampleGameState { x: 49, y: 42 };
+    let expected_game_state = SampleGameState { x: 84, y: 42 };
 
     assert_eq!(
         client
@@ -221,7 +221,7 @@ fn client_to_host() -> Result<(), ClientError> {
     );
 
     let expected_predicted_state_with_prediction = SampleGameState {
-        x: expected_game_state.x + 5,
+        x: expected_game_state.x + 8,
         y: expected_game_state.y,
     };
 
@@ -231,10 +231,10 @@ fn client_to_host() -> Result<(), ClientError> {
     );
 
     assert_eq_with_epsilon(client.metrics().outgoing.datagrams_per_second, 62.5, 0.001);
-    assert_eq!(client.metrics().outgoing.octets_per_second, 1937.5); // 2.8 Kbps
+    assert_eq!(client.metrics().outgoing.octets_per_second, 2633.9285); // 2.8 Kbps
 
     assert_eq_with_epsilon(client.metrics().incoming.datagrams_per_second, 53.57, 0.01);
-    assert_eq!(client.metrics().incoming.octets_per_second, 12946.428); // 103 kbps. (normal maximum is 120 Kbps, extreme is 575 Kbps)
+    assert_eq!(client.metrics().incoming.octets_per_second, 19875.0); // 103 kbps. (normal maximum is 120 Kbps, extreme is 575 Kbps)
 
     Ok(())
 }

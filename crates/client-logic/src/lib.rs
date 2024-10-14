@@ -85,7 +85,7 @@ pub struct ClientLogic<
     server_buffer_delta_tick_id: AggregateMetric<i16>,
 
     /// Tracks the buffer step count on the server.
-    server_buffer_count: AggregateMetric<u8>,
+    //server_buffer_count: AggregateMetric<u8>,
     joining_request_id: ClientRequestId,
 
     local_players: Vec<LocalPlayer>,
@@ -107,7 +107,7 @@ impl<
             outgoing_predicted_steps: Steps::new(),
             incoming_authoritative_steps: Steps::new(),
             server_buffer_delta_tick_id: AggregateMetric::new(3).unwrap(),
-            server_buffer_count: AggregateMetric::new(3).unwrap(),
+            //server_buffer_count: AggregateMetric::new(3).unwrap(),
             state: None,
             phase: ClientLogicPhase::RequestConnect,
             local_players: Vec::new(),
@@ -347,7 +347,7 @@ impl<
         let host_expected_tick_id = header.next_expected_tick_id;
         self.server_buffer_delta_tick_id
             .add(header.delta_buffer as i16);
-        self.server_buffer_count.add(header.connection_buffer_count);
+        //self.server_buffer_count.add(header.connection_buffer_count);
         trace!("removing every predicted step before {host_expected_tick_id}");
         self.outgoing_predicted_steps
             .pop_up_to(host_expected_tick_id);
@@ -512,6 +512,7 @@ impl<
         Ok(())
     }
 
+    /*
     /// Returns the average predicted step buffer count from the server, if available.
     ///
     /// # Returns
@@ -521,6 +522,7 @@ impl<
             .average()
             .map(|value| value.round() as u8)
     }
+    */
 
     /// Returns the average server buffer delta tick, if available.
     ///

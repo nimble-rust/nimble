@@ -58,7 +58,7 @@ pub struct Settings {
 impl Default for Settings {
     fn default() -> Self {
         Self {
-            max_predicted_steps_capacity: 8,
+            max_predicted_steps_capacity: 14,
         }
     }
 }

@@ -130,7 +130,7 @@ impl<T: Clone + std::fmt::Display> Combinator<T> {
             if let Some(first_tick) = steps.front_tick_id() {
                 if first_tick == self.tick_id_to_produce {
                     trace!(
-                        "found step from {} for {} {}",
+                        "found step from {} for {}, expecting {}",
                         first_tick,
                         participant_id,
                         steps.front_tick_id().unwrap()
