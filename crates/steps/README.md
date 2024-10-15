@@ -1,6 +1,7 @@
+# Nimble
+
 <div align="center">
-    <img src="docs/images/logo.svg" width="128" />
+    <img src="docs/images/logo.svg" width="128" alt="logo" />
 </div>
 
-## Nimble Steps
-
+## Steps

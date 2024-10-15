@@ -2,6 +2,24 @@
  * Copyright (c) Peter Bjorklund. All rights reserved. https://github.com/nimble-rust/nimble
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
+
+//! # Nimble Client 🕹
+//!
+//! **Nimble Client** is a Rust crate designed to manage networking tasks for multiplayer games.
+//! It handles downloading the complete game state from a host, managing participants by sending
+//! requests to the host, sending predicted inputs (steps) to the host for smoother gameplay, and
+//! receiving authoritative steps to ensure consistent game state.
+//!
+//! ## Features
+//!
+//! - **Game State Downloading:** Fetch the entire game state from the host. 🗂️
+//! - **Participant Management:** Add and remove players by sending requests to the host. ➕➖
+//! - **Input Prediction:** Send predicted inputs (steps) to the host for reduced latency. 🔮
+//! - **Authoritative Step Handling:** Receive and apply authoritative steps from the host to
+//! maintain game state consistency. 📥📤
+//! - **Metrics and Logging:** Built-in support for network metrics and logging to monitor and
+//! debug client operations. 📊🛠️
+
 pub mod err;
 pub mod prelude;
 
@@ -76,6 +94,10 @@ pub enum ClientPhase {
     CanSendPredicted,
 }
 
+/// The main client structure handling datagram communication, participant management, and input (step) prediction.
+///
+/// The `Client` does not handle game logic directly but relies on external game logic
+/// provided through the `GameCallbacks` trait.
 pub struct Client<
     GameT: GameCallbacks<StepT> + Debug,
     StepT: Clone + Deserialize + Serialize + Debug + std::fmt::Display,
@@ -83,8 +105,6 @@ pub struct Client<
     nimble_layer: NimbleLayerClient,
     logic: ClientLogic<GameT, StepT>,
     metrics: NetworkMetrics,
-
-    #[allow(unused)]
     rectify: Rectify<GameT, StepForParticipants<Step<StepT>>>,
     authoritative_range_to_tick_duration_ms: RangeToFactor<u8, f32>,
     authoritative_time_tick: TimeTick,
@@ -101,6 +121,11 @@ impl<
         GameT: GameCallbacks<StepT> + Debug,
     > Client<GameT, StepT>
 {
+    /// Creates a new `Client` instance with the given current time.
+    ///
+    /// # Arguments
+    ///
+    /// * `now` - The current time in milliseconds.
     pub fn new(now: Millis) -> Self {
         let deterministic_app_version = GameT::version();
         Self {
@@ -129,6 +154,22 @@ impl<
 
     const MAX_DATAGRAM_SIZE: usize = 1024;
 
+    /// Creates outgoing messages and returns the serialized datagrams.
+    ///
+    /// This method collects messages prepared by the client logic, serializes them into datagrams,
+    /// updates network metrics, and returns the datagrams. They are usually sent over some datagram transport.
+    ///
+    /// # Arguments
+    ///
+    /// * `now` - The current time in milliseconds.
+    ///
+    /// # Returns
+    ///
+    /// A `Result` containing a vector of serialized datagrams or a `ClientError`.
+    ///
+    /// # Errors
+    ///
+    /// Returns `ClientError` if serialization or sending fails.
     pub fn send(&mut self, now: Millis) -> Result<Vec<Vec<u8>>, ClientError> {
         let messages = self.logic.send();
         let datagrams =
@@ -140,6 +181,23 @@ impl<
         Ok(datagrams_with_header)
     }
 
+    /// Receives and processes an incoming datagram.
+    ///
+    /// This method handles incoming datagrams by updating metrics, deserializing the datagram,
+    /// and passing the contained commands to the client logic for further processing.
+    ///
+    /// # Arguments
+    ///
+    /// * `millis` - The current time in milliseconds.
+    /// * `datagram` - The received datagram bytes.
+    ///
+    /// # Returns
+    ///
+    /// A `Result` indicating success or containing a `ClientError`.
+    ///
+    /// # Errors
+    ///
+    /// Returns `ClientError` if deserialization or processing fails.
     pub fn receive(&mut self, millis: Millis, datagram: &[u8]) -> Result<(), ClientError> {
         self.metrics.received_datagram(datagram);
         let datagram_without_header = self.nimble_layer.receive(millis, datagram)?;
@@ -153,10 +211,26 @@ impl<
         Ok(())
     }
 
-    pub fn rectify(&self) -> &Rectify<GameT, StepForParticipants<Step<StepT>>> {
+    pub fn debug_rectify(&self) -> &Rectify<GameT, StepForParticipants<Step<StepT>>> {
         &self.rectify
     }
 
+    /// Updates the client's phase and handles synchronization tasks based on the current time.
+    ///
+    /// This includes updating the network layer, metrics, tick durations, processing authoritative steps,
+    /// and managing prediction phases.
+    ///
+    /// # Arguments
+    ///
+    /// * `now` - The current time in milliseconds.
+    ///
+    /// # Returns
+    ///
+    /// A `Result` indicating success or containing a `ClientError`.
+    ///
+    /// # Errors
+    ///
+    /// Returns `ClientError` if any internal operations fail.
     pub fn update(&mut self, now: Millis) -> Result<(), ClientError> {
         trace!("client: update {now}");
         self.nimble_layer.update(now);
@@ -215,6 +289,12 @@ impl<
         Ok(())
     }
 
+    /// Calculates the difference between the current prediction count and the optimal count.
+    ///
+    /// # Returns
+    ///
+    /// The difference as an `i32`. A positive value indicates excess predictions, while a negative
+    /// value indicates a deficit.
     fn delta_prediction_count(&self) -> i32 {
         if self.logic.can_push_predicted_step() {
             let optimal_prediction_tick_count = self.optimal_prediction_tick_count();
@@ -227,6 +307,7 @@ impl<
         }
     }
 
+    /// Adjusts the prediction ticker based on the current delta prediction count.
     fn adjust_prediction_ticker(&mut self) {
         let delta_prediction = self.delta_prediction_count();
         let factor = self
@@ -241,7 +322,15 @@ impl<
             .set_tick_duration(*factor * self.tick_duration_ms)
     }
 
-    #[allow(unused)]
+    /// Determines the optimal number of prediction ticks based on current average latency.
+    ///
+    /// # Returns
+    ///
+    /// The optimal prediction tick count as a `usize`.
+    ///
+    /// # Notes
+    ///
+    /// This function ensures that the prediction count does not exceed a predefined maximum.
     fn optimal_prediction_tick_count(&self) -> usize {
         if let Some(latency_ms) = self.latency() {
             let latency_in_ticks =
@@ -263,11 +352,24 @@ impl<
         }
     }
 
+    /// Retrieves a reference to the current game instance, if available.
+    ///
+    /// Note: The `Client` does not manage game logic directly. This method provides access to the
+    /// game state managed externally via callbacks.
+    ///
+    /// # Returns
+    ///
+    /// An `Option` containing a reference to `CallbacksT` or `None` if no game is active.
     pub fn game(&self) -> Option<&GameT> {
         self.logic.game()
     }
 
-    pub fn need_prediction_count(&self) -> usize {
+    /// Determines the number of predictions needed based on the current state.
+    ///
+    /// # Returns
+    ///
+    /// The number of predictions needed as a `usize`.
+    pub fn required_prediction_count(&self) -> usize {
         if !self.logic.can_push_predicted_step() {
             0
         } else {
@@ -275,22 +377,48 @@ impl<
         }
     }
 
+    /// Checks if a new player can join the game session.
+    ///
+    /// # Returns
+    ///
+    /// `true` if a player can join, `false` otherwise.
     pub fn can_join_player(&self) -> bool {
         self.game().is_some()
     }
 
+    /// Retrieves a list of local players currently managed by the client.
+    ///
+    /// # Returns
+    ///
+    /// A vector of `LocalPlayer` instances.
     pub fn local_players(&self) -> Vec<LocalPlayer> {
         self.logic.local_players()
     }
 
+    /// Adds a predicted input (step) to the client's logic and rectification system.
+    ///
+    /// This method serializes predicted steps into datagrams (in the future) in upcoming send() function calls.
+    ///
+    /// # Arguments
+    ///
+    /// * `tick_id` - The tick identifier for the predicted step.
+    /// * `step` - The predicted step data.
+    ///
+    /// # Returns
+    ///
+    /// A `Result` indicating success or containing a `ClientError`.
+    ///
+    /// # Errors
+    ///
+    /// Returns `ClientError` if the prediction queue is full or if processing fails.
     pub fn push_predicted_step(
         &mut self,
         tick_id: TickId,
         step: StepForParticipants<StepT>,
     ) -> Result<(), ClientError> {
         let count = step.combined_step.len();
-        if count > self.need_prediction_count() {
-            panic!("not great")
+        if count > self.required_prediction_count() {
+            return Err(ClientError::PredictionQueueOverflow);
         }
         self.prediction_time_tick.performed_ticks(count as u16);
 
@@ -313,18 +441,46 @@ impl<
         Ok(())
     }
 
+    /// Retrieves the current transmission round trip latency metrics.
+    ///
+    /// # Returns
+    ///
+    /// An `Option` containing `MinMaxAvg<u16>` representing latency metrics, or `None` if unavailable.
     pub fn latency(&self) -> Option<MinMaxAvg<u16>> {
         self.nimble_layer.latency()
     }
 
+    /// Retrieves the combined network metrics.
+    ///
+    /// # Returns
+    ///
+    /// A `CombinedMetrics` instance containing various network metrics.
     pub fn metrics(&self) -> CombinedMetrics {
         self.metrics.metrics()
     }
 
+    /// Retrieves the delta ticks on the host for the incoming predicted steps
+    /// A negative means that the incoming buffer is too low, a larger positive number
+    /// means that the buffer is too big, and the prediction should slow down.
+    ///
+    /// # Returns
+    ///
+    /// An `Option` containing the delta ticks as `i16`, or `None` if unavailable.
     pub fn server_buffer_delta_ticks(&self) -> Option<i16> {
         self.logic.server_buffer_delta_ticks()
     }
 
+    /// Requests to join a new player with the specified local indices.
+    ///
+    /// This method sends a request to the host to add new participants to the game session.
+    ///
+    /// # Arguments
+    ///
+    /// * `local_players` - A vector of `LocalIndex` representing the local players to join.
+    ///
+    /// # Returns
+    ///
+    /// A `Result` indicating success or containing a `ClientError`.
     pub fn request_join_player(
         &mut self,
         local_players: Vec<LocalIndex>,

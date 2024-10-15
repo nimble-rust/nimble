@@ -83,7 +83,7 @@ fn communicate<
     let mut to_host = Direction::new(config2, rng2).expect("config should be valid");
 
     for _ in 0..count {
-        for _ in 0..client.need_prediction_count() {
+        for _ in 0..client.required_prediction_count() {
             debug!("trying to push predicted step for {tick_id}");
             let mut map = SeqMap::new();
             map.insert(ParticipantId(0), SampleStep::MoveLeft(-1))

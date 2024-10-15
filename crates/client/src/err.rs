@@ -13,6 +13,7 @@ pub enum ClientError {
     StepsError(StepsError),
     DatagramChunkerError(DatagramChunkerError),
     NimbleLayerError(NimbleLayerError),
+    PredictionQueueOverflow,
 }
 
 impl From<DatagramChunkerError> for ClientError {
@@ -36,6 +37,7 @@ impl ErrorLevelProvider for ClientError {
             Self::StepsError(_) => ErrorLevel::Info,
             Self::DatagramChunkerError(_) => ErrorLevel::Info,
             Self::NimbleLayerError(_) => ErrorLevel::Info,
+            Self::PredictionQueueOverflow => ErrorLevel::Critical,
         }
     }
 }
