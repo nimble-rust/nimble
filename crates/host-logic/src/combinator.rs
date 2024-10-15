@@ -74,7 +74,7 @@ impl<T: Clone + std::fmt::Display> Combinator<T> {
         step: T,
     ) -> Result<(), CombinatorError> {
         if let Some(buffer) = self.in_buffers.get_mut(&id) {
-            buffer.push_with_check(tick_id, step)?;
+            buffer.push(tick_id, step)?;
             Ok(())
         } else {
             Err(CombinatorError::NoBufferForParticipant)

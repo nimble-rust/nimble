@@ -67,7 +67,7 @@ impl<T: Clone + std::fmt::Display> HostCombinator<T> {
         for _ in 0..10 {
             if let Ok((produced_tick_id, new_combined_step)) = self.combinator.produce() {
                 self.authoritative_steps
-                    .push_with_check(produced_tick_id, new_combined_step);
+                    .push(produced_tick_id, new_combined_step);
             } else {
                 break;
             }

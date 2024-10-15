@@ -119,7 +119,7 @@ where
     ///
     /// Returns an error if the step cannot be added.
     pub fn push(&mut self, tick_id: TickId, steps: CombinedStepT) -> Result<(), StepsError> {
-        self.steps.push_with_check(tick_id, steps)
+        self.steps.push(tick_id, steps)
     }
 
     /// Returns the next expected `TickId` for inserting new steps.

@@ -253,7 +253,7 @@ impl<StepT: Clone + Eq + Debug + Deserialize + Serialize + std::fmt::Display> Co
                     if buffer.expected_write_tick_id() != current_tick {
                         continue;
                     }
-                    buffer.push_with_check(current_tick, part.clone())?;
+                    buffer.push(current_tick, part.clone())?;
                 } else {
                     return Err(HostLogicError::UnknownPartyMember(*participant_id));
                 }

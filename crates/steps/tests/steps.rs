@@ -10,9 +10,9 @@ mod steps_test_types;
 
 #[test_log::test]
 fn add_step() {
-    let mut steps = Steps::<GameInput>::new(TickId(23));
+    let mut steps = Steps::new(TickId(23));
     steps
-        .push_with_check(TickId(23), GameInput::MoveHorizontal(-2))
+        .push(TickId(23), GameInput::MoveHorizontal(-2))
         .expect("Expected a move horizontal tick");
     assert_eq!(steps.len(), 1);
     assert_eq!(steps.front_tick_id().unwrap().value(), 23)
@@ -20,12 +20,12 @@ fn add_step() {
 
 #[test_log::test]
 fn push_and_pop_step() {
-    let mut steps = Steps::<GameInput>::new(TickId(23));
+    let mut steps = Steps::new(TickId(23));
     steps
-        .push_with_check(TickId(23), GameInput::Jumping(true))
+        .push(TickId(23), GameInput::Jumping(true))
         .expect("Expected a jumping tick");
     steps
-        .push_with_check(TickId(24), GameInput::MoveHorizontal(42))
+        .push(TickId(24), GameInput::MoveHorizontal(42))
         .expect("Expected a move horizontal tick");
     assert_eq!(steps.len(), 2);
     assert_eq!(steps.front_tick_id().unwrap().value(), 23);
@@ -35,12 +35,12 @@ fn push_and_pop_step() {
 
 #[test_log::test]
 fn push_and_discard_count() {
-    let mut steps = Steps::<GameInput>::new(TickId(23));
+    let mut steps = Steps::new(TickId(23));
     steps
-        .push_with_check(TickId(23), GameInput::Jumping(true))
+        .push(TickId(23), GameInput::Jumping(true))
         .expect("Expected a jumping tick");
     steps
-        .push_with_check(TickId(24), GameInput::MoveHorizontal(42))
+        .push(TickId(24), GameInput::MoveHorizontal(42))
         .expect("Expected a move horizontal tick");
     assert_eq!(steps.len(), 2);
     steps.discard_count(8);
@@ -49,12 +49,12 @@ fn push_and_discard_count() {
 
 #[test_log::test]
 fn push_and_discard_up_to_lower() {
-    let mut steps = Steps::<GameInput>::new(TickId(23));
+    let mut steps = Steps::new(TickId(23));
     steps
-        .push_with_check(TickId(23), GameInput::Jumping(true))
+        .push(TickId(23), GameInput::Jumping(true))
         .expect("Expected a jumping tick");
     steps
-        .push_with_check(TickId(24), GameInput::MoveHorizontal(42))
+        .push(TickId(24), GameInput::MoveHorizontal(42))
         .expect("Expected a move horizontal tick");
     assert_eq!(steps.len(), 2);
     steps.discard_up_to(TickId(1));
@@ -63,12 +63,12 @@ fn push_and_discard_up_to_lower() {
 
 #[test_log::test]
 fn push_and_discard_up_to_equal() {
-    let mut steps = Steps::<GameInput>::new(TickId(23));
+    let mut steps = Steps::new(TickId(23));
     steps
-        .push_with_check(TickId(23), GameInput::Jumping(true))
+        .push(TickId(23), GameInput::Jumping(true))
         .expect("Expected a jumping tick");
     steps
-        .push_with_check(TickId(24), GameInput::MoveHorizontal(42))
+        .push(TickId(24), GameInput::MoveHorizontal(42))
         .expect("Expected a move horizontal tick");
     assert_eq!(steps.len(), 2);
     steps.discard_up_to(TickId::new(24));

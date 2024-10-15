@@ -15,25 +15,25 @@ It supports both direct manipulation of the step queue and indexed iteration, us
 ## Example
 
 ```rust
-use nimble_steps::{Steps, StepInfo};
-use tick_id::TickId;
-
-// Create a new Steps instance with an initial tick
-let mut steps = Steps::new(TickId::new(0));
-
-// Push steps into the queue
-steps.push_with_check(TickId::new(0), "Step 1").unwrap();
-steps.push_with_check(TickId::new(1), "Step 2").unwrap();
-
-// Pop the first step
-let step = steps.pop();
-assert_eq!(step.unwrap().step, "Step 1");
-
-// Iterate over remaining steps
-for step in steps.iter() {
- println!("Tick {}: {}", step.tick_id, step.step);
-}
-```
+* use nimble_steps::{Steps, StepInfo};
+* use tick_id::TickId;
+* 
+* // Create a new Steps instance with an initial tick
+* let mut steps = Steps::new(TickId::new(0));
+* 
+* // Push steps into the queue
+* steps.push(TickId::new(0), "Step 1").unwrap();
+* steps.push(TickId::new(1), "Step 2").unwrap();
+* 
+* // Pop the first step
+* let step = steps.pop();
+* assert_eq!(step.unwrap().step, "Step 1");
+* 
+* // Iterate over remaining steps
+* for step in steps.iter() {
+*  println!("Tick {}: {}", step.tick_id, step.step);
+* }
+* ```
 
 */
 
@@ -120,7 +120,7 @@ impl<StepType: Clone> Steps<StepType> {
         self.expected_write_id = initial_tick_id;
     }
 
-    pub fn push_with_check(&mut self, tick_id: TickId, step: StepType) -> Result<(), StepsError> {
+    pub fn push(&mut self, tick_id: TickId, step: StepType) -> Result<(), StepsError> {
         if self.expected_write_id != tick_id {
             Err(StepsError::WrongTickId {
                 expected: self.expected_write_id,
@@ -128,12 +128,12 @@ impl<StepType: Clone> Steps<StepType> {
             })?;
         }
 
-        self.push(step);
+        self.push_internal(step);
 
         Ok(())
     }
 
-    fn push(&mut self, step: StepType) {
+    fn push_internal(&mut self, step: StepType) {
         let info = StepInfo {
             step,
             tick_id: self.expected_write_id,
@@ -189,8 +189,8 @@ impl<StepType: Clone> Steps<StepType> {
     /// use tick_id::TickId;
     /// use nimble_steps::Steps;
     /// let mut steps = Steps::new(TickId::new(0));
-    /// steps.push_with_check(TickId::new(0), "Step 1").unwrap();
-    /// steps.push_with_check(TickId::new(1), "Step 2").unwrap();
+    /// steps.push(TickId::new(0), "Step 1").unwrap();
+    /// steps.push(TickId::new(1), "Step 2").unwrap();
     ///
     /// let result = steps.take(5);  // Will return up to 5 steps (in this case 2)
     /// if let Some((tick_id, popped_steps)) = result {

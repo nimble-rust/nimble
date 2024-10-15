@@ -327,7 +327,7 @@ impl<
         if step.is_empty() {
             Err(StepsError::CanNotPushEmptyPredictedSteps)?;
         }
-        self.outgoing_predicted_steps.push_with_check(tick_id, step)
+        self.outgoing_predicted_steps.push(tick_id, step)
     }
 
     pub fn predicted_step_count_in_queue(&self) -> usize {
@@ -443,7 +443,7 @@ impl<
                 if current_authoritative_tick_id
                     == self.incoming_authoritative_steps.expected_write_tick_id()
                 {
-                    self.incoming_authoritative_steps.push_with_check(
+                    self.incoming_authoritative_steps.push(
                         current_authoritative_tick_id,
                         combined_auth_step.clone(),
                     )?;

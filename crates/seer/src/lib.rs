@@ -132,7 +132,7 @@ where
             Err(SeerError::CanNotPushAtMaximumCapacity)?;
         }
         self.predicted_steps
-            .push_with_check(tick_id, predicted_step)?;
+            .push(tick_id, predicted_step)?;
         Ok(())
     }
 }
