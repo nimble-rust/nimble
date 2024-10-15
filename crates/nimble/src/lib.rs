@@ -2,12 +2,12 @@
  * Copyright (c) Peter Bjorklund. All rights reserved. https://github.com/nimble-rust/nimble
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
-pub use nimble_assent::prelude::*;
-pub use nimble_client::prelude::*;
-pub use nimble_host::prelude::*; // TODO: both host and client use the module name `logic`.
-pub use nimble_rectify::prelude::*;
-pub use nimble_sample_game::*;
-pub use nimble_seer::prelude::*;
-pub use nimble_step_types::*;
-pub use nimble_steps::*;
-pub use nimble_wrapped_step::*;
+pub use {
+    nimble_client::prelude::*,
+    nimble_host::prelude::*,
+    nimble_sample_game::*,
+    nimble_sample_step::*,
+    nimble_wrapped_step::*,
+    nimble_step::*,
+    nimble_step_types::StepForParticipants,
+};

@@ -8,5 +8,6 @@ pub use {
     datagram_chunker::DatagramChunkerError,
     err_rs::{ErrorLevel, ErrorLevelProvider},
     nimble_host_logic::err::HostLogicError,
+    nimble_host_logic::{GameStateProvider, HostConnectionId},
     nimble_layer::NimbleLayerError,
 };

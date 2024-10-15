@@ -22,11 +22,11 @@ and consistency of the game state across all participants.
 ## Features
 
 - **Connection Management**: Handles connecting to the host, agreeing on protocol versions,
-and managing connection states.
+    and managing connection states.
 - **Game State Handling**: Downloads and maintains the complete game state from the host.
 - **Participant Management**: Adds and removes players from the game session dynamically.
 - **Step Prediction and Reconciliation**: Sends predicted player steps to the host and reconciles 
-them with authoritative steps received from the host.
+    them with authoritative steps received from the host.
 - **Blob Streaming**: Manages blob streaming for efficient game state transfers.
 
 ## Usage

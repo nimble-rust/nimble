@@ -10,6 +10,7 @@ pub mod session;
 
 use crate::connection::Connection;
 use crate::err::HostLogicError;
+use crate::session::GameSession;
 use app_version::Version;
 use flood_rs::{Deserialize, Serialize};
 use freelist_rs::FreeList;
@@ -19,9 +20,8 @@ use nimble_protocol::prelude::{ClientToHostCommands, HostToClientCommands};
 use nimble_protocol::NIMBLE_PROTOCOL_VERSION;
 use nimble_step::Step;
 use std::collections::HashMap;
-use std::fmt::Debug;
+use std::fmt::{Debug, Display};
 use tick_id::TickId;
-use crate::session::GameSession;
 
 pub trait GameStateProvider {
     fn state(&self, tick_id: TickId) -> (TickId, Vec<u8>);
@@ -40,10 +40,17 @@ pub const NIMBLE_VERSION: Version = Version::new(
     NIMBLE_PROTOCOL_VERSION.patch,
 );
 
+/// Identifier for a host connection.
+///
+/// Wraps a `u8` value representing the unique connection ID.
 #[derive(Debug, Copy, Clone)]
 pub struct HostConnectionId(pub u8);
 
-pub struct HostLogic<StepT: Clone + Eq + Debug + Deserialize + Serialize + std::fmt::Display> {
+
+/// Core logic handler for the Nimble host.
+///
+/// Manages connections, game sessions, and processes client commands.
+pub struct HostLogic<StepT: Clone + Eq + Debug + Deserialize + Serialize + Display> {
     #[allow(unused)]
     connections: HashMap<u8, Connection<StepT>>,
     session: GameSession<StepT>,
@@ -51,7 +58,17 @@ pub struct HostLogic<StepT: Clone + Eq + Debug + Deserialize + Serialize + std::
     deterministic_simulation_version: Version,
 }
 
-impl<StepT: Clone + Eq + Debug + Deserialize + Serialize + std::fmt::Display> HostLogic<StepT> {
+impl<StepT: Clone + Eq + Debug + Deserialize + Serialize + Display> HostLogic<StepT> {
+    /// Creates a new instance of `HostLogic`.
+    ///
+    /// # Parameters
+    ///
+    /// - `tick_id`: The initial tick identifier for the game session.
+    /// - `deterministic_simulation_version`: The version of the deterministic simulation.
+    ///
+    /// # Returns
+    ///
+    /// A new `HostLogic` instance.
     pub fn new(tick_id: TickId, deterministic_simulation_version: Version) -> Self {
         Self {
             connections: HashMap::new(),
@@ -61,6 +78,13 @@ impl<StepT: Clone + Eq + Debug + Deserialize + Serialize + std::fmt::Display> Ho
         }
     }
 
+    /// Creates a new connection and returns its identifier.
+    ///
+    /// Allocates a unique `HostConnectionId` for a new client connection.
+    ///
+    /// # Returns
+    ///
+    /// An `Option` containing the new `HostConnectionId` if allocation is successful, or `None` if the limit is reached.
     pub fn create_connection(&mut self) -> Option<HostConnectionId> {
         let new_connection_id = self.free_list.allocate();
         if let Some(id) = new_connection_id {
@@ -71,10 +95,28 @@ impl<StepT: Clone + Eq + Debug + Deserialize + Serialize + std::fmt::Display> Ho
         }
     }
 
+    /// Retrieves a reference to a connection by its identifier.
+    ///
+    /// # Parameters
+    ///
+    /// - `connection_id`: The `HostConnectionId` of the connection to retrieve.
+    ///
+    /// # Returns
+    ///
+    /// An `Option` containing a reference to the `Connection` if found, or `None` otherwise.
     pub fn get(&self, connection_id: HostConnectionId) -> Option<&Connection<StepT>> {
         self.connections.get(&connection_id.0)
     }
 
+    /// Destroys a connection, freeing its identifier.
+    ///
+    /// # Parameters
+    ///
+    /// - `connection_id`: The `HostConnectionId` of the connection to destroy.
+    ///
+    /// # Returns
+    ///
+    /// A `Result` indicating success or a `HostLogicError` if the connection ID is invalid.
     pub fn destroy_connection(
         &mut self,
         connection_id: HostConnectionId,
@@ -93,14 +135,37 @@ impl<StepT: Clone + Eq + Debug + Deserialize + Serialize + std::fmt::Display> Ho
         }
     }
 
+    /// Retrieves a reference to the current game session.
+    ///
+    /// # Returns
+    ///
+    /// A reference to the `GameSession`.
     pub fn session(&self) -> &GameSession<StepT> {
         &self.session
     }
 
+    /// Performs post-update operations after the main `update` cycle.
+    ///
+    /// Specifically, it triggers the production of authoritative steps within the session's combinator.
     pub fn post_update(&mut self) {
         self.session.combinator.produce_authoritative_steps()
     }
 
+    /// Processes an update from a client connection.
+    ///
+    /// Handles incoming client commands and updates the game state accordingly.
+    ///
+    /// # Parameters
+    ///
+    /// - `connection_id`: The `HostConnectionId` of the client sending the commands.
+    /// - `now`: The current absolute time in milliseconds precision.
+    /// - `request`: The `ClientToHostCommands` sent by the client.
+    /// - `state_provider`: An implementation of `GameStateProvider` to supply game state data.
+    ///
+    /// # Returns
+    ///
+    /// A `Result` containing a vector of `HostToClientCommands` to be sent back to the client,
+    /// or a `HostLogicError` if processing fails.
     pub fn update(
         &mut self,
         connection_id: HostConnectionId,

@@ -3,22 +3,25 @@
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
 
-//! # Nimble Client 🕹
-//!
-//! **Nimble Client** is a Rust crate designed to manage networking tasks for multiplayer games.
-//! It handles downloading the complete game state from a host, managing participants by sending
-//! requests to the host, sending predicted inputs (steps) to the host for smoother gameplay, and
-//! receiving authoritative steps to ensure consistent game state.
-//!
-//! ## Features
-//!
-//! - **Game State Downloading:** Fetch the entire game state from the host. 🗂️
-//! - **Participant Management:** Add and remove players by sending requests to the host. ➕➖
-//! - **Input Prediction:** Send predicted inputs (steps) to the host for reduced latency. 🔮
-//! - **Authoritative Step Handling:** Receive and apply authoritative steps from the host to
-//! maintain game state consistency. 📥📤
-//! - **Metrics and Logging:** Built-in support for network metrics and logging to monitor and
-//! debug client operations. 📊🛠️
+/*!
+
+# Nimble Client 🕹
+**Nimble Client** is a Rust crate designed to manage networking tasks for multiplayer games.
+It handles downloading the complete game state from a host, managing participants by sending
+requests to the host, sending predicted inputs (steps) to the host for smoother gameplay, and
+receiving authoritative steps to ensure consistent game state.
+
+## Features
+
+- **Game State Downloading:** Fetch the entire game state from the host. 🗂️
+- **Participant Management:** Add and remove players by sending requests to the host. ➕➖
+- **Input Prediction:** Send predicted inputs (steps) to the host for reduced latency. 🔮
+- **Authoritative Step Handling:** Receive and apply authoritative steps from the host to
+    maintain game state consistency. 📥📤
+- **Metrics and Logging:** Built-in support for network metrics and logging to monitor and
+    debug client operations. 📊🛠️
+
+*/
 
 pub mod err;
 pub mod prelude;

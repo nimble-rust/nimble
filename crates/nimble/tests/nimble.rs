@@ -2,31 +2,36 @@
  * Copyright (c) Peter Bjorklund. All rights reserved. https://github.com/nimble-rust/nimble
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
-use app_version::Version;
-use flood_rs::{BufferDeserializer, Deserialize, Serialize};
 use log::trace;
-use monotonic_time_rs::Millis;
-use nimble_client_logic::ClientLogic;
-use nimble_host_logic::{GameStateProvider, HostConnectionId, HostLogic};
-use nimble_sample_game::{SampleGame, SampleGameState, SampleStep};
-use nimble_step::Step;
 use std::fmt::{Debug, Display};
+
+use app_version::VersionProvider;
+use flood_rs::{BufferDeserializer, Deserialize, Serialize};
+use monotonic_time_rs::Millis;
 use tick_id::TickId;
 
+use nimble_step::Step;
+
+use nimble_client::prelude::{Client, GameCallbacks};
+use nimble_host::prelude::{GameStateProvider, Host, HostConnectionId};
+
+use nimble_sample_game::SampleGame;
+use nimble_sample_step::SampleStep;
+
 fn communicate<
-    SampleState: BufferDeserializer,
-    SampleStep: Clone + Deserialize + Debug + Display + Eq + PartialEq,
+    GameT: BufferDeserializer + VersionProvider + GameCallbacks<StepT> + Debug,
+    StepT: Clone + Deserialize + Debug + Display + Eq + PartialEq,
 >(
-    host: &mut HostLogic<Step<SampleStep>>,
+    host: &mut Host<Step<StepT>>,
     state_provider: &impl GameStateProvider,
     connection_id: HostConnectionId,
-    client: &mut ClientLogic<SampleState, Step<SampleStep>>,
+    client: &mut Client<GameT, StepT>,
 ) where
-    SampleStep: Serialize,
+    StepT: Serialize,
 {
     let now = Millis::new(0);
 
-    let to_host = client.send();
+    let to_host = client.send(now).expect("should work");
     for cmd in &to_host {
         trace!("client >> host: {cmd:?}");
     }
@@ -43,7 +48,7 @@ fn communicate<
     }
 
     for to_client_cmd in to_client {
-        client.receive(&to_client_cmd).expect("TODO: panic message");
+        client.receive(now, &to_client_cmd).expect("TODO: panic message");
     }
 }
 
@@ -68,14 +73,15 @@ fn client_host_integration() {
         tick_id: TickId(42),
         payload: state_octets,
     };
-    let simulation_version = Version::new(1, 0, 0);
+    let simulation_version = SampleGame::version();
 
-    let mut host = HostLogic::<Step<SampleStep>>::new(TickId(42), simulation_version.clone());
+    let mut host = Host::<Step<SampleStep>>::new(simulation_version, TickId(42));
     let connection = host.create_connection().expect("should create connection");
+    let now = Millis::new(0);
 
-    let mut client = ClientLogic::<SampleGameState, Step<SampleStep>>::new(simulation_version);
+    let mut client = Client::<SampleGame, SampleStep>::new(now);
 
-    client.set_joining_player([0].into());
+    //client([0].into());
 
     communicate(&mut host, &game_state_provider, connection, &mut client);
 }

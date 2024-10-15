@@ -139,8 +139,7 @@ impl NimbleLayer {
         for datagram in &datagrams {
             let mut stream = OutOctetStream::new();
 
-            // Serialize
-            self.ordered_datagram_out.to_stream(&mut stream)?; // Ordered datagrams
+            self.ordered_datagram_out.to_stream(&mut stream)?;
 
             client_time.serialize(&mut stream)?;
 
