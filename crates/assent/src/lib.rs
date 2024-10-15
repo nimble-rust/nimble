@@ -2,7 +2,6 @@
  * Copyright (c) Peter Bjorklund. All rights reserved. https://github.com/nimble-rust/nimble
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
-
 /*!
 
 `nimble-assent` is a library designed for deterministic simulation of game logic based on player input.
@@ -58,7 +57,7 @@ pub trait AssentCallback<CombinedStepT> {
 }
 
 /// Enum representing the state of an update cycle in the `Assent` simulation.
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum UpdateState {
     ConsumedAllKnowledge,
     DidNotConsumeAllKnowledge,
@@ -96,7 +95,7 @@ where
     CombinedStepT: Clone + Debug + Display,
 {
     fn default() -> Self {
-        Assent::new(Settings::default())
+        Self::new(Settings::default())
     }
 }
 
@@ -105,10 +104,11 @@ where
     C: AssentCallback<CombinedStepT>,
     CombinedStepT: Clone + Debug + Display,
 {
+    #[must_use]
     pub fn new(settings: Settings) -> Self {
-        Assent {
+        Self {
             phantom: PhantomData {},
-            steps: Default::default(),
+            steps: Queue::default(),
             settings,
         }
     }
@@ -123,17 +123,20 @@ where
     }
 
     /// Returns the next expected `TickId` for inserting new steps.
-    pub fn next_expected_tick_id(&self) -> TickId {
+    #[must_use]
+    pub const fn next_expected_tick_id(&self) -> TickId {
         self.steps.expected_write_tick_id()
     }
 
     /// Returns the most recent `TickId`, or `None` if no steps have been added.
+    #[must_use]
     pub fn end_tick_id(&self) -> Option<TickId> {
         self.steps.back_tick_id()
     }
 
     /// Returns a reference to the underlying steps for debugging purposes.
-    pub fn debug_steps(&self) -> &Queue<CombinedStepT> {
+    #[must_use]
+    pub const fn debug_steps(&self) -> &Queue<CombinedStepT> {
         &self.steps
     }
 
@@ -141,6 +144,7 @@ where
     ///
     /// This method processes up to `max_ticks_per_update` steps (ticks) and returns an
     /// `UpdateState` indicating whether all steps were processed or if some remain.
+    #[must_use]
     pub fn update(&mut self, callback: &mut C) -> UpdateState {
         if self.steps.is_empty() {
             trace!("notice: assent steps are empty");
