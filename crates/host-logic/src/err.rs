@@ -3,14 +3,14 @@
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
 
+use crate::combinator::CombinatorError;
+use crate::combine::HostCombinatorError;
+use crate::HostConnectionId;
 use err_rs::{ErrorLevel, ErrorLevelProvider};
 use freelist_rs::FreeListError;
 use nimble_blob_stream::out_stream::OutStreamError;
 use nimble_participant::ParticipantId;
-use nimble_steps::StepsError;
-use crate::combinator::CombinatorError;
-use crate::combine::HostCombinatorError;
-use crate::HostConnectionId;
+use tick_queue::QueueError;
 
 #[derive(Debug)]
 pub enum HostLogicError {
@@ -27,7 +27,7 @@ pub enum HostLogicError {
     HostCombinatorError(HostCombinatorError),
     NeedConnectRequestFirst,
     WrongApplicationVersion,
-    StepsError(StepsError),
+    QueueError(QueueError),
 }
 
 impl ErrorLevelProvider for HostLogicError {
@@ -43,7 +43,7 @@ impl ErrorLevelProvider for HostLogicError {
             Self::HostCombinatorError(err) => err.error_level(),
             Self::NeedConnectRequestFirst => ErrorLevel::Info,
             Self::WrongApplicationVersion => ErrorLevel::Critical,
-            Self::StepsError(_) => ErrorLevel::Critical,
+            Self::QueueError(_) => ErrorLevel::Critical,
         }
     }
 }
@@ -54,9 +54,9 @@ impl From<CombinatorError> for HostLogicError {
     }
 }
 
-impl From<StepsError> for HostLogicError {
-    fn from(err: StepsError) -> Self {
-        Self::StepsError(err)
+impl From<QueueError> for HostLogicError {
+    fn from(err: QueueError) -> Self {
+        Self::QueueError(err)
     }
 }
 

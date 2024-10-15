@@ -10,7 +10,7 @@ repository = "https://github.com/nimble-rust/rectify"
 [dependencies]
 nimble-assent = { path = "../assent", version = "0.0.14-dev" }
 nimble-seer = { path = "../seer", version = "0.0.14-dev" }
-nimble-steps = { path = "../steps", version = "0.0.14-dev" }
+tick-queue = "0.0.2"
 nimble-participant = { path = "../participant", version = "0.0.14-dev" }
 err-rs = "0.0.4"
 log = "0.4.22"

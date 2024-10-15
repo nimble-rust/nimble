@@ -18,7 +18,7 @@ app-version = "0.0.2"
 
 nimble-step-types = { path = "../step-types", version = "0.0.14-dev" }
 nimble-step = { path = "../step", version = "0.0.14-dev" }
-nimble-steps = { path = "../steps", version = "0.0.14-dev" }
+tick-queue = "0.0.2"
 nimble-protocol = { path = "../protocol", version = "0.0.14-dev" }
 nimble-blob-stream = { path = "../blob-stream", version = "0.0.14-dev" }
 nimble-participant = { path = "../participant", version = "0.0.14-dev" }

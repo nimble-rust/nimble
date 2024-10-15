@@ -9,7 +9,7 @@ repository = "https://github.com/nimble-rust/host"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-nimble-steps = { path = "../steps", version = "0.0.14-dev" }
+tick-queue = "0.0.2"
 nimble-participant = { path = "../participant", version = "0.0.14-dev" }
 nimble-blob-stream = { path = "../blob-stream", version = "0.0.14-dev" }
 tick-id = "0.0.9"

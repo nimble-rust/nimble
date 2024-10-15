@@ -4,14 +4,13 @@
  */
 use err_rs::{ErrorLevel, ErrorLevelProvider};
 use log::trace;
-use seq_map::SeqMapError;
-use std::collections::HashMap;
-use tick_id::TickId;
-
 use nimble_participant::ParticipantId;
 use nimble_step::Step;
 use nimble_step_types::StepForParticipants;
-use nimble_steps::{Steps, StepsError};
+use seq_map::SeqMapError;
+use std::collections::HashMap;
+use tick_id::TickId;
+use tick_queue::{Queue, QueueError};
 
 #[derive(Debug)]
 pub enum CombinatorError {
@@ -22,12 +21,12 @@ pub enum CombinatorError {
     OtherError,
     SeqMapError(SeqMapError),
     NoBufferForParticipant,
-    StepsError(StepsError),
+    QueueError(QueueError),
 }
 
-impl From<StepsError> for CombinatorError {
-    fn from(e: StepsError) -> Self {
-        Self::StepsError(e)
+impl From<QueueError> for CombinatorError {
+    fn from(e: QueueError) -> Self {
+        Self::QueueError(e)
     }
 }
 
@@ -38,7 +37,7 @@ impl ErrorLevelProvider for CombinatorError {
             Self::OtherError => ErrorLevel::Info,
             Self::SeqMapError(_) => ErrorLevel::Info,
             Self::NoBufferForParticipant => ErrorLevel::Info,
-            Self::StepsError(_) => ErrorLevel::Critical,
+            Self::QueueError(_) => ErrorLevel::Critical,
         }
     }
 }
@@ -51,7 +50,7 @@ impl From<SeqMapError> for CombinatorError {
 
 #[derive(Default)]
 pub struct Combinator<T: Clone> {
-    pub in_buffers: HashMap<ParticipantId, Steps<T>>,
+    pub in_buffers: HashMap<ParticipantId, Queue<T>>,
     pub tick_id_to_produce: TickId,
 }
 
@@ -64,7 +63,7 @@ impl<T: Clone + std::fmt::Display> Combinator<T> {
     }
 
     pub fn create_buffer(&mut self, id: ParticipantId) {
-        self.in_buffers.insert(id, Steps::new());
+        self.in_buffers.insert(id, Queue::default());
     }
 
     pub fn add(
@@ -81,7 +80,7 @@ impl<T: Clone + std::fmt::Display> Combinator<T> {
         }
     }
 
-    pub fn get_mut(&mut self, id: &ParticipantId) -> Option<&mut Steps<T>> {
+    pub fn get_mut(&mut self, id: &ParticipantId) -> Option<&mut Queue<T>> {
         self.in_buffers.get_mut(id)
     }
 
@@ -137,7 +136,7 @@ impl<T: Clone + std::fmt::Display> Combinator<T> {
                     );
                     combined_step
                         .combined_step
-                        .insert(*participant_id, Step::Custom(steps.pop().unwrap().step))?;
+                        .insert(*participant_id, Step::Custom(steps.pop().unwrap().item))?;
                 } else {
                     trace!(
                         "did not find step from {} for {}, setting it to forced",

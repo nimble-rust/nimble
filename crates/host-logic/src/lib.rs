@@ -27,7 +27,6 @@ pub trait GameStateProvider {
     fn state(&self, tick_id: TickId) -> (TickId, Vec<u8>);
 }
 
-
 #[derive(Debug, PartialEq, Eq)]
 pub enum Phase {
     WaitingForValidConnectRequest,
@@ -45,7 +44,6 @@ pub const NIMBLE_VERSION: Version = Version::new(
 /// Wraps a `u8` value representing the unique connection ID.
 #[derive(Debug, Copy, Clone)]
 pub struct HostConnectionId(pub u8);
-
 
 /// Core logic handler for the Nimble host.
 ///

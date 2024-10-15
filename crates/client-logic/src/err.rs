@@ -6,8 +6,8 @@ use err_rs::{ErrorLevel, ErrorLevelProvider};
 use nimble_blob_stream::in_logic_front::FrontLogicError;
 use nimble_blob_stream::prelude::BlobError;
 use nimble_protocol::ClientRequestId;
-use nimble_steps::StepsError;
 use std::{fmt, io};
+use tick_queue::QueueError;
 
 #[derive(Debug)]
 pub enum ClientLogicError {
@@ -22,8 +22,9 @@ pub enum ClientLogicError {
     UnexpectedBlobChannelCommand,
     BlobError(BlobError),
     FrontLogicErr(FrontLogicError),
-    StepsError(StepsError),
+    QueueError(QueueError),
     ReceivedConnectResponseWhenNotConnecting,
+    CanNotPushEmptyPredictedSteps,
 }
 
 impl From<BlobError> for ClientLogicError {
@@ -32,9 +33,9 @@ impl From<BlobError> for ClientLogicError {
     }
 }
 
-impl From<StepsError> for ClientLogicError {
-    fn from(err: StepsError) -> Self {
-        Self::StepsError(err)
+impl From<QueueError> for ClientLogicError {
+    fn from(err: QueueError) -> Self {
+        Self::QueueError(err)
     }
 }
 
@@ -59,10 +60,11 @@ impl ErrorLevelProvider for ClientLogicError {
             Self::DownloadResponseWasUnexpected => ErrorLevel::Info,
             Self::UnexpectedBlobChannelCommand => ErrorLevel::Info,
             Self::FrontLogicErr(err) => err.error_level(),
-            Self::StepsError(_) => ErrorLevel::Critical,
+            Self::QueueError(_) => ErrorLevel::Critical,
             Self::ReceivedConnectResponseWhenNotConnecting => ErrorLevel::Info,
             Self::BlobError(_) => ErrorLevel::Warning,
             Self::WrongJoinResponseRequestId { .. } => ErrorLevel::Info,
+            Self::CanNotPushEmptyPredictedSteps => ErrorLevel::Critical,
         }
     }
 }
@@ -84,7 +86,7 @@ impl fmt::Display for ClientLogicError {
             }
             Self::UnexpectedBlobChannelCommand => write!(f, "UnexpectedBlobChannelCommand"),
             Self::FrontLogicErr(err) => write!(f, "front logic err {err:?}"),
-            Self::StepsError(err) => write!(f, "StepsError: {err:?}"),
+            Self::QueueError(err) => write!(f, "Steps queue err: {err:?}"),
             Self::ReceivedConnectResponseWhenNotConnecting => {
                 write!(f, "ReceivedConnectResponseWhenNotConnecting")
             }
@@ -96,6 +98,7 @@ impl fmt::Display for ClientLogicError {
                 f,
                 "wrong join response, expected {expected:?}, encountered: {encountered:?}"
             ),
+            Self::CanNotPushEmptyPredictedSteps => write!(f, "CanNotPushEmptyPredictedSteps"),
         }
     }
 }

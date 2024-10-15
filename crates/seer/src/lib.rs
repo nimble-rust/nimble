@@ -6,10 +6,10 @@ pub mod prelude;
 
 use err_rs::{ErrorLevel, ErrorLevelProvider};
 use log::trace;
-use nimble_steps::{Steps, StepsError};
 use std::fmt::{Debug, Display};
 use std::marker::PhantomData;
 use tick_id::TickId;
+use tick_queue::{Queue, QueueError};
 
 pub trait SeerCallback<CombinedStepT> {
     fn on_pre_ticks(&mut self) {}
@@ -22,20 +22,20 @@ pub trait SeerCallback<CombinedStepT> {
 #[derive(Debug)]
 pub enum SeerError {
     CanNotPushAtMaximumCapacity,
-    StepsError(StepsError),
+    QueueError(QueueError),
 }
 
-impl From<StepsError> for SeerError {
-    fn from(error: StepsError) -> Self {
-        SeerError::StepsError(error)
+impl From<QueueError> for SeerError {
+    fn from(error: QueueError) -> Self {
+        Self::QueueError(error)
     }
 }
 
 impl ErrorLevelProvider for SeerError {
     fn error_level(&self) -> ErrorLevel {
         match self {
-            SeerError::CanNotPushAtMaximumCapacity => ErrorLevel::Warning,
-            SeerError::StepsError(_) => ErrorLevel::Critical,
+            Self::CanNotPushAtMaximumCapacity => ErrorLevel::Warning,
+            Self::QueueError(_) => ErrorLevel::Critical,
         }
     }
 }
@@ -68,7 +68,7 @@ pub struct Seer<Callback, CombinedStepT>
 where
     Callback: SeerCallback<CombinedStepT>,
 {
-    predicted_steps: Steps<CombinedStepT>,
+    predicted_steps: Queue<CombinedStepT>,
     authoritative_has_changed: bool,
     settings: Settings,
     phantom: PhantomData<Callback>,
@@ -81,14 +81,14 @@ where
 {
     pub fn new(settings: Settings) -> Self {
         Seer {
-            predicted_steps: Steps::new(),
+            predicted_steps: Queue::default(),
             phantom: PhantomData,
             authoritative_has_changed: false,
             settings,
         }
     }
 
-    pub fn predicted_steps(&self) -> &Steps<CombinedStepT> {
+    pub fn predicted_steps(&self) -> &Queue<CombinedStepT> {
         &self.predicted_steps
     }
 
@@ -105,7 +105,7 @@ where
         for combined_step_info in self.predicted_steps.iter() {
             trace!("tick {}", combined_step_info);
 
-            callback.on_tick(&combined_step_info.step);
+            callback.on_tick(&combined_step_info.item);
         }
 
         trace!("post_ticks");
@@ -131,8 +131,7 @@ where
         if self.predicted_steps.len() >= self.settings.max_predicted_steps_capacity {
             Err(SeerError::CanNotPushAtMaximumCapacity)?;
         }
-        self.predicted_steps
-            .push(tick_id, predicted_step)?;
+        self.predicted_steps.push(tick_id, predicted_step)?;
         Ok(())
     }
 }

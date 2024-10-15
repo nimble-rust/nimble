@@ -5,7 +5,7 @@
 
 pub use {
     crate::{err::ClientError, Client, GameCallbacks},
-    nimble_rectify::RectifyCallbacks,
     nimble_assent::AssentCallback,
+    nimble_rectify::RectifyCallbacks,
     nimble_seer::SeerCallback,
 };

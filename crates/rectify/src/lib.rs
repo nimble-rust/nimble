@@ -8,9 +8,9 @@ use err_rs::{ErrorLevel, ErrorLevelProvider};
 use log::trace;
 use nimble_assent::{Assent, AssentCallback, UpdateState};
 use nimble_seer::{Seer, SeerCallback, SeerError};
-use nimble_steps::StepsError;
 use std::fmt::Debug;
 use tick_id::TickId;
+use tick_queue::QueueError;
 
 #[derive(Debug)]
 pub enum RectifyError {
@@ -19,7 +19,7 @@ pub enum RectifyError {
         encountered: TickId,
     },
     SeerError(SeerError),
-    StepsError(StepsError),
+    QueueError(QueueError),
 }
 
 impl From<SeerError> for RectifyError {
@@ -28,9 +28,9 @@ impl From<SeerError> for RectifyError {
     }
 }
 
-impl From<StepsError> for RectifyError {
-    fn from(value: StepsError) -> Self {
-        Self::StepsError(value)
+impl From<QueueError> for RectifyError {
+    fn from(value: QueueError) -> Self {
+        Self::QueueError(value)
     }
 }
 
@@ -39,7 +39,7 @@ impl ErrorLevelProvider for RectifyError {
         match self {
             Self::WrongTickId { .. } => ErrorLevel::Critical,
             Self::SeerError(err) => err.error_level(),
-            Self::StepsError(_) => ErrorLevel::Critical,
+            Self::QueueError(_) => ErrorLevel::Critical,
         }
     }
 }

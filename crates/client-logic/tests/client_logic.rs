@@ -15,10 +15,10 @@ use nimble_sample_step::{SampleState, SampleStep};
 use nimble_step::Step;
 use nimble_step::Step::{Custom, Forced};
 use nimble_step_types::StepForParticipants;
-use nimble_steps::{StepInfo, StepsError};
 use seq_map::SeqMap;
 use std::fmt::Debug;
 use tick_id::TickId;
+use tick_queue::ItemInfo;
 
 #[test_log::test]
 fn basic_logic() {
@@ -69,7 +69,7 @@ fn setup_logic<
 }
 
 #[test_log::test]
-fn send_steps() -> Result<(), StepsError> {
+fn send_steps() -> Result<(), ClientLogicError> {
     let mut client_logic = setup_logic::<SampleState, Step<SampleStep>>();
 
     client_logic.push_predicted_step(
@@ -185,8 +185,8 @@ fn receive_authoritative_steps() -> Result<(), ClientLogicError> {
         combined_step: expected_hash_map,
     };
 
-    let expected_step_with_step_info = StepInfo::<StepForParticipants<Step<SampleStep>>> {
-        step: expected_step,
+    let expected_step_with_step_info = ItemInfo::<StepForParticipants<Step<SampleStep>>> {
+        item: expected_step,
         tick_id: TickId(1),
     };
 

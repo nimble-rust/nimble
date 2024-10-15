@@ -48,7 +48,9 @@ fn communicate<
     }
 
     for to_client_cmd in to_client {
-        client.receive(now, &to_client_cmd).expect("TODO: panic message");
+        client
+            .receive(now, &to_client_cmd)
+            .expect("TODO: panic message");
     }
 }
 

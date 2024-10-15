@@ -17,8 +17,6 @@ The `nimble-host` crate provides the core functionality for managing game sessio
 
 */
 
-
-
 pub mod err;
 pub mod prelude;
 
@@ -29,20 +27,20 @@ use flood_rs::{Deserialize, Serialize};
 use hexify::format_hex;
 use log::{debug, trace};
 use monotonic_time_rs::Millis;
-use nimble_host_logic::{connection::Connection, session::GameSession, GameStateProvider, HostLogic};
+use nimble_host_logic::{
+    connection::Connection, session::GameSession, GameStateProvider, HostLogic,
+};
 use nimble_layer::NimbleLayer;
 use nimble_protocol::prelude::ClientToHostCommands;
 use std::collections::HashMap;
 use std::fmt::{Debug, Display};
 use tick_id::TickId;
 
-
 /// Represents a connection managed by the host.
 #[derive(Default, Debug)]
 pub struct HostConnection {
     layer: NimbleLayer,
 }
-
 
 impl HostConnection {
     pub fn new() -> Self {
@@ -75,7 +73,6 @@ pub struct Host<StepT: Clone + Debug + Eq + Deserialize + Serialize + Display> {
 }
 
 impl<StepT: Clone + Deserialize + Serialize + Eq + Debug + Display> Host<StepT> {
-
     /// Creates a new Host instance with the specified application version and initial tick ID.
     ///
     /// # Arguments
@@ -223,8 +220,7 @@ impl<StepT: Clone + Deserialize + Serialize + Eq + Debug + Display> Host<StepT> 
     ) -> Result<(), HostError> {
         debug!("destroying connection {:?}", connection_id);
         self.connections.remove(&connection_id.0);
-        self.logic
-            .destroy_connection(connection_id)?;
+        self.logic.destroy_connection(connection_id)?;
         Ok(())
     }
 }

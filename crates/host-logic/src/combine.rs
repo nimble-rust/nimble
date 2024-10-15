@@ -8,18 +8,18 @@ use nimble_participant::ParticipantId;
 
 use nimble_step::Step;
 use nimble_step_types::StepForParticipants;
-use nimble_steps::{Steps, StepsError};
 use tick_id::TickId;
+use tick_queue::{Queue, QueueError};
 
 #[derive(Debug)]
 pub enum HostCombinatorError {
     NoBufferForParticipant,
-    StepsError(StepsError),
+    QueueError(QueueError),
 }
 
-impl From<StepsError> for HostCombinatorError {
-    fn from(error: StepsError) -> Self {
-        Self::StepsError(error)
+impl From<QueueError> for HostCombinatorError {
+    fn from(error: QueueError) -> Self {
+        Self::QueueError(error)
     }
 }
 
@@ -27,7 +27,7 @@ impl ErrorLevelProvider for HostCombinatorError {
     fn error_level(&self) -> ErrorLevel {
         match self {
             Self::NoBufferForParticipant => ErrorLevel::Warning,
-            Self::StepsError(_) => ErrorLevel::Critical,
+            Self::QueueError(_) => ErrorLevel::Critical,
         }
     }
 }
@@ -35,7 +35,7 @@ impl ErrorLevelProvider for HostCombinatorError {
 #[allow(unused)]
 pub struct HostCombinator<T: Clone + std::fmt::Display> {
     combinator: Combinator<T>,
-    authoritative_steps: Steps<StepForParticipants<Step<T>>>,
+    authoritative_steps: Queue<StepForParticipants<Step<T>>>,
 }
 
 #[allow(unused)]
@@ -43,7 +43,7 @@ impl<T: Clone + std::fmt::Display> HostCombinator<T> {
     pub fn new(tick_id: TickId) -> Self {
         Self {
             combinator: Combinator::<T>::new(tick_id),
-            authoritative_steps: Steps::new(),
+            authoritative_steps: Queue::default(),
         }
     }
 
@@ -55,11 +55,11 @@ impl<T: Clone + std::fmt::Display> HostCombinator<T> {
         self.combinator.create_buffer(participant_id)
     }
 
-    pub fn get_mut(&mut self, participant_id: &ParticipantId) -> Option<&mut Steps<T>> {
+    pub fn get_mut(&mut self, participant_id: &ParticipantId) -> Option<&mut Queue<T>> {
         self.combinator.in_buffers.get_mut(participant_id)
     }
 
-    pub fn authoritative_steps(&self) -> &Steps<StepForParticipants<Step<T>>> {
+    pub fn authoritative_steps(&self) -> &Queue<StepForParticipants<Step<T>>> {
         &self.authoritative_steps
     }
 

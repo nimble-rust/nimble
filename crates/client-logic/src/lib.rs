@@ -7,7 +7,7 @@
 
 # Nimble Client Logic
 
-`nimble-client-logic` is a Rust crate designed to manage the client-side logic for multiplayer game 
+`nimble-client-logic` is a Rust crate designed to manage the client-side logic for multiplayer game
 sessions using the Nimble protocol. It handles the creation and processing of messages,
 including requests and responses:
 
@@ -25,7 +25,7 @@ and consistency of the game state across all participants.
     and managing connection states.
 - **Game State Handling**: Downloads and maintains the complete game state from the host.
 - **Participant Management**: Adds and removes players from the game session dynamically.
-- **Step Prediction and Reconciliation**: Sends predicted player steps to the host and reconciles 
+- **Step Prediction and Reconciliation**: Sends predicted player steps to the host and reconciles
     them with authoritative steps received from the host.
 - **Blob Streaming**: Manages blob streaming for efficient game state transfers.
 
@@ -59,9 +59,9 @@ use nimble_protocol::prelude::*;
 use nimble_protocol::{ClientRequestId, NIMBLE_PROTOCOL_VERSION};
 use nimble_step::Step;
 use nimble_step_types::{LocalIndex, StepForParticipants};
-use nimble_steps::{Steps, StepsError};
 use std::fmt::Debug;
 use tick_id::TickId;
+use tick_queue::Queue;
 
 /// Represents the various phases of the client logic.
 #[derive(Debug, PartialEq, Eq)]
@@ -111,10 +111,10 @@ pub struct ClientLogic<
     blob_stream_client: FrontLogic,
 
     /// Stores the outgoing predicted steps from the client.
-    outgoing_predicted_steps: Steps<StepForParticipants<StepT>>,
+    outgoing_predicted_steps: Queue<StepForParticipants<StepT>>,
 
     /// Stores the incoming authoritative steps from the host.
-    incoming_authoritative_steps: Steps<StepForParticipants<Step<StepT>>>,
+    incoming_authoritative_steps: Queue<StepForParticipants<Step<StepT>>>,
 
     /// Represents the current phase of the client's logic.
     phase: ClientLogicPhase,
@@ -142,8 +142,8 @@ impl<
             joining_player: None,
             joining_request_id: ClientRequestId(0),
             blob_stream_client: FrontLogic::new(),
-            outgoing_predicted_steps: Steps::new(),
-            incoming_authoritative_steps: Steps::new(),
+            outgoing_predicted_steps: Queue::default(),
+            incoming_authoritative_steps: Queue::default(),
             server_buffer_delta_tick_id: AggregateMetric::new(3).unwrap(),
             //server_buffer_count: AggregateMetric::new(3).unwrap(),
             state: None,
@@ -155,7 +155,7 @@ impl<
     }
 
     /// Returns a reference to the incoming authoritative steps.
-    pub fn debug_authoritative_steps(&self) -> &Steps<StepForParticipants<Step<StepT>>> {
+    pub fn debug_authoritative_steps(&self) -> &Queue<StepForParticipants<Step<StepT>>> {
         &self.incoming_authoritative_steps
     }
 
@@ -168,7 +168,7 @@ impl<
     ) -> (TickId, Vec<StepForParticipants<Step<StepT>>>) {
         if let Some(first_tick_id) = self.incoming_authoritative_steps.front_tick_id() {
             let vec = self.incoming_authoritative_steps.to_vec();
-            self.incoming_authoritative_steps.clear();
+            self.incoming_authoritative_steps.clear(first_tick_id + 1);
             (first_tick_id, vec)
         } else {
             (TickId(0), vec![])
@@ -323,11 +323,12 @@ impl<
         &mut self,
         tick_id: TickId,
         step: StepForParticipants<StepT>,
-    ) -> Result<(), StepsError> {
+    ) -> Result<(), ClientLogicError> {
         if step.is_empty() {
-            Err(StepsError::CanNotPushEmptyPredictedSteps)?;
+            Err(ClientLogicError::CanNotPushEmptyPredictedSteps)?;
         }
-        self.outgoing_predicted_steps.push(tick_id, step)
+        self.outgoing_predicted_steps.push(tick_id, step)?;
+        Ok(())
     }
 
     pub fn predicted_step_count_in_queue(&self) -> usize {
@@ -443,10 +444,8 @@ impl<
                 if current_authoritative_tick_id
                     == self.incoming_authoritative_steps.expected_write_tick_id()
                 {
-                    self.incoming_authoritative_steps.push(
-                        current_authoritative_tick_id,
-                        combined_auth_step.clone(),
-                    )?;
+                    self.incoming_authoritative_steps
+                        .push(current_authoritative_tick_id, combined_auth_step.clone())?;
                     accepted_count += 1;
                 }
                 current_authoritative_tick_id += 1;

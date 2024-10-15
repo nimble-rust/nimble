@@ -40,8 +40,8 @@ use std::fmt::{Debug, Display};
 use std::marker::PhantomData;
 
 use log::trace;
-use nimble_steps::{Steps, StepsError};
 use tick_id::TickId;
+use tick_queue::{Queue, QueueError};
 
 /// A trait representing callbacks for the `Assent` simulation.
 ///
@@ -87,7 +87,7 @@ where
 {
     phantom: PhantomData<C>,
     settings: Settings,
-    steps: Steps<CombinedStepT>,
+    steps: Queue<CombinedStepT>,
 }
 
 impl<C, CombinedStepT> Default for Assent<C, CombinedStepT>
@@ -108,7 +108,7 @@ where
     pub fn new(settings: Settings) -> Self {
         Assent {
             phantom: PhantomData {},
-            steps: Steps::new(),
+            steps: Default::default(),
             settings,
         }
     }
@@ -118,7 +118,7 @@ where
     /// # Errors
     ///
     /// Returns an error if the step cannot be added.
-    pub fn push(&mut self, tick_id: TickId, steps: CombinedStepT) -> Result<(), StepsError> {
+    pub fn push(&mut self, tick_id: TickId, steps: CombinedStepT) -> Result<(), QueueError> {
         self.steps.push(tick_id, steps)
     }
 
@@ -133,7 +133,7 @@ where
     }
 
     /// Returns a reference to the underlying steps for debugging purposes.
-    pub fn debug_steps(&self) -> &Steps<CombinedStepT> {
+    pub fn debug_steps(&self) -> &Queue<CombinedStepT> {
         &self.steps
     }
 
@@ -152,7 +152,7 @@ where
         let mut count = 0;
         while let Some(combined_step_info) = self.steps.pop() {
             trace!("tick: {}", &combined_step_info);
-            callback.on_tick(&combined_step_info.step);
+            callback.on_tick(&combined_step_info.item);
             count += 1;
             if count >= self.settings.max_tick_count_per_update {
                 trace!("encountered threshold, not simulating all ticks");

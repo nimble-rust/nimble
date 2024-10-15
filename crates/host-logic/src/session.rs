@@ -3,13 +3,13 @@
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
 
+use crate::combine::HostCombinator;
+use freelist_rs::FreeList;
+use nimble_participant::ParticipantId;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
-use freelist_rs::FreeList;
 use tick_id::TickId;
-use nimble_participant::ParticipantId;
-use crate::combine::HostCombinator;
 
 #[derive(Copy, Clone, Debug)]
 pub struct Participant {
@@ -28,7 +28,6 @@ impl<StepT: Clone + std::fmt::Display> Default for GameSession<StepT> {
         Self::new(TickId(0))
     }
 }
-
 
 impl<StepT: Clone + std::fmt::Display> GameSession<StepT> {
     pub fn new(tick_id: TickId) -> Self {

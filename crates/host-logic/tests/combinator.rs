@@ -5,9 +5,9 @@
 use nimble_host_logic::combinator::Combinator;
 use nimble_participant::ParticipantId;
 use nimble_step::Step;
-use nimble_steps::Steps;
 use std::fmt::{Display, Formatter};
 use tick_id::TickId;
+use tick_queue::Queue;
 
 #[derive(Debug, Clone, PartialEq)]
 enum TestStep {
@@ -39,10 +39,10 @@ fn combinator_add() {
         combinator.in_buffers.get(&ParticipantId(1)).unwrap().len(),
         1
     );
-    let steps_for_participant_1: &mut Steps<TestStep> =
+    let steps_for_participant_1: &mut Queue<TestStep> =
         combinator.in_buffers.get_mut(&ParticipantId(1)).unwrap();
     let first_step_for_participant_1 = steps_for_participant_1.pop().unwrap();
-    assert_eq!(first_step_for_participant_1.step, TestStep::InGame(-2));
+    assert_eq!(first_step_for_participant_1.item, TestStep::InGame(-2));
 
     assert_eq!(
         combinator.in_buffers.get(&ParticipantId(2)).unwrap().len(),
