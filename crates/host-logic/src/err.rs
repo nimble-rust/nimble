@@ -1,3 +1,8 @@
+/*
+ * Copyright (c) Peter Bjorklund. All rights reserved. https://github.com/nimble-rust/nimble
+ * Licensed under the MIT License. See LICENSE in the project root for license information.
+ */
+
 use err_rs::{ErrorLevel, ErrorLevelProvider};
 use freelist_rs::FreeListError;
 use nimble_blob_stream::out_stream::OutStreamError;
