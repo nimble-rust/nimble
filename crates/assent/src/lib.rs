@@ -4,33 +4,35 @@
  */
 
 /*!
- * `nimble-assent` is a library designed for deterministic simulation of game logic based on player input.
- * It operates on the concept of "steps" (or actions) taken by players and ensures these steps are applied
- * in a specific, predictable order. This library integrates smoothly with deterministic simulations, ensuring
- * that all participants in a networked game that receive and process the same steps in the same order, yield
- * identical results.
- *
- * ## Why "Assent"?
- *
- * The name "Assent" was chosen because it reflects the concept of agreement or concurrence.
- * In a deterministic simulation, especially for multiplayer games, it is crucial that all parties
- * (the players and the host) are in complete agreement on the sequence of steps or actions taken.
- * In this context, "assent" represents the system's role in
- * enforcing an authoritative and agreed-upon sequence of events, ensuring that everyone shares
- * the same view of the game state at every step.
- *
- * ## Overview
- *
- * The main structure in this crate is the `Assent` struct, which handles the simulation of player input
- * (called "steps") over a series of game ticks. The crate is designed to:
- *
- * - Queue player inputs (steps) with associated tick IDs.
- * - Apply these inputs consistently across all participants in the simulation.
- * - Limit the number of ticks processed per update to avoid overloading the system.
- *
- * The crate also provides a customizable callback mechanism ([`AssentCallback`]) that allows developers
- * to hook into different stages of the update cycle, enabling detailed control over how steps are processed.
- */
+
+`nimble-assent` is a library designed for deterministic simulation of game logic based on player input.
+It operates on the concept of "steps" (or actions) taken by players and ensures these steps are applied
+in a specific, predictable order. This library integrates smoothly with deterministic simulations, ensuring
+that all participants in a networked game that receive and process the same steps in the same order, yield
+identical results.
+
+## Why "Assent"?
+
+The name "Assent" was chosen because it reflects the concept of agreement or concurrence.
+In a deterministic simulation, especially for multiplayer games, it is crucial that all parties
+(the players and the host) are in complete agreement on the sequence of steps or actions taken.
+In this context, "assent" represents the system's role in
+enforcing an authoritative and agreed-upon sequence of events, ensuring that everyone shares
+the same view of the game state at every step.
+
+## Overview
+
+The main structure in this crate is the `Assent` struct, which handles the simulation of player input
+(called "steps") over a series of game ticks. The crate is designed to:
+
+- Queue player inputs (steps) with associated tick IDs.
+- Apply these inputs consistently across all participants in the simulation.
+- Limit the number of ticks processed per update to avoid overloading the system.
+
+The crate also provides a customizable callback mechanism ([`AssentCallback`]) that allows developers
+to hook into different stages of the update cycle, enabling detailed control over how steps are processed.
+
+*/
 
 pub mod prelude;
 

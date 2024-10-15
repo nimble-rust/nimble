@@ -1,6 +1,6 @@
 use datagram_chunker::DatagramChunkerError;
 use err_rs::{ErrorLevel, ErrorLevelProvider};
-use nimble_host_logic::HostLogicError;
+use nimble_host_logic::err::HostLogicError;
 use nimble_layer::NimbleLayerError;
 
 #[derive(Debug)]

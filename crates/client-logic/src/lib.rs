@@ -2,6 +2,44 @@
  * Copyright (c) Peter Bjorklund. All rights reserved. https://github.com/nimble-rust/nimble
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
+
+/*!
+
+# Nimble Client Logic
+
+`nimble-client-logic` is a Rust crate designed to manage the client-side logic for multiplayer game 
+sessions using the Nimble protocol. It handles the creation and processing of messages,
+including requests and responses:
+
+- Download a complete game state from the host.
+- Add and remove participants from the game session.
+- Send predicted player inputs (steps) to the host.
+- Receive authoritative combined steps from the host.
+
+This crate ensures seamless synchronization between the client and host, maintaining the integrity
+and consistency of the game state across all participants.
+
+## Features
+
+- **Connection Management**: Handles connecting to the host, agreeing on protocol versions,
+and managing connection states.
+- **Game State Handling**: Downloads and maintains the complete game state from the host.
+- **Participant Management**: Adds and removes players from the game session dynamically.
+- **Step Prediction and Reconciliation**: Sends predicted player steps to the host and reconciles 
+them with authoritative steps received from the host.
+- **Blob Streaming**: Manages blob streaming for efficient game state transfers.
+
+## Usage
+
+Add `nimble-client-logic` to your `Cargo.toml`:
+
+```toml
+[dependencies]
+nimble-client-logic = "0.0.14-dev"
+```
+
+*/
+
 pub mod err;
 
 use crate::err::ClientLogicError;
@@ -511,18 +549,6 @@ impl<
         }
         Ok(())
     }
-
-    /*
-    /// Returns the average predicted step buffer count from the server, if available.
-    ///
-    /// # Returns
-    /// An optional average predicted step buffer count.
-    pub fn server_buffer_count(&self) -> Option<u8> {
-        self.server_buffer_count
-            .average()
-            .map(|value| value.round() as u8)
-    }
-    */
 
     /// Returns the average server buffer delta tick, if available.
     ///

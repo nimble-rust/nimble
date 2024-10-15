@@ -5,84 +5,28 @@
 pub mod combinator;
 mod combine;
 pub mod connection;
+pub mod err;
+pub mod session;
 
-use crate::combinator::CombinatorError;
-use crate::combine::{HostCombinator, HostCombinatorError};
 use crate::connection::Connection;
+use crate::err::HostLogicError;
 use app_version::Version;
-use err_rs::{ErrorLevel, ErrorLevelProvider};
 use flood_rs::{Deserialize, Serialize};
-use freelist_rs::{FreeList, FreeListError};
+use freelist_rs::FreeList;
 use log::trace;
 use monotonic_time_rs::Millis;
-use nimble_blob_stream::prelude::*;
-use nimble_participant::ParticipantId;
 use nimble_protocol::prelude::{ClientToHostCommands, HostToClientCommands};
 use nimble_protocol::NIMBLE_PROTOCOL_VERSION;
 use nimble_step::Step;
-use nimble_steps::StepsError;
-use std::cell::RefCell;
 use std::collections::HashMap;
 use std::fmt::Debug;
-use std::rc::Rc;
 use tick_id::TickId;
-
-#[derive(Copy, Clone, Debug)]
-pub struct Participant {
-    pub id: ParticipantId,
-    pub client_local_index: u8,
-}
-
-pub struct GameSession<StepT: Clone + std::fmt::Display> {
-    pub participants: HashMap<ParticipantId, Rc<RefCell<Participant>>>,
-    pub participant_ids: FreeList<u8>,
-    combinator: HostCombinator<StepT>,
-}
-
-impl<StepT: Clone + std::fmt::Display> Default for GameSession<StepT> {
-    fn default() -> Self {
-        Self::new(TickId(0))
-    }
-}
+use crate::session::GameSession;
 
 pub trait GameStateProvider {
     fn state(&self, tick_id: TickId) -> (TickId, Vec<u8>);
 }
 
-impl<StepT: Clone + std::fmt::Display> GameSession<StepT> {
-    pub fn new(tick_id: TickId) -> Self {
-        Self {
-            participants: HashMap::new(),
-            participant_ids: FreeList::new(0xff),
-            combinator: HostCombinator::<StepT>::new(tick_id),
-        }
-    }
-
-    pub fn create_participants(
-        &mut self,
-        client_local_indices: &[u8],
-    ) -> Option<Vec<Rc<RefCell<Participant>>>> {
-        let mut participants: Vec<Rc<RefCell<Participant>>> = vec![];
-
-        let ids = self
-            .participant_ids
-            .allocate_count(client_local_indices.len())?;
-        for (index, id_value) in ids.iter().enumerate() {
-            let participant_id = ParticipantId(*id_value);
-            let participant = Rc::new(RefCell::new(Participant {
-                client_local_index: client_local_indices[index],
-                id: participant_id,
-            }));
-
-            participants.push(participant.clone());
-
-            self.participants
-                .insert(participant_id, participant.clone());
-        }
-
-        Some(participants)
-    }
-}
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum Phase {
@@ -95,66 +39,6 @@ pub const NIMBLE_VERSION: Version = Version::new(
     NIMBLE_PROTOCOL_VERSION.minor,
     NIMBLE_PROTOCOL_VERSION.patch,
 );
-
-#[derive(Debug)]
-pub enum HostLogicError {
-    UnknownConnectionId(HostConnectionId),
-    FreeListError {
-        connection_id: HostConnectionId,
-        message: FreeListError,
-    },
-    UnknownPartyMember(ParticipantId),
-    NoFreeParticipantIds,
-    BlobStreamErr(OutStreamError),
-    NoDownloadNow,
-    CombinatorError(CombinatorError),
-    HostCombinatorError(HostCombinatorError),
-    NeedConnectRequestFirst,
-    WrongApplicationVersion,
-    StepsError(StepsError),
-}
-
-impl ErrorLevelProvider for HostLogicError {
-    fn error_level(&self) -> ErrorLevel {
-        match self {
-            Self::UnknownConnectionId(_) => ErrorLevel::Warning,
-            Self::FreeListError { .. } => ErrorLevel::Critical,
-            Self::UnknownPartyMember(_) => ErrorLevel::Warning,
-            Self::NoFreeParticipantIds => ErrorLevel::Warning,
-            Self::BlobStreamErr(_) => ErrorLevel::Info,
-            Self::NoDownloadNow => ErrorLevel::Info,
-            Self::CombinatorError(err) => err.error_level(),
-            Self::HostCombinatorError(err) => err.error_level(),
-            Self::NeedConnectRequestFirst => ErrorLevel::Info,
-            Self::WrongApplicationVersion => ErrorLevel::Critical,
-            Self::StepsError(_) => ErrorLevel::Critical,
-        }
-    }
-}
-
-impl From<CombinatorError> for HostLogicError {
-    fn from(err: CombinatorError) -> Self {
-        Self::CombinatorError(err)
-    }
-}
-
-impl From<StepsError> for HostLogicError {
-    fn from(err: StepsError) -> Self {
-        Self::StepsError(err)
-    }
-}
-
-impl From<HostCombinatorError> for HostLogicError {
-    fn from(err: HostCombinatorError) -> Self {
-        Self::HostCombinatorError(err)
-    }
-}
-
-impl From<OutStreamError> for HostLogicError {
-    fn from(err: OutStreamError) -> Self {
-        Self::BlobStreamErr(err)
-    }
-}
 
 #[derive(Debug, Copy, Clone)]
 pub struct HostConnectionId(pub u8);

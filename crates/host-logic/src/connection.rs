@@ -1,5 +1,5 @@
 use crate::combine::HostCombinator;
-use crate::{GameSession, GameStateProvider, HostLogicError, Participant, Phase};
+use crate::{GameSession, GameStateProvider, HostLogicError, Phase};
 use app_version::Version;
 use flood_rs::{Deserialize, Serialize};
 use log::{debug, trace};
@@ -25,6 +25,7 @@ use std::marker::PhantomData;
 use std::rc::Rc;
 use std::time::Duration;
 use tick_id::TickId;
+use crate::session::Participant;
 
 #[derive(Debug)]
 #[allow(clippy::new_without_default)]
