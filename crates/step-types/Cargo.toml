@@ -1,9 +1,9 @@
 [package]
-name = "nimble-step-types"
+name = "nimble-step-map"
 version = "0.0.14-dev"
 edition = "2021"
 license = "MIT"
-description = "Nimble Step Types"
+description = "Nimble Step Map"
 repository = "https://github.com/nimble-rust/nimble"
 
 [dependencies]
