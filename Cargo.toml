@@ -5,7 +5,6 @@ members = [
     "crates/host-logic",
     "crates/blob-stream",
     "crates/participant",
-    "crates/steps",
     "crates/seer",
     "crates/rectify",
     "crates/protocol",
