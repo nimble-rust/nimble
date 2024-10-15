@@ -15,25 +15,26 @@ It supports both direct manipulation of the step queue and indexed iteration, us
 ## Example
 
 ```rust
-* use nimble_steps::{Steps, StepInfo};
-* use tick_id::TickId;
-* 
-* // Create a new Steps instance with an initial tick
-* let mut steps = Steps::new(TickId::new(0));
-* 
-* // Push steps into the queue
-* steps.push(TickId::new(0), "Step 1").unwrap();
-* steps.push(TickId::new(1), "Step 2").unwrap();
-* 
-* // Pop the first step
-* let step = steps.pop();
-* assert_eq!(step.unwrap().step, "Step 1");
-* 
-* // Iterate over remaining steps
-* for step in steps.iter() {
-*  println!("Tick {}: {}", step.tick_id, step.step);
-* }
-* ```
+use nimble_steps::{Steps, StepInfo};
+use tick_id::TickId;
+
+// Create a new Steps instance with an initial tick
+let mut steps = Steps::new(TickId::new(0));
+
+// Push steps into the queue
+steps.push(TickId::new(0), "Step 1").unwrap();
+steps.push(TickId::new(1), "Step 2").unwrap();
+
+// Pop the first step
+let step = steps.pop();
+assert_eq!(step.unwrap().step, "Step 1");
+
+// Iterate over remaining steps
+for step in steps.iter() {
+  println!("Tick {}: {}", step.tick_id, step.step);
+}
+```
+
 
 */
 
@@ -56,13 +57,25 @@ impl<T: Display> Display for StepInfo<T> {
 #[derive(Default, Debug)]
 pub struct Steps<T> {
     steps: VecDeque<StepInfo<T>>,
-    expected_read_id: TickId,
-    expected_write_id: TickId,
+    expected_write_id: TickId, // Tracks the next TickId to be written, ensuring continuity even when the queue is empty
 }
 
 impl<T> Steps<T> {
     pub fn iter(&self) -> impl Iterator<Item = &StepInfo<T>> {
         self.steps.iter()
+    }
+}
+
+impl<T> IntoIterator for Steps<T> {
+    type Item = StepInfo<T>;
+    type IntoIter = std::collections::vec_deque::IntoIter<StepInfo<T>>;
+
+    /// Consumes the `Steps` collection and returns an iterator over the steps.
+    ///
+    /// This allows the use of the `for` loop and other iterator methods
+    /// without manually calling `iter()`.
+    fn into_iter(self) -> Self::IntoIter {
+        self.steps.into_iter()
     }
 }
 
@@ -108,7 +121,6 @@ impl<StepType: Clone> Steps<StepType> {
     pub fn new(tick_id: TickId) -> Self {
         Self {
             steps: VecDeque::new(),
-            expected_read_id: tick_id,
             expected_write_id: tick_id,
         }
     }
@@ -116,7 +128,6 @@ impl<StepType: Clone> Steps<StepType> {
     /// Clears the queue and resets the expected read and write tick IDs.
     pub fn clear(&mut self, initial_tick_id: TickId) {
         self.steps.clear();
-        self.expected_read_id = initial_tick_id;
         self.expected_write_id = initial_tick_id;
     }
 
@@ -148,10 +159,6 @@ impl<StepType: Clone> Steps<StepType> {
 
     pub fn pop(&mut self) -> Option<StepInfo<StepType>> {
         let info = self.steps.pop_front();
-        if let Some(ref step_info) = info {
-            assert_eq!(step_info.tick_id, self.expected_read_id);
-            self.expected_read_id += 1;
-        }
         info
     }
 
@@ -206,9 +213,6 @@ impl<StepType: Clone> Steps<StepType> {
             .drain(..count.min(self.steps.len()))
             .map(|step_info| step_info.step)
             .collect();
-
-        // Advance the expected read ID
-        self.expected_read_id += steps_to_take.len() as u32;
 
         Some((first_tick_id, steps_to_take))
     }

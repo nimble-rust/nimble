@@ -74,3 +74,62 @@ fn push_and_discard_up_to_equal() {
     steps.discard_up_to(TickId::new(24));
     assert_eq!(steps.len(), 1);
 }
+
+#[test_log::test]
+fn iterator_over_steps() {
+    let mut steps = Steps::new(TickId::new(0));
+    steps.push(TickId::new(0), "Move 1").unwrap();
+    steps.push(TickId::new(1), "Move 2").unwrap();
+    steps.push(TickId::new(2), "Move 3").unwrap();
+
+    let mut iter = steps.iter();
+    assert_eq!(iter.next().unwrap().step, "Move 1");
+    assert_eq!(iter.next().unwrap().step, "Move 2");
+    assert_eq!(iter.next().unwrap().step, "Move 3");
+    assert!(iter.next().is_none());
+}
+
+#[test_log::test]
+fn iterator_from_index() {
+    let mut steps = Steps::default();
+    steps.push(TickId::new(0), "Move 1").unwrap();
+    steps.push(TickId::new(1), "Move 2").unwrap();
+    steps.push(TickId::new(2), "Move 3").unwrap();
+
+    let mut iter = steps.iter_index(1); // Start from index 1 (second item)
+    assert_eq!(iter.next().unwrap().step, "Move 2");
+    assert_eq!(iter.next().unwrap().step, "Move 3");
+    assert!(iter.next().is_none());
+}
+
+#[test_log::test]
+fn iterator_empty_queue() {
+    let steps: Steps<String> = Steps::default();
+
+    let mut iter = steps.iter();
+    assert!(iter.next().is_none());
+}
+
+#[test_log::test]
+fn iterator_from_index_out_of_bounds() {
+    let mut steps = Steps::default();
+    steps.push(TickId::new(0), "Move 1").unwrap();
+    steps.push(TickId::new(1), "Move 2").unwrap();
+
+    let mut iter = steps.iter_index(10); // Start index out of bounds
+    assert!(iter.next().is_none()); // No items to iterate over
+}
+
+#[test_log::test]
+fn into_iter() {
+    let mut steps = Steps::default();
+    steps.push(TickId::new(0), "Move 1").unwrap();
+    steps.push(TickId::new(1), "Move 2").unwrap();
+    steps.push(TickId::new(2), "Move 3").unwrap();
+
+    let mut iter = steps.into_iter();
+    assert_eq!(iter.next().unwrap().step, "Move 1");
+    assert_eq!(iter.next().unwrap().step, "Move 2");
+    assert_eq!(iter.next().unwrap().step, "Move 3");
+    assert!(iter.next().is_none());
+}
