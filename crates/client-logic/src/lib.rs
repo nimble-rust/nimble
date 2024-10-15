@@ -388,7 +388,7 @@ impl<
         //self.server_buffer_count.add(header.connection_buffer_count);
         trace!("removing every predicted step before {host_expected_tick_id}");
         self.outgoing_predicted_steps
-            .pop_up_to(host_expected_tick_id);
+            .discard_up_to(host_expected_tick_id);
         trace!(
             "predicted steps remaining {}",
             self.outgoing_predicted_steps.len()

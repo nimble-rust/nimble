@@ -2,11 +2,44 @@
  * Copyright (c) Peter Bjorklund. All rights reserved. https://github.com/nimble-rust/nimble
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
+
+/*!
+# Nimble Steps Crate
+
+The `nimble-steps` crate provides utilities for managing a sequence of deterministic simulation steps.
+Each step is associated with a unique tick identifier ([`TickId`]), ensuring that steps are processed in the correct order.
+
+The crate offers functionality for pushing steps, iterating over them, and managing the internal state of the step queue.
+It supports both direct manipulation of the step queue and indexed iteration, useful for simulation rollback or similar operations.
+
+## Example
+
+```rust
+use nimble_steps::{Steps, StepInfo};
+use tick_id::TickId;
+
+// Create a new Steps instance with an initial tick
+let mut steps = Steps::new(TickId::new(0));
+
+// Push steps into the queue
+steps.push_with_check(TickId::new(0), "Step 1").unwrap();
+steps.push_with_check(TickId::new(1), "Step 2").unwrap();
+
+// Pop the first step
+let step = steps.pop();
+assert_eq!(step.unwrap().step, "Step 1");
+
+// Iterate over remaining steps
+for step in steps.iter() {
+ println!("Tick {}: {}", step.tick_id, step.step);
+}
+```
+
+*/
+
 use std::collections::VecDeque;
 use std::fmt::{Debug, Display, Formatter};
 use tick_id::TickId;
-
-pub mod pending_steps;
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct StepInfo<T> {
@@ -72,26 +105,19 @@ pub enum StepsError {
 }
 
 impl<StepType: Clone> Steps<StepType> {
-    pub fn new() -> Self {
+    pub fn new(tick_id: TickId) -> Self {
         Self {
             steps: VecDeque::new(),
-            expected_read_id: TickId::new(0),
-            expected_write_id: TickId::new(0),
+            expected_read_id: tick_id,
+            expected_write_id: tick_id,
         }
     }
 
-    pub fn clear(&mut self) {
+    /// Clears the queue and resets the expected read and write tick IDs.
+    pub fn clear(&mut self, initial_tick_id: TickId) {
         self.steps.clear();
-        self.expected_read_id = TickId(0);
-        self.expected_write_id = TickId(0);
-    }
-
-    pub fn new_with_initial_tick(initial_tick_id: TickId) -> Self {
-        Self {
-            steps: VecDeque::new(),
-            expected_read_id: initial_tick_id,
-            expected_write_id: initial_tick_id,
-        }
+        self.expected_read_id = initial_tick_id;
+        self.expected_write_id = initial_tick_id;
     }
 
     pub fn push_with_check(&mut self, tick_id: TickId, step: StepType) -> Result<(), StepsError> {
@@ -129,7 +155,7 @@ impl<StepType: Clone> Steps<StepType> {
         info
     }
 
-    pub fn pop_up_to(&mut self, tick_id: TickId) {
+    pub fn discard_up_to(&mut self, tick_id: TickId) {
         while let Some(info) = self.steps.front() {
             if info.tick_id >= tick_id {
                 break;
@@ -139,12 +165,52 @@ impl<StepType: Clone> Steps<StepType> {
         }
     }
 
-    pub fn pop_count(&mut self, count: usize) {
+    pub fn discard_count(&mut self, count: usize) {
         if count >= self.steps.len() {
             self.steps.clear();
         } else {
             self.steps.drain(..count);
         }
+    }
+
+    /// Pops up to a certain amount of steps from the front of the queue and returns
+    /// the first `TickId` and a vector of `StepType`. Returns `None` if the queue
+    /// is empty.
+    ///
+    /// # Parameters
+    /// - `count`: The number of steps to pop (or fewer if not enough steps are available).
+    ///
+    /// # Returns
+    /// - `Some((TickId, Vec<StepType>))` if there are steps available.
+    /// - `None` if the queue is empty.
+    ///
+    /// # Example
+    /// ```rust
+    /// use tick_id::TickId;
+    /// use nimble_steps::Steps;
+    /// let mut steps = Steps::new(TickId::new(0));
+    /// steps.push_with_check(TickId::new(0), "Step 1").unwrap();
+    /// steps.push_with_check(TickId::new(1), "Step 2").unwrap();
+    ///
+    /// let result = steps.take(5);  // Will return up to 5 steps (in this case 2)
+    /// if let Some((tick_id, popped_steps)) = result {
+    ///     assert_eq!(tick_id, TickId::new(0));
+    ///     assert_eq!(popped_steps, vec!["Step 1", "Step 2"]);
+    /// }
+    /// ```
+    pub fn take(&mut self, count: usize) -> Option<(TickId, Vec<StepType>)> {
+        let first_tick_id = self.front_tick_id()?;
+
+        let steps_to_take: Vec<StepType> = self
+            .steps
+            .drain(..count.min(self.steps.len()))
+            .map(|step_info| step_info.step)
+            .collect();
+
+        // Advance the expected read ID
+        self.expected_read_id += steps_to_take.len() as u32;
+
+        Some((first_tick_id, steps_to_take))
     }
 
     pub fn front_tick_id(&self) -> Option<TickId> {

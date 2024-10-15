@@ -115,7 +115,7 @@ where
 
     pub fn received_authoritative(&mut self, tick: TickId) {
         trace!("received_authoritative discarding predicted steps before {tick}");
-        self.predicted_steps.pop_up_to(tick + 1);
+        self.predicted_steps.discard_up_to(tick + 1);
         trace!("predicted steps remaining {}", self.predicted_steps.len());
     }
 

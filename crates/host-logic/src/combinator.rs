@@ -147,7 +147,7 @@ impl<T: Clone + std::fmt::Display> Combinator<T> {
                     combined_step
                         .combined_step
                         .insert(*participant_id, Step::Forced)?;
-                    steps.pop_up_to(self.tick_id_to_produce);
+                    steps.discard_up_to(self.tick_id_to_produce);
                 }
             }
         }

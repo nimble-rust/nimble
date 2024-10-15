@@ -12,22 +12,27 @@ cargo release "0.0.13-dev" -v --workspace --no-tag --no-push --execute
 
 Publish order:
 
-* nimble-steps
-* nimble-assent
-* nimble-blob-stream
-* nimble-participant
-* nimble-step-types
-* nimble-protocol
-* nimble-participant-steps
-* nimble-seer
-* nimble-rectify
-* nimble-sample-step
-* nimble-client-logic
-* nimble-host
-* nimble-ordered-datagram
-* datagram-pinger
-* nimble-client
-* nimble-rust
+nimble-steps
+nimble-assent
+nimble-blob-stream
+nimble-participant
+seq-map
+nimble-step-types
+nimble-sample-step
+nimble-protocol
+nimble-client-logic
+nimble-host-logic
+nimble-ordered-datagram
+nimble-protocol-header
+nimble-layer
+nimble-host
+nimble-seer
+nimble-rectify
+nimble-sample-game
+time-tick
+nimble-client
+nimble-wrapped-step
+nimble-rust
 
 ## Check line counts
 
