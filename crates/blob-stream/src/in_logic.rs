@@ -136,7 +136,7 @@ impl Logic {
     }
 
     #[must_use]
-    pub fn is_complete(&self) -> bool {
+    pub const fn is_complete(&self) -> bool {
         self.in_stream.is_complete()
     }
 }

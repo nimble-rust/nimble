@@ -47,14 +47,14 @@ pub enum SenderToReceiverFrontCommands {
 impl Display for SenderToReceiverFrontCommands {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            SenderToReceiverFrontCommands::SetChunk(set_chunk_data) => write!(
+            Self::SetChunk(set_chunk_data) => write!(
                 f,
                 "set_chunk transfer{} index:{} chunk_size:{}",
                 set_chunk_data.transfer_id.0,
                 set_chunk_data.data.chunk_index,
                 set_chunk_data.data.payload.len()
             ),
-            SenderToReceiverFrontCommands::StartTransfer(transfer_data) => {
+            Self::StartTransfer(transfer_data) => {
                 write!(f, "start transfer {transfer_data:?}")
             }
         }

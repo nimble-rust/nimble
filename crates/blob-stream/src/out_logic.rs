@@ -17,6 +17,7 @@ pub struct Logic {
 }
 
 impl Logic {
+    #[must_use]
     pub fn new(
         transfer_id: TransferId,
         fixed_chunk_size: usize,
@@ -32,6 +33,7 @@ impl Logic {
         }
     }
 
+    #[must_use]
     #[inline]
     fn get_range(&self, index: usize) -> (usize, usize) {
         assert!(index < self.blob.len(), "out logic index out of bounds");
@@ -90,12 +92,12 @@ impl Logic {
     }
 
     #[must_use]
-    pub fn chunk_size(&self) -> usize {
+    pub const fn chunk_size(&self) -> usize {
         self.fixed_chunk_size
     }
 
     #[must_use]
-    pub fn transfer_id(&self) -> TransferId {
+    pub const fn transfer_id(&self) -> TransferId {
         self.transfer_id
     }
 }

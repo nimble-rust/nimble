@@ -35,7 +35,7 @@ impl BlobStreamOutEntry {
     ///
     /// A new `BlobStreamOutEntry` with a `None` timer.
     #[must_use]
-    pub fn new(index: usize) -> Self {
+    pub const fn new(index: usize) -> Self {
         Self {
             last_sent_at: None,
             index,
@@ -99,6 +99,7 @@ impl BlobStreamOut {
         }
     }
 
+    #[must_use]
     pub fn chunk_count(&self) -> usize {
         self.entries.len()
     }
@@ -121,7 +122,7 @@ impl BlobStreamOut {
         let start = index + 1;
         let end = min(self.entries.len(), start + 64);
 
-        for previously_received_entry in self.entries[0..index].iter_mut() {
+        for previously_received_entry in &mut self.entries[0..index] {
             if !previously_received_entry.is_received_by_remote {
                 previously_received_entry.is_received_by_remote = true;
                 self.chunk_count_received_by_remote += 1;
@@ -142,6 +143,7 @@ impl BlobStreamOut {
 
         let mut mask = receive_mask;
         for i in index + 1..end {
+            #[allow(clippy::missing_panics_doc)]
             let entry = self
                 .entries
                 .get_mut(i)
@@ -176,6 +178,7 @@ impl BlobStreamOut {
     /// # Returns
     ///
     /// A vector containing up to `max_count` `BlobStreamOutEntry` items, representing the chunks to be sent.
+    #[must_use]
     pub fn send(&mut self, now: Millis, max_count: usize) -> Vec<usize> {
         // Filter by index range, timer expiration, and limit the number of results
         let mut filtered_out_indices: Vec<usize> = self
@@ -224,7 +227,8 @@ impl BlobStreamOut {
             filtered_out_indices.extend(additional_indicies);
         }
 
-        for entry_index in filtered_out_indices.iter() {
+        for entry_index in &filtered_out_indices {
+            #[allow(clippy::missing_panics_doc)]
             let ent = self
                 .entries
                 .get_mut(*entry_index)
@@ -235,6 +239,7 @@ impl BlobStreamOut {
         filtered_out_indices
     }
 
+    #[must_use]
     pub fn is_received_by_remote(&self) -> bool {
         self.chunk_count_received_by_remote == self.entries.len()
     }

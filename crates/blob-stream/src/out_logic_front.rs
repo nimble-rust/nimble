@@ -27,6 +27,7 @@ pub struct OutLogicFront {
 
 impl OutLogicFront {
     #[allow(unused)]
+    #[must_use]
     pub fn new(
         transfer_id: TransferId,
         fixed_chunk_size: usize,
@@ -121,7 +122,7 @@ impl OutLogicFront {
     }
 
     #[must_use]
-    pub fn transfer_id(&self) -> TransferId {
+    pub const fn transfer_id(&self) -> TransferId {
         self.out_stream.transfer_id()
     }
 }
