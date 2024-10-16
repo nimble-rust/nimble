@@ -40,7 +40,6 @@ impl ErrorLevelProvider for SeerError {
     }
 }
 
-// Define the Assent struct
 impl<Callback, CombinedStepT: Clone + Debug + Display> Default for Seer<Callback, CombinedStepT>
 where
     Callback: SeerCallback<CombinedStepT>,
@@ -69,7 +68,6 @@ where
     Callback: SeerCallback<CombinedStepT>,
 {
     predicted_steps: Queue<CombinedStepT>,
-    authoritative_has_changed: bool,
     settings: Settings,
     phantom: PhantomData<Callback>,
 }
@@ -83,7 +81,6 @@ where
         Seer {
             predicted_steps: Queue::default(),
             phantom: PhantomData,
-            authoritative_has_changed: false,
             settings,
         }
     }
@@ -110,17 +107,12 @@ where
 
         trace!("post_ticks");
         callback.on_post_ticks();
-        self.authoritative_has_changed = false;
     }
 
     pub fn received_authoritative(&mut self, tick: TickId) {
         trace!("received_authoritative discarding predicted steps before {tick}");
         self.predicted_steps.discard_up_to(tick + 1);
         trace!("predicted steps remaining {}", self.predicted_steps.len());
-    }
-
-    pub fn authoritative_has_changed(&mut self) {
-        self.authoritative_has_changed = true;
     }
 
     pub fn push(
