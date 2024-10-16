@@ -3,12 +3,12 @@ name = "nimble-sample-step"
 version = "0.0.14-dev"
 edition = "2021"
 license = "MIT"
-description = "Nimble Sample Types"
+description = "Nimble Sample Step Type"
 repository = "https://github.com/nimble-rust/nimble"
+
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 flood-rs = "0.0.12"
 log = "0.4.22"
 nimble-step-map = { path = "../step-map", version = "0.0.14-dev" }
-
