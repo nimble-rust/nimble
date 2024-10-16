@@ -10,5 +10,5 @@ repository = "https://github.com/nimble-rust/nimble"
 [dependencies]
 flood-rs = "0.0.12"
 log = "0.4.22"
-nimble-step-types = { path = "../step-types", version = "0.0.14-dev" }
+nimble-step-map = { path = "../step-map", version = "0.0.14-dev" }
 

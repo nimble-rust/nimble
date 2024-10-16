@@ -239,11 +239,10 @@ impl<StepT: Clone + Eq + Debug + Deserialize + Serialize + std::fmt::Display> Co
 
         let mut current_tick = request.combined_predicted_steps.tick_id;
         for combined_predicted_step in &request.combined_predicted_steps.steps {
-            for participant_id in combined_predicted_step.combined_step.keys() {
+            for participant_id in combined_predicted_step.keys() {
                 // TODO:
                 if self.participant_lookup.contains_key(participant_id) {
                     let part = combined_predicted_step
-                        .combined_step
                         .get(participant_id)
                         .unwrap();
 

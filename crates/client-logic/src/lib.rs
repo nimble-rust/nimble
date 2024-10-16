@@ -58,7 +58,7 @@ use nimble_protocol::host_to_client::{
 use nimble_protocol::prelude::*;
 use nimble_protocol::{ClientRequestId, NIMBLE_PROTOCOL_VERSION};
 use nimble_step::Step;
-use nimble_step_types::{LocalIndex, StepForParticipants};
+use nimble_step_map::StepMap;
 use std::fmt::Debug;
 use tick_id::TickId;
 use tick_queue::Queue;
@@ -78,6 +78,8 @@ pub enum ClientLogicPhase {
     /// Sending predicted steps from the client to the host.
     SendPredictedSteps,
 }
+
+pub type LocalIndex = u8;
 
 #[derive(Debug, Clone)]
 pub struct LocalPlayer {
@@ -111,10 +113,10 @@ pub struct ClientLogic<
     blob_stream_client: FrontLogic,
 
     /// Stores the outgoing predicted steps from the client.
-    outgoing_predicted_steps: Queue<StepForParticipants<StepT>>,
+    outgoing_predicted_steps: Queue<StepMap<StepT>>,
 
     /// Stores the incoming authoritative steps from the host.
-    incoming_authoritative_steps: Queue<StepForParticipants<Step<StepT>>>,
+    incoming_authoritative_steps: Queue<StepMap<Step<StepT>>>,
 
     /// Represents the current phase of the client's logic.
     phase: ClientLogicPhase,
@@ -155,7 +157,7 @@ impl<
     }
 
     /// Returns a reference to the incoming authoritative steps.
-    pub fn debug_authoritative_steps(&self) -> &Queue<StepForParticipants<Step<StepT>>> {
+    pub fn debug_authoritative_steps(&self) -> &Queue<StepMap<Step<StepT>>> {
         &self.incoming_authoritative_steps
     }
 
@@ -165,7 +167,7 @@ impl<
 
     pub fn pop_all_authoritative_steps(
         &mut self,
-    ) -> (TickId, Vec<StepForParticipants<Step<StepT>>>) {
+    ) -> (TickId, Vec<StepMap<Step<StepT>>>) {
         if let Some(first_tick_id) = self.incoming_authoritative_steps.front_tick_id() {
             let vec = self.incoming_authoritative_steps.to_vec();
             self.incoming_authoritative_steps.clear(first_tick_id + 1);
@@ -322,11 +324,8 @@ impl<
     pub fn push_predicted_step(
         &mut self,
         tick_id: TickId,
-        step: StepForParticipants<StepT>,
+        step: StepMap<StepT>,
     ) -> Result<(), ClientLogicError> {
-        if step.is_empty() {
-            Err(ClientLogicError::CanNotPushEmptyPredictedSteps)?;
-        }
         self.outgoing_predicted_steps.push(tick_id, step)?;
         Ok(())
     }

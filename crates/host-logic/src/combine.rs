@@ -7,7 +7,7 @@ use err_rs::{ErrorLevel, ErrorLevelProvider};
 use nimble_participant::ParticipantId;
 
 use nimble_step::Step;
-use nimble_step_types::StepForParticipants;
+use nimble_step_map::StepMap;
 use tick_id::TickId;
 use tick_queue::{Queue, QueueError};
 
@@ -35,7 +35,7 @@ impl ErrorLevelProvider for HostCombinatorError {
 #[allow(unused)]
 pub struct HostCombinator<T: Clone + std::fmt::Display> {
     combinator: Combinator<T>,
-    authoritative_steps: Queue<StepForParticipants<Step<T>>>,
+    authoritative_steps: Queue<StepMap<Step<T>>>,
 }
 
 #[allow(unused)]
@@ -59,7 +59,7 @@ impl<T: Clone + std::fmt::Display> HostCombinator<T> {
         self.combinator.in_buffers.get_mut(participant_id)
     }
 
-    pub fn authoritative_steps(&self) -> &Queue<StepForParticipants<Step<T>>> {
+    pub fn authoritative_steps(&self) -> &Queue<StepMap<Step<T>>> {
         &self.authoritative_steps
     }
 

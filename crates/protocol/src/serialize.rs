@@ -6,7 +6,7 @@
 use crate::host_to_client::TickIdUtil;
 use flood_rs::{Deserialize, ReadOctetStream, Serialize, WriteOctetStream};
 use nimble_participant::ParticipantId;
-use nimble_step_types::StepForParticipants;
+use nimble_step_map::StepMap;
 use seq_map::SeqMap;
 use std::collections::HashSet;
 use std::fmt::{Debug, Display, Formatter};
@@ -16,7 +16,7 @@ use tick_id::TickId;
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct CombinedSteps<StepT: Deserialize + Serialize + Debug + Clone + std::fmt::Display> {
     pub tick_id: TickId,
-    pub steps: Vec<StepForParticipants<StepT>>,
+    pub steps: Vec<StepMap<StepT>>,
 }
 
 impl<StepT: Deserialize + Serialize + Debug + Clone + std::fmt::Display> Display
@@ -49,12 +49,12 @@ impl<StepT: Deserialize + Serialize + Debug + Clone + std::fmt::Display> Deseria
 impl<StepT: Deserialize + Serialize + Debug + Clone + std::fmt::Display> CombinedSteps<StepT> {
     pub fn to_internal(&self) -> InternalAllParticipantVectors<StepT> {
         let mut hash_map =
-            SeqMap::<ParticipantId, InternalStepVectorForOneParticipant<StepT>>::new();
+            StepMap::<InternalStepVectorForOneParticipant<StepT>>::new();
 
         let mut unique_participant_ids: HashSet<ParticipantId> = HashSet::new();
 
         for auth_step in &self.steps {
-            for key in auth_step.combined_step.keys() {
+            for key in auth_step.keys() {
                 unique_participant_ids.insert(*key);
             }
         }
@@ -76,7 +76,7 @@ impl<StepT: Deserialize + Serialize + Debug + Clone + std::fmt::Display> Combine
         }
 
         for (index_in_range, combined_auth_step) in self.steps.iter().enumerate() {
-            for (participant_id, auth_step_for_one_player) in &combined_auth_step.combined_step {
+            for (participant_id, auth_step_for_one_player) in combined_auth_step {
                 let vector_for_one_person = hash_map.get_mut(participant_id).unwrap();
                 if vector_for_one_person.steps.is_empty() {
                     vector_for_one_person.delta_tick_id = index_in_range as u8;
@@ -104,17 +104,15 @@ impl<StepT: Deserialize + Serialize + Debug + Clone + std::fmt::Display> Combine
             }
         }
 
-        let mut auth_step_range_vec = Vec::<StepForParticipants<StepT>>::new();
+        let mut auth_step_range_vec = Vec::<StepMap<StepT>>::new();
         for _ in 0..max_vector_length {
-            auth_step_range_vec.push(StepForParticipants::<StepT> {
-                combined_step: SeqMap::new(),
-            })
+            auth_step_range_vec.push(SeqMap::new())
         }
 
         for (participant_id, serialized_step_vector) in &separate_vectors.participant_step_vectors {
             for (index, serialized_step) in serialized_step_vector.steps.iter().enumerate() {
                 let hash_map_for_auth_step =
-                    &mut auth_step_range_vec.get_mut(index).unwrap().combined_step;
+                    &mut auth_step_range_vec.get_mut(index).unwrap();
                 hash_map_for_auth_step
                     .insert(*participant_id, serialized_step.clone())
                     .expect("expect unique participant_id");
@@ -168,7 +166,7 @@ impl<StepT: Serialize + Deserialize + Debug + std::fmt::Display>
         for (participant_id, authoritative_steps_for_one_player_vector) in
             &self.participant_step_vectors
         {
-            participant_id.to_stream(stream)?;
+            participant_id.serialize(stream)?;
             stream.write_u8(authoritative_steps_for_one_player_vector.delta_tick_id)?;
             stream.write_u8(authoritative_steps_for_one_player_vector.steps.len() as u8)?;
 
@@ -185,7 +183,7 @@ impl<StepT: Serialize + Deserialize + Debug + std::fmt::Display>
         let required_participant_count_in_range = stream.read_u8()?;
         let mut authoritative_participants = SeqMap::new();
         for _ in 0..required_participant_count_in_range {
-            let participant_id = ParticipantId::from_stream(stream)?;
+            let participant_id = ParticipantId::deserialize(stream)?;
             let delta_tick_id_from_range = stream.read_u8()?;
             let number_of_steps_that_follows = stream.read_u8()? as usize;
 

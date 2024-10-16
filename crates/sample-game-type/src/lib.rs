@@ -9,11 +9,11 @@ use log::info;
 use nimble_assent::AssentCallback;
 use nimble_rectify::RectifyCallback;
 use nimble_seer::SeerCallback;
-use nimble_step_types::StepForParticipants;
 use std::io;
 
 pub use nimble_sample_step::SampleStep;
 use nimble_step::Step;
+use nimble_step_map::StepMap;
 
 #[derive(Default, Clone, Debug, Eq, PartialEq)]
 pub struct SampleGameState {
@@ -22,8 +22,8 @@ pub struct SampleGameState {
 }
 
 impl SampleGameState {
-    pub fn update(&mut self, step: &StepForParticipants<Step<SampleStep>>) {
-        for (participant_id, step) in &step.combined_step {
+    pub fn update(&mut self, step: &StepMap<Step<SampleStep>>) {
+        for (participant_id, step) in step {
             match &step {
                 Step::Custom(custom) => match custom {
                     SampleStep::MoveLeft(amount) => self.x -= *amount as i32,
@@ -133,17 +133,17 @@ impl Deserialize for SampleGame {
     }
 }
 
-impl SeerCallback<StepForParticipants<Step<SampleStep>>> for SampleGame {
+impl SeerCallback<StepMap<Step<SampleStep>>> for SampleGame {
     fn on_pre_ticks(&mut self) {}
-    fn on_tick(&mut self, step: &StepForParticipants<Step<SampleStep>>) {
+    fn on_tick(&mut self, step: &StepMap<Step<SampleStep>>) {
         self.predicted.update(step);
     }
     fn on_post_ticks(&mut self) {}
 }
 
-impl AssentCallback<StepForParticipants<Step<SampleStep>>> for SampleGame {
+impl AssentCallback<StepMap<Step<SampleStep>>> for SampleGame {
     fn on_pre_ticks(&mut self) {}
-    fn on_tick(&mut self, step: &StepForParticipants<Step<SampleStep>>) {
+    fn on_tick(&mut self, step: &StepMap<Step<SampleStep>>) {
         self.authoritative.update(step);
     }
     fn on_post_ticks(&mut self) {}

@@ -18,7 +18,7 @@ freelist-rs = "0.0.4"
 log = "0.4.22"
 flood-rs = "0.0.12"
 monotonic-time-rs = "0.0.5"
-nimble-step-types = { path = "../step-types", version = "0.0.14-dev" }
+nimble-step-map = { path = "../step-map", version = "0.0.14-dev" }
 seq-map = "0.0.2"
 app-version = "0.0.2"
 nimble-step = { path = "../step", version = "0.0.14-dev" }

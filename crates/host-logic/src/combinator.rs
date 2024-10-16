@@ -6,8 +6,8 @@ use err_rs::{ErrorLevel, ErrorLevelProvider};
 use log::trace;
 use nimble_participant::ParticipantId;
 use nimble_step::Step;
-use nimble_step_types::StepForParticipants;
-use seq_map::SeqMapError;
+use nimble_step_map::StepMap;
+use seq_map::{SeqMapError};
 use std::collections::HashMap;
 use tick_id::TickId;
 use tick_queue::{Queue, QueueError};
@@ -106,7 +106,7 @@ impl<T: Clone + std::fmt::Display> Combinator<T> {
         )
     }
 
-    pub fn produce(&mut self) -> Result<(TickId, StepForParticipants<Step<T>>), CombinatorError> {
+    pub fn produce(&mut self) -> Result<(TickId, StepMap<Step<T>>), CombinatorError> {
         let (can_provide, can_not_provide) = self.participants_that_can_provide();
         if can_provide == 0 {
             trace!(
@@ -124,7 +124,7 @@ impl<T: Clone + std::fmt::Display> Combinator<T> {
             can_not_provide
         );
 
-        let mut combined_step = StepForParticipants::<Step<T>>::new();
+        let mut combined_step = StepMap::<Step<T>>::new();
         for (participant_id, steps) in self.in_buffers.iter_mut() {
             if let Some(first_tick) = steps.front_tick_id() {
                 if first_tick == self.tick_id_to_produce {
@@ -135,7 +135,7 @@ impl<T: Clone + std::fmt::Display> Combinator<T> {
                         steps.front_tick_id().unwrap()
                     );
                     combined_step
-                        .combined_step
+
                         .insert(*participant_id, Step::Custom(steps.pop().unwrap().item))?;
                 } else {
                     trace!(
@@ -144,7 +144,6 @@ impl<T: Clone + std::fmt::Display> Combinator<T> {
                         participant_id
                     );
                     combined_step
-                        .combined_step
                         .insert(*participant_id, Step::Forced)?;
                     steps.discard_up_to(self.tick_id_to_produce);
                 }

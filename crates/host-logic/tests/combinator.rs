@@ -52,7 +52,7 @@ fn combinator_add() {
     let (produced_tick_id, combined_step) = combinator.produce().unwrap();
 
     assert_eq!(produced_tick_id, TickId(0));
-    assert_eq!(combined_step.combined_step.len(), 1);
-    let first_step = combined_step.combined_step.get(&ParticipantId(2)); // Participant 1 has been popped up previously
+    assert_eq!(combined_step.len(), 1);
+    let first_step = combined_step.get(&ParticipantId(2)); // Participant 1 has been popped up previously
     assert_eq!(first_step.unwrap(), &Step::Custom(TestStep::SelectTeam(42)));
 }

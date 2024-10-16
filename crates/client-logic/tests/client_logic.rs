@@ -14,8 +14,7 @@ use nimble_protocol::prelude::{ClientToHostCommands, CombinedSteps, HostToClient
 use nimble_sample_step::{SampleState, SampleStep};
 use nimble_step::Step;
 use nimble_step::Step::{Custom, Forced};
-use nimble_step_types::StepForParticipants;
-use seq_map::SeqMap;
+use nimble_step_map::StepMap;
 use std::fmt::Debug;
 use tick_id::TickId;
 use tick_queue::ItemInfo;
@@ -44,8 +43,8 @@ fn feed_connect_response(client_logic: &mut ClientLogic<SampleState, Step<Sample
     assert_eq!(commands.len(), 1);
 
     if let ClientToHostCommands::ConnectType(ConnectRequest {
-        client_request_id, ..
-    }) = commands[0]
+                                                 client_request_id, ..
+                                             }) = commands[0]
     {
         let connect_response = ConnectionAccepted {
             flags: 0,
@@ -74,12 +73,9 @@ fn send_steps() -> Result<(), ClientLogicError> {
 
     client_logic.push_predicted_step(
         TickId(0),
-        StepForParticipants {
-            combined_step: [(ParticipantId(0), Custom(SampleStep::MoveRight(3)))]
-                .as_slice()
-                .into(),
-        },
-    )?;
+        [(ParticipantId(0), Custom(SampleStep::MoveRight(3)))]
+            .as_slice()
+            .into())?;
 
     feed_connect_response(&mut client_logic);
 
@@ -116,18 +112,16 @@ fn setup_sample_steps() -> AuthoritativeStepRanges<Step<SampleStep>> {
     ];
     let second_participant_id = ParticipantId(1);
 
-    let mut auth_steps = Vec::<StepForParticipants<Step<SampleStep>>>::new();
+    let mut auth_steps = Vec::<StepMap<Step<SampleStep>>>::new();
     for index in 0..3 {
-        let mut hash_map = SeqMap::<ParticipantId, Step<SampleStep>>::new();
+        let mut hash_map = StepMap::<Step<SampleStep>>::new();
         hash_map
             .insert(first_participant_id, first_steps[index].clone())
             .expect("first participant should be unique");
         hash_map
             .insert(second_participant_id, second_steps[index].clone())
             .expect("second_participant should be unique");
-        auth_steps.push(StepForParticipants {
-            combined_step: hash_map,
-        });
+        auth_steps.push(hash_map);
     }
 
     const EXPECTED_TICK_ID: TickId = TickId(0);
@@ -173,7 +167,7 @@ fn receive_authoritative_steps() -> Result<(), ClientLogicError> {
     let first_participant_id = ParticipantId(255);
     let second_participant_id = ParticipantId(1);
 
-    let mut expected_hash_map = SeqMap::<ParticipantId, Step<SampleStep>>::new();
+    let mut expected_hash_map = StepMap::<Step<SampleStep>>::new();
     expected_hash_map
         .insert(first_participant_id, Custom(SampleStep::MoveLeft(-10)))
         .expect("should be unique");
@@ -181,11 +175,9 @@ fn receive_authoritative_steps() -> Result<(), ClientLogicError> {
         .insert(second_participant_id, Forced)
         .expect("should be unique");
 
-    let expected_step = StepForParticipants::<Step<SampleStep>> {
-        combined_step: expected_hash_map,
-    };
+    let expected_step = expected_hash_map;
 
-    let expected_step_with_step_info = ItemInfo::<StepForParticipants<Step<SampleStep>>> {
+    let expected_step_with_step_info = ItemInfo::<StepMap<Step<SampleStep>>> {
         item: expected_step,
         tick_id: TickId(1),
     };

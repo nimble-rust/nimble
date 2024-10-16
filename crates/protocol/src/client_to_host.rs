@@ -231,7 +231,7 @@ impl JoinGameType {
         match self {
             Self::NoSecret => {}
             Self::UseSessionSecret(session_secret) => session_secret.to_stream(stream)?,
-            Self::HostMigrationParticipantId(participant_id) => participant_id.to_stream(stream)?,
+            Self::HostMigrationParticipantId(participant_id) => participant_id.serialize(stream)?,
         }
         Ok(())
     }
@@ -245,7 +245,7 @@ impl JoinGameType {
                 Self::UseSessionSecret(SessionConnectionSecret::from_stream(stream)?)
             }
             JoinGameTypeValue::HostMigrationParticipantId => {
-                Self::HostMigrationParticipantId(ParticipantId::from_stream(stream)?)
+                Self::HostMigrationParticipantId(ParticipantId::deserialize(stream)?)
             }
         };
         Ok(join_game_type)

@@ -35,16 +35,15 @@ use monotonic_time_rs::{Millis, MillisDuration};
 use network_metrics::{CombinedMetrics, NetworkMetrics};
 use nimble_client_logic::{ClientLogic, ClientLogicPhase, LocalPlayer};
 use nimble_layer::NimbleLayerClient;
-use nimble_participant::ParticipantId;
 use nimble_protocol::prelude::HostToClientCommands;
 use nimble_rectify::{Rectify, RectifyCallbacks};
 use nimble_step::Step;
-use nimble_step_types::{LocalIndex, StepForParticipants};
-use seq_map::SeqMap;
+use nimble_step_map::StepMap;
 use std::cmp::min;
 use std::fmt::{Debug, Display};
 use tick_id::TickId;
 use time_tick::TimeTick;
+use nimble_client_logic::LocalIndex;
 
 pub type MillisDurationRange = RangeToFactor<MillisDuration, MillisDuration>;
 
@@ -80,16 +79,14 @@ impl<V: PartialOrd, F> RangeToFactor<V, F> {
 }
 
 pub trait GameCallbacks<StepT: Display>:
-    RectifyCallbacks<StepForParticipants<Step<StepT>>> + VersionProvider + BufferDeserializer
-{
-}
+RectifyCallbacks<StepMap<Step<StepT>>> + VersionProvider + BufferDeserializer
+{}
 
 impl<T, StepT> GameCallbacks<StepT> for T
 where
-    T: RectifyCallbacks<StepForParticipants<Step<StepT>>> + VersionProvider + BufferDeserializer,
+    T: RectifyCallbacks<StepMap<Step<StepT>>> + VersionProvider + BufferDeserializer,
     StepT: Display,
-{
-}
+{}
 
 #[derive(Debug, PartialEq)]
 pub enum ClientPhase {
@@ -108,7 +105,7 @@ pub struct Client<
     nimble_layer: NimbleLayerClient,
     logic: ClientLogic<GameT, StepT>,
     metrics: NetworkMetrics,
-    rectify: Rectify<GameT, StepForParticipants<Step<StepT>>>,
+    rectify: Rectify<GameT, StepMap<Step<StepT>>>,
     authoritative_range_to_tick_duration_ms: RangeToFactor<u8, f32>,
     authoritative_time_tick: TimeTick,
     prediction_range_to_tick_duration_ms: RangeToFactor<i32, f32>,
@@ -120,9 +117,9 @@ pub struct Client<
 }
 
 impl<
-        StepT: Clone + Deserialize + Serialize + Debug + std::fmt::Display + Eq,
-        GameT: GameCallbacks<StepT> + Debug,
-    > Client<GameT, StepT>
+    StepT: Clone + Deserialize + Serialize + Debug + std::fmt::Display + Eq,
+    GameT: GameCallbacks<StepT> + Debug,
+> Client<GameT, StepT>
 {
     /// Creates a new `Client` instance with the given current time.
     ///
@@ -214,7 +211,7 @@ impl<
         Ok(())
     }
 
-    pub fn debug_rectify(&self) -> &Rectify<GameT, StepForParticipants<Step<StepT>>> {
+    pub fn debug_rectify(&self) -> &Rectify<GameT, StepMap<Step<StepT>>> {
         &self.rectify
     }
 
@@ -417,9 +414,9 @@ impl<
     pub fn push_predicted_step(
         &mut self,
         tick_id: TickId,
-        step: StepForParticipants<StepT>,
+        step: StepMap<StepT>,
     ) -> Result<(), ClientError> {
-        let count = step.combined_step.len();
+        let count = step.len();
         if count > self.required_prediction_count() {
             return Err(ClientError::PredictionQueueOverflow);
         }
@@ -427,18 +424,16 @@ impl<
 
         self.logic.push_predicted_step(tick_id, step.clone())?;
 
-        let mut seq_map = SeqMap::<ParticipantId, Step<StepT>>::new();
+        let mut seq_map = StepMap::<Step<StepT>>::new();
 
-        for (participant_id, step) in step.combined_step.into_iter() {
+        for (participant_id, step) in &step {
             seq_map
                 .insert(*participant_id, Step::Custom(step.clone()))
                 .expect("can't insert step");
         }
         self.rectify.push_predicted(
             tick_id,
-            StepForParticipants::<Step<StepT>> {
-                combined_step: seq_map,
-            },
+            seq_map,
         )?;
 
         Ok(())

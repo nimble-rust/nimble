@@ -11,7 +11,7 @@ members = [
     "crates/ordered-datagram",
     "crates/sample-step",
     "crates/nimble",
-    "crates/step-types",
+    "crates/step-map",
     "crates/sample-game-type",
     "crates/layer",
     "crates/protocol-header",

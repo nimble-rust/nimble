@@ -24,7 +24,7 @@ nimble-host = { path = "../host", version = "0.0.14-dev" }
 #tick-queue = "0.0.2"
 nimble-step = { path = "../step", version = "0.0.14-dev" }
 #nimble-client-logic = { path = "../client-logic", version = "0.0.14-dev" }
-nimble-step-types = { path = "../step-types", version = "0.0.14-dev" }
+nimble-step-map = { path = "../step-map", version = "0.0.14-dev" }
 
 nimble-sample-game = { path = "../sample-game-type", version = "0.0.14-dev" }
 nimble-sample-step = { path = "../sample-step", version = "0.0.14-dev" }

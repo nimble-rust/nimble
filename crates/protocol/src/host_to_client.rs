@@ -260,14 +260,14 @@ pub struct JoinGameParticipant {
 impl JoinGameParticipant {
     pub fn to_stream(&self, stream: &mut impl WriteOctetStream) -> io::Result<()> {
         stream.write_u8(self.local_index)?;
-        self.participant_id.to_stream(stream)?;
+        self.participant_id.serialize(stream)?;
         Ok(())
     }
 
     pub fn from_stream(stream: &mut impl ReadOctetStream) -> io::Result<Self> {
         Ok(Self {
             local_index: stream.read_u8()?,
-            participant_id: ParticipantId::from_stream(stream)?,
+            participant_id: ParticipantId::deserialize(stream)?,
         })
     }
 }

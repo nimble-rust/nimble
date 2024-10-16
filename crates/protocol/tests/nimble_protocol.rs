@@ -15,10 +15,9 @@ use nimble_protocol::{ClientRequestId, Version};
 
 use nimble_protocol::client_to_host::ConnectRequest;
 use nimble_sample_step::SampleStep;
-use nimble_step_types::StepForParticipants;
-use seq_map::SeqMap;
 use std::io;
 use tick_id::TickId;
+use nimble_step_map::StepMap;
 
 #[test_log::test]
 fn check_version() {
@@ -63,7 +62,7 @@ fn check_connect() {
 fn check_authoritative() -> io::Result<()> {
     // Prepare all steps
     let mut range_for_all_participants =
-        SeqMap::<ParticipantId, InternalStepVectorForOneParticipant<SampleStep>>::new();
+        StepMap::<InternalStepVectorForOneParticipant<SampleStep>>::new();
 
     const PARTICIPANT_COUNT: usize = 2;
     let first_steps = vec![
@@ -165,16 +164,16 @@ fn create_authoritative_step_range() -> CombinedSteps<SampleStep> {
 
     let mut authoritative_steps = Vec::new();
     for index in 0..3 {
-        let mut authoritative_participants = SeqMap::new();
+        let mut authoritative_participants = StepMap::new();
         for participant_index in 0..PARTICIPANT_COUNT {
             let sample_step = &steps_per_participant[participant_index][index];
             authoritative_participants
                 .insert(ParticipantId(participant_index as u8), sample_step.clone())
                 .expect("should be unique participants ids");
         }
-        authoritative_steps.push(StepForParticipants {
-            combined_step: authoritative_participants,
-        })
+        authoritative_steps.push(
+            authoritative_participants
+        );
     }
 
     CombinedSteps {
