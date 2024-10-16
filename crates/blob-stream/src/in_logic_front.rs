@@ -24,10 +24,10 @@ pub enum FrontLogicError {
 impl ErrorLevelProvider for FrontLogicError {
     fn error_level(&self) -> ErrorLevel {
         match self {
-            FrontLogicError::IoError(_) => ErrorLevel::Info,
-            FrontLogicError::BlobError(_) => ErrorLevel::Info,
-            FrontLogicError::UnknownTransferId(_) => ErrorLevel::Info,
-            FrontLogicError::ChunkSizeCanNotBeZero => ErrorLevel::Info,
+            Self::IoError(_) => ErrorLevel::Info,
+            Self::BlobError(_) => ErrorLevel::Info,
+            Self::UnknownTransferId(_) => ErrorLevel::Info,
+            Self::ChunkSizeCanNotBeZero => ErrorLevel::Info,
         }
     }
 }
