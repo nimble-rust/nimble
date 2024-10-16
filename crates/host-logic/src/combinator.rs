@@ -7,7 +7,7 @@ use log::trace;
 use nimble_participant::ParticipantId;
 use nimble_step::Step;
 use nimble_step_map::StepMap;
-use seq_map::{SeqMapError};
+use seq_map::SeqMapError;
 use std::collections::HashMap;
 use tick_id::TickId;
 use tick_queue::{Queue, QueueError};

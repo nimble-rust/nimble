@@ -1,4 +1,5 @@
 # 🏎️ Nimble Host Logic
+
 [![Crates.io](https://img.shields.io/crates/nimble-host-logic)](https://crates.io/crates/nimble-host-logic)
 [![Documentation](https://docs.rs/nimble-host-logic/badge.svg)](https://docs.rs/nimble-host-logic)
 
