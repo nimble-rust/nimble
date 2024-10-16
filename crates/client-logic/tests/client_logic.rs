@@ -43,8 +43,8 @@ fn feed_connect_response(client_logic: &mut ClientLogic<SampleState, Step<Sample
     assert_eq!(commands.len(), 1);
 
     if let ClientToHostCommands::ConnectType(ConnectRequest {
-                                                 client_request_id, ..
-                                             }) = commands[0]
+        client_request_id, ..
+    }) = commands[0]
     {
         let connect_response = ConnectionAccepted {
             flags: 0,
@@ -75,7 +75,8 @@ fn send_steps() -> Result<(), ClientLogicError> {
         TickId(0),
         [(ParticipantId(0), Custom(SampleStep::MoveRight(3)))]
             .as_slice()
-            .into())?;
+            .into(),
+    )?;
 
     feed_connect_response(&mut client_logic);
 

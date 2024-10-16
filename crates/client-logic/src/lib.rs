@@ -165,9 +165,7 @@ impl<
         &self.phase
     }
 
-    pub fn pop_all_authoritative_steps(
-        &mut self,
-    ) -> (TickId, Vec<StepMap<Step<StepT>>>) {
+    pub fn pop_all_authoritative_steps(&mut self) -> (TickId, Vec<StepMap<Step<StepT>>>) {
         if let Some(first_tick_id) = self.incoming_authoritative_steps.front_tick_id() {
             let vec = self.incoming_authoritative_steps.to_vec();
             self.incoming_authoritative_steps.clear(first_tick_id + 1);
