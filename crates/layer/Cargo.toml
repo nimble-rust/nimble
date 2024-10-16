@@ -2,10 +2,13 @@
 name = "nimble-layer"
 version = "0.0.14-dev"
 edition = "2021"
+license = "MIT"
+description = "Nimble Layer"
+repository = "https://github.com/nimble-rust/nimble"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-nimble-ordered-datagram = { path = "../ordered-datagram", version = "0.0.14-dev" }
-nimble-protocol-header = { path = "../protocol-header", version = "0.0.14-dev" }
 flood-rs = "0.0.12"
 log = "0.4.22"
 monotonic-time-rs = "0.0.5"
@@ -13,6 +16,10 @@ metricator = "0.0.6"
 app-version = "0.0.2"
 tick-id = "0.0.9"
 hexify = { version = "0.0.3", features = ["log_equal"] }
+
+nimble-ordered-datagram = { path = "../ordered-datagram", version = "0.0.14-dev" }
+nimble-protocol-header = { path = "../protocol-header", version = "0.0.14-dev" }
+
 
 [dev-dependencies]
 test-log = "0.2.16"
