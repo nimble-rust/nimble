@@ -2,6 +2,11 @@
 name = "nimble-client"
 version = "0.0.14-dev"
 edition = "2021"
+license = "MIT"
+description = "Nimble Client"
+repository = "https://github.com/nimble-rust/nimble"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 datagram-chunker = "0.0.1"
