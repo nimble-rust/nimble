@@ -1,8 +1,9 @@
 # 🚀 Nimble Host
+
 [![Crates.io](https://img.shields.io/crates/v/nimble-host)](https://crates.io/crates/nimble-host)
 [![Documentation](https://docs.rs/nimble-host/badge.svg)](https://docs.rs/nimble-host)
 
-Welcome to **Nimble Host**! 🕹️✨ The core server-side component of the Nimble multiplayer framework, designed 
+Welcome to **Nimble Host**! 🕹️✨ The core server-side component of the Nimble multiplayer framework, designed
 to manage game sessions, handle client connections, and ensure smooth communication between clients and the host.
 
 ## 🌟 Features
