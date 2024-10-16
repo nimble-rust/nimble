@@ -4,6 +4,5 @@
  */
 pub use {
     nimble_client::prelude::*, nimble_host::prelude::*, nimble_sample_game::*,
-    nimble_sample_step::*, nimble_step::*, nimble_step_map::StepMap,
-    nimble_wrapped_step::*,
+    nimble_sample_step::*, nimble_step::*, nimble_step_map::StepMap, nimble_wrapped_step::*,
 };
