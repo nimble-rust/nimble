@@ -9,10 +9,10 @@ use nimble_participant::ParticipantId;
 use nimble_rectify::{Rectify, RectifyCallback};
 use nimble_seer::SeerCallback;
 use nimble_step::Step;
+use nimble_step_map::StepMap;
 use std::fmt::Display;
 use std::io;
 use tick_id::TickId;
-use nimble_step_map::StepMap;
 
 #[derive(Clone)]
 pub struct TestGame {
@@ -181,7 +181,7 @@ fn one_authoritative_and_x_predictions() {
         .expect("should work");
 
     let predicted_step_combined_final = predicted_step_combined;
-    
+
     let mut tick = TickId(0);
     rectify
         .push_predicted(tick, predicted_step_combined_final.clone())
