@@ -242,9 +242,7 @@ impl<StepT: Clone + Eq + Debug + Deserialize + Serialize + std::fmt::Display> Co
             for participant_id in combined_predicted_step.keys() {
                 // TODO:
                 if self.participant_lookup.contains_key(participant_id) {
-                    let part = combined_predicted_step
-                        .get(participant_id)
-                        .unwrap();
+                    let part = combined_predicted_step.get(participant_id).unwrap();
 
                     let buffer = combinator
                         .get_mut(participant_id)

@@ -135,7 +135,6 @@ impl<T: Clone + std::fmt::Display> Combinator<T> {
                         steps.front_tick_id().unwrap()
                     );
                     combined_step
-
                         .insert(*participant_id, Step::Custom(steps.pop().unwrap().item))?;
                 } else {
                     trace!(
@@ -143,8 +142,7 @@ impl<T: Clone + std::fmt::Display> Combinator<T> {
                         first_tick,
                         participant_id
                     );
-                    combined_step
-                        .insert(*participant_id, Step::Forced)?;
+                    combined_step.insert(*participant_id, Step::Forced)?;
                     steps.discard_up_to(self.tick_id_to_produce);
                 }
             }
