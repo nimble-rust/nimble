@@ -33,6 +33,7 @@ use log::trace;
 use metricator::MinMaxAvg;
 use monotonic_time_rs::{Millis, MillisDuration};
 use network_metrics::{CombinedMetrics, NetworkMetrics};
+use nimble_client_logic::LocalIndex;
 use nimble_client_logic::{ClientLogic, ClientLogicPhase, LocalPlayer};
 use nimble_layer::NimbleLayerClient;
 use nimble_protocol::prelude::HostToClientCommands;
@@ -43,7 +44,6 @@ use std::cmp::min;
 use std::fmt::{Debug, Display};
 use tick_id::TickId;
 use time_tick::TimeTick;
-use nimble_client_logic::LocalIndex;
 
 pub type MillisDurationRange = RangeToFactor<MillisDuration, MillisDuration>;
 
@@ -79,14 +79,16 @@ impl<V: PartialOrd, F> RangeToFactor<V, F> {
 }
 
 pub trait GameCallbacks<StepT: Display>:
-RectifyCallbacks<StepMap<Step<StepT>>> + VersionProvider + BufferDeserializer
-{}
+    RectifyCallbacks<StepMap<Step<StepT>>> + VersionProvider + BufferDeserializer
+{
+}
 
 impl<T, StepT> GameCallbacks<StepT> for T
 where
     T: RectifyCallbacks<StepMap<Step<StepT>>> + VersionProvider + BufferDeserializer,
     StepT: Display,
-{}
+{
+}
 
 #[derive(Debug, PartialEq)]
 pub enum ClientPhase {
@@ -117,9 +119,9 @@ pub struct Client<
 }
 
 impl<
-    StepT: Clone + Deserialize + Serialize + Debug + std::fmt::Display + Eq,
-    GameT: GameCallbacks<StepT> + Debug,
-> Client<GameT, StepT>
+        StepT: Clone + Deserialize + Serialize + Debug + std::fmt::Display + Eq,
+        GameT: GameCallbacks<StepT> + Debug,
+    > Client<GameT, StepT>
 {
     /// Creates a new `Client` instance with the given current time.
     ///
@@ -431,10 +433,7 @@ impl<
                 .insert(*participant_id, Step::Custom(step.clone()))
                 .expect("can't insert step");
         }
-        self.rectify.push_predicted(
-            tick_id,
-            seq_map,
-        )?;
+        self.rectify.push_predicted(tick_id, seq_map)?;
 
         Ok(())
     }

@@ -4,16 +4,6 @@ version = "0.0.14-dev"
 edition = "2021"
 
 [dependencies]
-nimble-protocol = { path = "../protocol", version = "0.0.14-dev" }
-nimble-layer = { path = "../layer", version = "0.0.14-dev" }
-nimble-client-logic = { path = "../client-logic", version = "0.0.14-dev" }
-network-metrics = "0.0.1"
-nimble-assent = { path = "../assent", version = "0.0.14-dev" }
-nimble-seer = { path = "../seer", version = "0.0.14-dev" }
-nimble-rectify = { path = "../rectify", version = "0.0.14-dev" }
-nimble-step-map = { path = "../step-map", version = "0.0.14-dev" }
-tick-queue = "0.0.2"
-nimble-step = { path = "../step", version = "0.0.14-dev" }
 datagram-chunker = "0.0.1"
 flood-rs = "0.0.12"
 log = "0.4.22"
@@ -23,17 +13,38 @@ app-version = "0.0.2"
 tick-id = "0.0.9"
 err-rs = "0.0.4"
 seq-map = "0.0.2"
-nimble-participant = { path = "../participant", version = "0.0.14-dev" }
 time-tick = "0.0.1"
+network-metrics = "0.0.1"
+tick-queue = "0.0.2"
+
+nimble-step-map = { path = "../step-map", version = "0.0.14-dev" }
+nimble-step = { path = "../step", version = "0.0.14-dev" }
+nimble-participant = { path = "../participant", version = "0.0.14-dev" }
+
+# Authoritative, predictive steps and reconcilation
+nimble-assent = { path = "../assent", version = "0.0.14-dev" }
+nimble-seer = { path = "../seer", version = "0.0.14-dev" }
+nimble-rectify = { path = "../rectify", version = "0.0.14-dev" }
+
+# Layer, protocol and underlying logic
+nimble-layer = { path = "../layer", version = "0.0.14-dev" }
+nimble-protocol = { path = "../protocol", version = "0.0.14-dev" }
+nimble-client-logic = { path = "../client-logic", version = "0.0.14-dev" }
 
 [dev-dependencies]
 test-log = "0.2.16"
-nimble-sample-step = { path = "../sample-step", version = "0.0.14-dev" }
-nimble-sample-game = { path = "../sample-game-type", version = "0.0.14-dev" }
-nimble-host = { path = "../host", version = "0.0.14-dev" }
-nimble-host-logic = { path = "../host-logic", version = "0.0.14-dev" }
+
 tick-id = "0.0.9"
 hazy-transport = "0.0.4"
 rand = "0.8.5"
 seq-map = "0.0.2"
+
 nimble-participant = { path = "../participant", version = "0.0.14-dev" }
+
+# Sample game and step types
+nimble-sample-step = { path = "../sample-step", version = "0.0.14-dev" }
+nimble-sample-game = { path = "../sample-game-type", version = "0.0.14-dev" }
+
+# Host
+nimble-host = { path = "../host", version = "0.0.14-dev" }
+nimble-host-logic = { path = "../host-logic", version = "0.0.14-dev" }

@@ -14,11 +14,11 @@ use nimble_host_logic::{GameStateProvider, HostConnectionId};
 use nimble_participant::ParticipantId;
 use nimble_sample_game::{SampleGame, SampleGameState};
 use nimble_sample_step::SampleStep;
+use nimble_step_map::StepMap;
 use rand::prelude::StdRng;
 use rand::SeedableRng;
 use std::fmt::Debug;
 use tick_id::TickId;
-use nimble_step_map::StepMap;
 
 pub struct TestStateProvider {
     pub tick_id: TickId,
@@ -85,7 +85,8 @@ fn communicate<
         for _ in 0..client.required_prediction_count() {
             debug!("trying to push predicted step for {tick_id}");
             let mut predicted_step = StepMap::new();
-            predicted_step.insert(ParticipantId(0), SampleStep::MoveLeft(-1))
+            predicted_step
+                .insert(ParticipantId(0), SampleStep::MoveLeft(-1))
                 .expect("should insert map");
             client
                 .push_predicted_step(tick_id, predicted_step)
@@ -146,7 +147,6 @@ fn communicate<
     Ok(())
 }
 
-#[allow(unused)]
 fn assert_eq_with_epsilon(a: f32, b: f32, epsilon: f32) {
     assert!(
         (a - b).abs() <= epsilon,
@@ -156,7 +156,6 @@ fn assert_eq_with_epsilon(a: f32, b: f32, epsilon: f32) {
     );
 }
 
-#[allow(unused)]
 #[test_log::test]
 fn client_to_host() -> Result<(), ClientError> {
     let mut now = Millis::new(0);

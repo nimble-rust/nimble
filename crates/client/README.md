@@ -28,7 +28,7 @@ Nimble Client is a lightweight library that manages:
 
 ### 📋 Prerequisites
 
-- 🦀 **Rust:** Ensure you have Rust installed. If not, download it from [rustup.rs](https://rustup.rs/). 
+- 🦀 **Rust:** Ensure you have Rust installed. If not, download it from [rustup.rs](https://rustup.rs/).
 
 ### 📦 Installation
 
