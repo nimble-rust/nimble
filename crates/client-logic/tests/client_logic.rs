@@ -3,6 +3,7 @@
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
 use flood_rs::{BufferDeserializer, Deserialize, Serialize};
+use monotonic_time_rs::Millis;
 use nimble_client_logic::err::ClientLogicError;
 use nimble_client_logic::{ClientLogic, ClientLogicPhase};
 use nimble_participant::ParticipantId;
@@ -26,10 +27,11 @@ fn basic_logic() {
 
     feed_connect_response(&mut client_logic);
     {
-        let commands = client_logic.send();
-        assert_eq!(commands.len(), 1);
+        let now = Millis::new(0);
+        let commands = client_logic.send(now);
+        assert_eq!(commands.len(), 2);
         if let ClientToHostCommands::DownloadGameState(DownloadGameStateRequest { request_id }) =
-            &commands[0]
+            &commands[1]
         {
             assert_eq!(*request_id, 153);
         } else {
@@ -39,7 +41,9 @@ fn basic_logic() {
 }
 
 fn feed_connect_response(client_logic: &mut ClientLogic<SampleState, Step<SampleStep>>) {
-    let commands = client_logic.send();
+    let now = Millis::new(0);
+
+    let commands = client_logic.send(now);
     assert_eq!(commands.len(), 1);
 
     if let ClientToHostCommands::ConnectType(ConnectRequest {
@@ -52,7 +56,7 @@ fn feed_connect_response(client_logic: &mut ClientLogic<SampleState, Step<Sample
         };
 
         client_logic
-            .receive(&HostToClientCommands::ConnectType(connect_response))
+            .receive(now, &HostToClientCommands::ConnectType(connect_response))
             .expect("TODO: panic message");
     } else {
         panic!("Command should be connect request");
@@ -81,10 +85,12 @@ fn send_steps() -> Result<(), ClientLogicError> {
     feed_connect_response(&mut client_logic);
 
     {
-        let commands = client_logic.send();
-        assert_eq!(commands.len(), 1);
+        let now = Millis::new(0);
+
+        let commands = client_logic.send(now);
+        assert_eq!(commands.len(), 2);
         if let ClientToHostCommands::DownloadGameState(DownloadGameStateRequest { request_id }) =
-            &commands[0]
+            &commands[1]
         {
             assert_eq!(*request_id, 0x99);
         } else {
@@ -152,9 +158,10 @@ fn receive_authoritative_steps() -> Result<(), ClientLogicError> {
         authoritative_steps: setup_sample_steps(),
     };
     let command = HostToClientCommands::GameStep(response);
+    let now = Millis::new(0);
 
     // Receive
-    client_logic.receive(&command)?;
+    client_logic.receive(now, &command)?;
 
     // Verify
     let authoritative_steps = client_logic.debug_authoritative_steps();
@@ -202,7 +209,7 @@ fn receive_authoritative_steps() -> Result<(), ClientLogicError> {
     };
     let command2 = HostToClientCommands::GameStep(response2);
     // Receive
-    client_logic.receive(&command2)?;
+    client_logic.receive(now, &command2)?;
 
     assert_eq!(client_logic.server_buffer_delta_ticks(), None);
 
@@ -217,7 +224,7 @@ fn receive_authoritative_steps() -> Result<(), ClientLogicError> {
         authoritative_steps: setup_sample_steps(),
     };
     let command3 = HostToClientCommands::GameStep(response3);
-    client_logic.receive(&command3)?;
+    client_logic.receive(now, &command3)?;
 
     assert_eq!(
         client_logic
@@ -234,14 +241,18 @@ fn create_connecting_client(
 ) -> ClientLogic<SampleState, SampleStep> {
     let simulation_version = simulation_version.unwrap_or(app_version::Version::new(1, 0, 0));
     let mut client = ClientLogic::<SampleState, SampleStep>::new(simulation_version);
-    let _ = client.send();
+    let now = Millis::new(0);
+
+    let _ = client.send(now);
     client
 }
 
 #[test_log::test]
 fn send_connect_command() {
     let mut client = create_connecting_client(None);
-    let commands = client.send();
+    let now = Millis::new(0);
+
+    let commands = client.send(now);
 
     let ClientToHostCommands::ConnectType(connect_cmd) = &commands[0] else {
         panic!("Wrong command")
@@ -284,9 +295,11 @@ fn receive_valid_connection_accepted() {
     };
     let command = HostToClientCommands::<Step<SampleStep>>::ConnectType(accepted);
 
-    let _ = client.send(); // Just make it send once so it can try to accept the connection accepted
+    let now = Millis::new(0);
 
-    let result = client.receive(&command);
+    let _ = client.send(now); // Just make it send once so it can try to accept the connection accepted
+
+    let result = client.receive(now, &command);
 
     assert!(result.is_ok());
     assert_eq!(
@@ -306,10 +319,11 @@ fn receive_invalid_connection_accepted_nonce() {
         response_to_request: wrong_request_id,
     };
     let command = HostToClientCommands::<Step<SampleStep>>::ConnectType(accepted);
+    let now = Millis::new(0);
 
-    let _ = client.send(); // Just make it send once so it can try to accept the connection accepted
+    let _ = client.send(now); // Just make it send once so it can try to accept the connection accepted
 
-    let result = client.receive(&command);
+    let result = client.receive(now, &command);
 
     match result {
         Err(ClientLogicError::WrongConnectResponseRequestId(n)) => {
@@ -328,8 +342,9 @@ fn receive_response_without_request() {
         response_to_request: wrong_request_id,
     };
     let command = HostToClientCommands::<Step<SampleStep>>::ConnectType(accepted);
+    let now = Millis::new(0);
 
-    let result = client.receive(&command);
+    let result = client.receive(now, &command);
 
     match result {
         Err(ClientLogicError::WrongConnectResponseRequestId(_)) => {}

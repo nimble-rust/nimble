@@ -46,14 +46,15 @@ use crate::err::ClientLogicError;
 use flood_rs::BufferDeserializer;
 use flood_rs::{Deserialize, Serialize};
 use log::{debug, trace};
-use metricator::AggregateMetric;
+use metricator::{AggregateMetric, MinMaxAvg};
+use monotonic_time_rs::{Millis, MillisLow16};
 use nimble_blob_stream::prelude::{FrontLogic, SenderToReceiverFrontCommands};
 use nimble_participant::ParticipantId;
 use nimble_protocol::client_to_host::{
     ConnectRequest, DownloadGameStateRequest, JoinGameType, JoinPlayerRequest, JoinPlayerRequests,
 };
 use nimble_protocol::host_to_client::{
-    ConnectionAccepted, DownloadGameStateResponse, GameStepResponseHeader,
+    ConnectionAccepted, DownloadGameStateResponse, GameStepResponseHeader, PongInfo,
 };
 use nimble_protocol::prelude::*;
 use nimble_protocol::{ClientRequestId, NIMBLE_PROTOCOL_VERSION};
@@ -124,6 +125,9 @@ pub struct ClientLogic<
     /// Tracks the delta of tick id on the server.
     server_buffer_delta_tick_id: AggregateMetric<i16>,
 
+    // Latency
+    latency: AggregateMetric<u16>,
+
     /// Tracks the buffer step count on the server.
     //server_buffer_count: AggregateMetric<u8>,
     joining_request_id: ClientRequestId,
@@ -153,6 +157,7 @@ impl<
             local_players: Vec::new(),
             deterministic_simulation_version,
             connect_request_id: None,
+            latency: AggregateMetric::<u16>::new(10).unwrap().with_unit("ms"),
         }
     }
 
@@ -163,6 +168,10 @@ impl<
 
     pub fn phase(&self) -> &ClientLogicPhase {
         &self.phase
+    }
+
+    pub fn latency(&self) -> Option<MinMaxAvg<u16>> {
+        self.latency.values()
     }
 
     pub fn pop_all_authoritative_steps(&mut self) -> (TickId, Vec<StepMap<Step<StepT>>>) {
@@ -256,10 +265,14 @@ impl<
     /// # Returns
     /// A vector of `ClientToHostCommands` representing all the commands to be sent to the host.
     #[must_use]
-    pub fn send(&mut self) -> Vec<ClientToHostCommands<StepT>> {
+    pub fn send(&mut self, now: Millis) -> Vec<ClientToHostCommands<StepT>> {
         let mut commands: Vec<ClientToHostCommands<StepT>> = vec![];
 
         if self.phase != ClientLogicPhase::RequestConnect {
+            // Always send ping when connected
+            let ping = ClientToHostCommands::Ping(now.to_lower());
+            commands.push(ping);
+
             if let Some(joining_players) = &self.joining_player {
                 debug!("connected. send join_game_request {:?}", joining_players);
 
@@ -330,6 +343,21 @@ impl<
 
     pub fn predicted_step_count_in_queue(&self) -> usize {
         self.outgoing_predicted_steps.len()
+    }
+
+    fn on_pong(&mut self, now: Millis, cmd: &PongInfo) -> Result<(), ClientLogicError> {
+        let low_16 = cmd.lower_millis as MillisLow16;
+
+        let earlier = now
+            .from_lower(low_16)
+            .ok_or_else(|| ClientLogicError::MillisFromLowerError)?;
+        let duration_ms = now
+            .checked_duration_since_ms(earlier)
+            .ok_or_else(|| ClientLogicError::AbsoluteTimeError)?;
+
+        self.latency.add(duration_ms.as_millis() as u16);
+
+        Ok(())
     }
 
     /// Handles the reception of the join game acceptance message from the host.
@@ -524,6 +552,7 @@ impl<
     /// Returns a [`ClientErrorKind`] if the command cannot be processed.
     pub fn receive(
         &mut self,
+        now: Millis,
         command: &HostToClientCommands<Step<StepT>>,
     ) -> Result<(), ClientLogicError> {
         match command {
@@ -542,6 +571,7 @@ impl<
             HostToClientCommands::ConnectType(ref connect_accepted) => {
                 self.on_connect(connect_accepted)?
             }
+            HostToClientCommands::Pong(pong_info) => self.on_pong(now, pong_info)?,
         }
         Ok(())
     }

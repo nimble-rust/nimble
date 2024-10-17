@@ -16,6 +16,7 @@ use flood_rs::{Deserialize, Serialize};
 use freelist_rs::FreeList;
 use log::trace;
 use monotonic_time_rs::Millis;
+use nimble_protocol::host_to_client::PongInfo;
 use nimble_protocol::prelude::{ClientToHostCommands, HostToClientCommands};
 use nimble_protocol::NIMBLE_PROTOCOL_VERSION;
 use nimble_step::Step;
@@ -171,7 +172,7 @@ impl<StepT: Clone + Eq + Debug + Deserialize + Serialize + Display> HostLogic<St
         request: &ClientToHostCommands<StepT>,
         state_provider: &impl GameStateProvider,
     ) -> Result<Vec<HostToClientCommands<Step<StepT>>>, HostLogicError> {
-        //trace!("host_logic: receive: \n{request}");
+        trace!("host_logic: receive: \n{request}");
         if let Some(ref mut connection) = self.connections.get_mut(&connection_id.0) {
             match &connection.phase {
                 Phase::Connected => {
@@ -201,6 +202,7 @@ impl<StepT: Clone + Eq + Debug + Deserialize + Serialize + Display> HostLogic<St
                             connection
                                 .on_connect(connect_request, &self.deterministic_simulation_version)
                         }
+                        ClientToHostCommands::Ping(ping_info) => self.on_ping(*ping_info),
                     }
                 }
                 Phase::WaitingForValidConnectRequest => match request {
@@ -212,5 +214,12 @@ impl<StepT: Clone + Eq + Debug + Deserialize + Serialize + Display> HostLogic<St
         } else {
             Err(HostLogicError::UnknownConnectionId(connection_id))
         }
+    }
+
+    fn on_ping(
+        &self,
+        lower_millis: u16,
+    ) -> Result<Vec<HostToClientCommands<Step<StepT>>>, HostLogicError> {
+        Ok(vec![HostToClientCommands::Pong(PongInfo { lower_millis })])
     }
 }

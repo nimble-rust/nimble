@@ -48,8 +48,7 @@ impl<StepT: Deserialize + Serialize + Debug + Clone + std::fmt::Display> Deseria
 
 impl<StepT: Deserialize + Serialize + Debug + Clone + std::fmt::Display> CombinedSteps<StepT> {
     pub fn to_internal(&self) -> InternalAllParticipantVectors<StepT> {
-        let mut hash_map =
-            StepMap::<InternalStepVectorForOneParticipant<StepT>>::new();
+        let mut hash_map = StepMap::<InternalStepVectorForOneParticipant<StepT>>::new();
 
         let mut unique_participant_ids: HashSet<ParticipantId> = HashSet::new();
 
@@ -111,8 +110,7 @@ impl<StepT: Deserialize + Serialize + Debug + Clone + std::fmt::Display> Combine
 
         for (participant_id, serialized_step_vector) in &separate_vectors.participant_step_vectors {
             for (index, serialized_step) in serialized_step_vector.steps.iter().enumerate() {
-                let hash_map_for_auth_step =
-                    &mut auth_step_range_vec.get_mut(index).unwrap();
+                let hash_map_for_auth_step = &mut auth_step_range_vec.get_mut(index).unwrap();
                 hash_map_for_auth_step
                     .insert(*participant_id, serialized_step.clone())
                     .expect("expect unique participant_id");

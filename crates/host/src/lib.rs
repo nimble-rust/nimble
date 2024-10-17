@@ -136,7 +136,7 @@ impl<StepT: Clone + Deserialize + Serialize + Eq + Debug + Display> Host<StepT> 
             .get_mut(&connection_id.0)
             .ok_or(HostError::ConnectionNotFound(connection_id.0))?;
 
-        let (datagram_without_layer, client_time) = found_connection.layer.receive(datagram)?;
+        let datagram_without_layer = found_connection.layer.receive(datagram)?;
 
         let deserialized_commands = datagram_chunker::deserialize_datagram::<
             ClientToHostCommands<StepT>,
@@ -162,9 +162,7 @@ impl<StepT: Clone + Deserialize + Serialize + Eq + Debug + Display> Host<StepT> 
 
         let outgoing_datagrams = datagram_chunker.finalize();
 
-        let out_datagrams = found_connection
-            .layer
-            .send(client_time, outgoing_datagrams)?;
+        let out_datagrams = found_connection.layer.send(outgoing_datagrams)?;
 
         for (index, datagram) in out_datagrams.iter().enumerate() {
             trace!(

@@ -22,6 +22,7 @@ nimble-participant = { path = "../participant", version = "0.0.14-dev" }
 nimble-step-map = { path = "../step-map", version = "0.0.14-dev" }
 nimble-blob-stream = { path = "../blob-stream", version = "0.0.14-dev" }
 nimble-protocol = { path = "../protocol", version = "0.0.14-dev" }
+monotonic-time-rs = "0.0.5"
 
 [dev-dependencies]
 test-log = "0.2.16"

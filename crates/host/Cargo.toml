@@ -17,7 +17,7 @@ log = "0.4.22"
 hexify = "0.0.3"
 err-rs = "0.0.4"
 
-datagram-chunker = "0.0.1"
+datagram-chunker = "0.0.2"
 
 nimble-layer = { path = "../layer", version = "0.0.14-dev" }
 nimble-protocol = { path = "../protocol", version = "0.0.14-dev" }

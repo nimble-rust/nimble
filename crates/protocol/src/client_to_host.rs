@@ -20,6 +20,7 @@ enum ClientToHostCommand {
     DownloadGameState = 0x03,
     BlobStreamChannel = 0x04,
     Connect = 0x05,
+    Ping = 0x06,
 }
 
 impl TryFrom<u8> for ClientToHostCommand {
@@ -32,6 +33,7 @@ impl TryFrom<u8> for ClientToHostCommand {
             0x03 => Self::DownloadGameState,
             0x04 => Self::BlobStreamChannel,
             0x05 => Self::Connect,
+            0x06 => Self::Ping,
             _ => Err(io::Error::new(
                 ErrorKind::InvalidData,
                 format!("Unknown ClientToHostCommand {}", value),
@@ -90,19 +92,21 @@ pub enum ClientToHostCommands<StepT: Clone + Debug + Serialize + Deserialize + D
     DownloadGameState(DownloadGameStateRequest),
     BlobStreamChannel(ReceiverToSenderFrontCommands),
     ConnectType(ConnectRequest),
+    Ping(u16),
 }
 
 impl<StepT: Clone + Debug + Serialize + Deserialize + Display> Serialize
     for ClientToHostCommands<StepT>
 {
     fn serialize(&self, stream: &mut impl WriteOctetStream) -> io::Result<()> {
-        stream.write_u8(self.to_octet())?;
+        stream.write_u8(self.into())?;
         match self {
             Self::Steps(predicted_steps_and_ack) => predicted_steps_and_ack.to_stream(stream),
             Self::JoinGameType(join_game_request) => join_game_request.to_stream(stream),
             Self::DownloadGameState(download_game_state) => download_game_state.to_stream(stream),
             Self::BlobStreamChannel(blob_stream_command) => blob_stream_command.to_stream(stream),
             Self::ConnectType(connect_request) => connect_request.to_stream(stream),
+            Self::Ping(ping_time) => stream.write_u16(*ping_time),
         }
     }
 }
@@ -125,27 +129,33 @@ impl<StepT: Clone + Debug + Serialize + Deserialize + std::fmt::Display> Deseria
                 Self::BlobStreamChannel(ReceiverToSenderFrontCommands::from_stream(stream)?)
             }
             ClientToHostCommand::Connect => Self::ConnectType(ConnectRequest::from_stream(stream)?),
+            ClientToHostCommand::Ping => Self::Ping(stream.read_u16()?),
         };
         Ok(x)
     }
 }
 
-impl<StepT: Clone + Debug + Serialize + Deserialize + std::fmt::Display>
-    ClientToHostCommands<StepT>
+impl<StepT: Deserialize + Serialize + Debug + Display + Clone> From<&ClientToHostCommands<StepT>>
+    for u8
 {
-    pub fn to_octet(&self) -> u8 {
-        match self {
-            Self::Steps(_) => ClientToHostCommand::Steps as u8,
-            Self::JoinGameType(_) => ClientToHostCommand::JoinGame as u8,
-            Self::DownloadGameState(_) => ClientToHostCommand::DownloadGameState as u8,
-            Self::BlobStreamChannel(_) => ClientToHostCommand::BlobStreamChannel as u8,
-            &Self::ConnectType(_) => ClientToHostCommand::Connect as u8,
+    fn from(command: &ClientToHostCommands<StepT>) -> Self {
+        match command {
+            ClientToHostCommands::Steps(_) => ClientToHostCommand::Steps as u8,
+            ClientToHostCommands::JoinGameType(_) => ClientToHostCommand::JoinGame as u8,
+            ClientToHostCommands::DownloadGameState(_) => {
+                ClientToHostCommand::DownloadGameState as u8
+            }
+            ClientToHostCommands::BlobStreamChannel(_) => {
+                ClientToHostCommand::BlobStreamChannel as u8
+            }
+            ClientToHostCommands::ConnectType(_) => ClientToHostCommand::Connect as u8,
+            ClientToHostCommands::Ping(_) => ClientToHostCommand::Ping as u8,
         }
     }
 }
 
-impl<StepT: Clone + Debug + Eq + PartialEq + Serialize + Deserialize + std::fmt::Display>
-    fmt::Display for ClientToHostCommands<StepT>
+impl<StepT: Clone + Debug + Eq + PartialEq + Serialize + Deserialize + Display> Display
+    for ClientToHostCommands<StepT>
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
@@ -160,6 +170,7 @@ impl<StepT: Clone + Debug + Eq + PartialEq + Serialize + Deserialize + std::fmt:
                 write!(f, "blob stream channel {:?}", blob_command)
             }
             &Self::ConnectType(connect_request) => write!(f, "connect {:?}", connect_request),
+            Self::Ping(_) => write!(f, "ping"),
         }
     }
 }

@@ -10,15 +10,15 @@ use metricator::MinMaxAvg;
 use monotonic_time_rs::Millis;
 use nimble_client_logic::err::ClientLogicError;
 use nimble_client_logic::ClientLogic;
-use nimble_layer::{NimbleLayerClient, NimbleLayerError};
+use nimble_layer::{NimbleLayer, NimbleLayerError};
 use nimble_sample_step::{SampleState, SampleStep};
 
 fn send(
-    logic: &mut ClientLogic<SampleState, SampleStep>,
-    layer: &mut NimbleLayerClient,
     now: Millis,
+    logic: &mut ClientLogic<SampleState, SampleStep>,
+    layer: &mut NimbleLayer,
 ) -> Result<Vec<Vec<u8>>, ClientLogicError> {
-    let commands = logic.send();
+    let commands = logic.send(now);
     let mut chunker = datagram_chunker::DatagramChunker::new(1024);
     for command in commands {
         let mut out_stream = OutOctetStream::new();
@@ -28,7 +28,7 @@ fn send(
             .expect("TODO: panic message");
     }
 
-    let datagrams = layer.send(now, chunker.finalize())?;
+    let datagrams = layer.send(chunker.finalize())?;
     Ok(datagrams)
 }
 
@@ -55,10 +55,10 @@ pub fn client_connect_with_layer() -> Result<(), TestError> {
     let app_version = app_version::Version::new(0, 0, 0);
 
     let mut now = Millis::new(0);
-    let mut layer = NimbleLayerClient::new(now);
+    let mut layer = NimbleLayer::new();
     let mut logic = ClientLogic::<SampleState, SampleStep>::new(app_version);
 
-    let datagrams = send(&mut logic, &mut layer, now)?;
+    let datagrams = send(now, &mut logic, &mut layer)?;
 
     let datagram = &datagrams[0];
 
@@ -66,7 +66,6 @@ pub fn client_connect_with_layer() -> Result<(), TestError> {
     let expected: &[u8] = &[
         // Header
         0x00, 0x00, // Datagram ID
-        0x00, 0x00, // Client Time
         // Commands
         0x05, // Connect
         0x00, 0x00, 0x00, 0x00, 0x00, 0x05, // Nimble Version
@@ -79,14 +78,13 @@ pub fn client_connect_with_layer() -> Result<(), TestError> {
 
     now = Millis::from(0xf000);
 
-    let datagrams_after = send(&mut logic, &mut layer, now)?;
+    let datagrams_after = send(now, &mut logic, &mut layer)?;
 
     info!("datagrams_after: {}", format_hex(&datagrams_after[0]));
 
     let expected_after: &[u8] = &[
         // Header
         0x00, 0x01, // Datagram ID
-        0xF0, 0x00, // Client Time
         // Commands
         0x05, // Connect
         0x00, 0x00, 0x00, 0x00, 0x00, 0x05, // Nimble Version
@@ -108,19 +106,13 @@ pub fn client_connect_with_layer() -> Result<(), TestError> {
         ];
 
         now = Millis::from(0xf000 + 200u64 + index as u64 * 20);
-        layer.update(now);
-        layer.receive(now, &feed)?;
+        layer.receive(&feed)?;
         if index % 2 == 0 {
-            let _ = send(&mut logic, &mut layer, now)?;
+            let _ = send(now, &mut logic, &mut layer)?;
         }
     }
 
     // assert_eq!(header.in_datagrams_per_second(), 50.0);
-
-    assert_eq!(
-        layer.latency().expect("values should be set by now"),
-        MinMaxAvg::new(204, 222.0, 240).with_unit("ms")
-    );
 
     assert_eq!(
         layer.datagram_drops().expect("values should be set by now"),

@@ -228,10 +228,10 @@ fn client_to_host() -> Result<(), ClientError> {
     );
 
     assert_eq_with_epsilon(client.metrics().outgoing.datagrams_per_second, 62.5, 0.001);
-    assert_eq!(client.metrics().outgoing.octets_per_second, 2633.9285); // 2.8 Kbps
+    assert_eq!(client.metrics().outgoing.octets_per_second, 2821.4285); // 2.8 Kbps
 
     assert_eq_with_epsilon(client.metrics().incoming.datagrams_per_second, 53.57, 0.01);
-    assert_eq!(client.metrics().incoming.octets_per_second, 19875.0); // 103 kbps. (normal maximum is 120 Kbps, extreme is 575 Kbps)
+    assert_eq!(client.metrics().incoming.octets_per_second, 19928.57); // 103 kbps. (normal maximum is 120 Kbps, extreme is 575 Kbps)
 
     Ok(())
 }

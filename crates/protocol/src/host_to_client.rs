@@ -23,6 +23,7 @@ pub enum HostToClientCommand {
     DownloadGameState = 0x0B,
     BlobStreamChannel = 0x0C,
     Connect = 0x0D,
+    Pong = 0x0E,
 }
 
 impl TryFrom<u8> for HostToClientCommand {
@@ -35,6 +36,7 @@ impl TryFrom<u8> for HostToClientCommand {
             0x0B => Self::DownloadGameState,
             0x0C => Self::BlobStreamChannel,
             0x0D => Self::Connect,
+            0x0E => Self::Pong,
             _ => Err(io::Error::new(
                 ErrorKind::InvalidData,
                 format!("Unknown host to client command 0x{:0X}", value),
@@ -147,19 +149,39 @@ impl ConnectionAccepted {
 }
 
 #[derive(Debug)]
+pub struct PongInfo {
+    pub lower_millis: u16,
+}
+
+impl Serialize for PongInfo {
+    fn serialize(&self, stream: &mut impl WriteOctetStream) -> io::Result<()> {
+        stream.write_u16(self.lower_millis)
+    }
+}
+
+impl Deserialize for PongInfo {
+    fn deserialize(stream: &mut impl ReadOctetStream) -> io::Result<Self> {
+        Ok(Self {
+            lower_millis: stream.read_u16()?,
+        })
+    }
+}
+
+#[derive(Debug)]
 pub enum HostToClientCommands<StepT: Deserialize + Serialize + Debug + Clone + std::fmt::Display> {
     JoinGame(JoinGameAccepted),
     GameStep(GameStepResponse<StepT>),
     DownloadGameState(DownloadGameStateResponse),
     BlobStreamChannel(SenderToReceiverFrontCommands),
     ConnectType(ConnectionAccepted),
+    Pong(PongInfo),
 }
 
 impl<StepT: Clone + Debug + Serialize + Deserialize + std::fmt::Display> Serialize
     for HostToClientCommands<StepT>
 {
     fn serialize(&self, stream: &mut impl WriteOctetStream) -> io::Result<()> {
-        stream.write_u8(self.to_octet())?;
+        stream.write_u8(self.into())?;
         match self {
             Self::JoinGame(join_game_response) => join_game_response.to_stream(stream),
             Self::GameStep(game_step_response) => game_step_response.to_stream(stream),
@@ -168,6 +190,7 @@ impl<StepT: Clone + Debug + Serialize + Deserialize + std::fmt::Display> Seriali
             }
             Self::BlobStreamChannel(blob_stream_command) => blob_stream_command.to_stream(stream),
             Self::ConnectType(connect_response) => connect_response.to_stream(stream),
+            Self::Pong(pong_info) => pong_info.serialize(stream),
         }
     }
 }
@@ -175,7 +198,7 @@ impl<StepT: Clone + Debug + Serialize + Deserialize + std::fmt::Display> Seriali
 impl<StepT: Clone + Debug + Serialize + Deserialize + std::fmt::Display> Display
     for HostToClientCommands<StepT>
 {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::JoinGame(join_game_response) => {
                 write!(f, "JoinGameResponse({})", join_game_response)
@@ -192,6 +215,7 @@ impl<StepT: Clone + Debug + Serialize + Deserialize + std::fmt::Display> Display
             Self::ConnectType(connect_response) => {
                 write!(f, "ConnectResponse({})", connect_response)
             }
+            Self::Pong(pong_info) => write!(f, "Pong({pong_info:?})"),
         }
     }
 }
@@ -214,20 +238,26 @@ impl<StepT: Clone + Debug + Serialize + Deserialize + std::fmt::Display> Deseria
             HostToClientCommand::Connect => {
                 Self::ConnectType(ConnectionAccepted::from_stream(stream)?)
             }
+            HostToClientCommand::Pong => Self::Pong(PongInfo::deserialize(stream)?),
         })
     }
 }
 
-impl<StepT: Deserialize + Serialize + Debug + Clone + std::fmt::Display>
-    HostToClientCommands<StepT>
+impl<StepT: Deserialize + Serialize + Debug + Display + Clone> From<&HostToClientCommands<StepT>>
+    for u8
 {
-    pub fn to_octet(&self) -> u8 {
-        match self {
-            Self::JoinGame(_) => HostToClientCommand::JoinGame as u8,
-            Self::GameStep(_) => HostToClientCommand::GameStep as u8,
-            Self::DownloadGameState(_) => HostToClientCommand::DownloadGameState as u8,
-            Self::BlobStreamChannel(_) => HostToClientCommand::BlobStreamChannel as u8,
-            Self::ConnectType(_) => HostToClientCommand::Connect as u8,
+    fn from(command: &HostToClientCommands<StepT>) -> Self {
+        match command {
+            HostToClientCommands::JoinGame(_) => HostToClientCommand::JoinGame as u8,
+            HostToClientCommands::GameStep(_) => HostToClientCommand::GameStep as u8,
+            HostToClientCommands::DownloadGameState(_) => {
+                HostToClientCommand::DownloadGameState as u8
+            }
+            HostToClientCommands::BlobStreamChannel(_) => {
+                HostToClientCommand::BlobStreamChannel as u8
+            }
+            HostToClientCommands::ConnectType(_) => HostToClientCommand::Connect as u8,
+            HostToClientCommands::Pong(_) => HostToClientCommand::Pong as u8,
         }
     }
 }

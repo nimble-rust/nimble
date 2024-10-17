@@ -3,14 +3,11 @@
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
 use flood_rs::prelude::{InOctetStream, OutOctetStream};
-use flood_rs::{Deserialize, Serialize};
 use hexify::format_hex;
-use log::{debug, trace};
+use log::trace;
 use metricator::{AggregateMetric, MinMaxAvg};
-use monotonic_time_rs::{Millis, MillisDuration, MillisLow16};
 
 use nimble_ordered_datagram::{DatagramOrderInError, OrderedIn, OrderedOut};
-use nimble_protocol_header::ClientTime;
 use std::io;
 
 #[derive(Debug)]
@@ -30,81 +27,12 @@ impl Default for NimbleLayer {
     }
 }
 
-pub struct NimbleLayerClient {
-    layer: NimbleLayer,
-    latency: AggregateMetric<u16>,
-
-    last_debug_metric_at: Millis,
-    debug_metric_duration: MillisDuration,
-}
-
 #[derive(Debug)]
 pub enum NimbleLayerError {
     IoError(io::Error),
     DatagramInOrderError(DatagramOrderInError),
     MillisFromLowerError,
     AbsoluteTimeError,
-}
-
-impl NimbleLayerClient {
-    pub fn new(now: Millis) -> Self {
-        Self {
-            layer: NimbleLayer::new(),
-            latency: AggregateMetric::<u16>::new(10).unwrap().with_unit("ms"),
-
-            last_debug_metric_at: now,
-            debug_metric_duration: MillisDuration::from_secs(1.0).unwrap(),
-        }
-    }
-
-    pub fn receive<'a>(
-        &mut self,
-        now: Millis,
-        datagram: &'a [u8],
-    ) -> Result<&'a [u8], NimbleLayerError> {
-        let (slice, client_time) = self.layer.receive(datagram)?;
-
-        let low_16 = client_time.inner() as MillisLow16;
-
-        let earlier = now
-            .from_lower(low_16)
-            .ok_or_else(|| NimbleLayerError::MillisFromLowerError)?;
-        let duration_ms = now
-            .checked_duration_since_ms(earlier)
-            .ok_or_else(|| NimbleLayerError::AbsoluteTimeError)?;
-
-        self.latency.add(duration_ms.as_millis() as u16);
-        trace!(
-            "nimble-layer client received without header\n{}",
-            format_hex(slice)
-        );
-
-        Ok(slice)
-    }
-
-    pub fn send(
-        &mut self,
-        now: Millis,
-        datagrams: Vec<Vec<u8>>,
-    ) -> Result<Vec<Vec<u8>>, io::Error> {
-        let client_time = ClientTime::new(now.to_lower());
-        self.layer.send(client_time, datagrams)
-    }
-
-    pub fn update(&mut self, now: Millis) {
-        if now - self.last_debug_metric_at > self.debug_metric_duration {
-            self.last_debug_metric_at = now;
-            debug!("metrics: {:?}", self.latency())
-        }
-    }
-
-    pub fn latency(&self) -> Option<MinMaxAvg<u16>> {
-        self.latency.values()
-    }
-
-    pub fn datagram_drops(&self) -> Option<MinMaxAvg<u16>> {
-        self.layer.datagram_drops()
-    }
 }
 
 impl From<DatagramOrderInError> for NimbleLayerError {
@@ -119,6 +47,8 @@ impl From<io::Error> for NimbleLayerError {
     }
 }
 
+const ORDERED_DATAGRAM_OCTETS: usize = 2;
+
 impl NimbleLayer {
     pub fn new() -> Self {
         Self {
@@ -128,11 +58,7 @@ impl NimbleLayer {
         }
     }
 
-    pub fn send(
-        &mut self,
-        client_time: ClientTime,
-        datagrams: Vec<Vec<u8>>,
-    ) -> Result<Vec<Vec<u8>>, io::Error> {
+    pub fn send(&mut self, datagrams: Vec<Vec<u8>>) -> Result<Vec<Vec<u8>>, io::Error> {
         let mut packet = [0u8; 1200];
         let mut out_datagrams: Vec<Vec<u8>> = vec![];
 
@@ -141,12 +67,11 @@ impl NimbleLayer {
 
             self.ordered_datagram_out.to_stream(&mut stream)?;
 
-            client_time.serialize(&mut stream)?;
+            packet[0..ORDERED_DATAGRAM_OCTETS].copy_from_slice(stream.octets_ref());
+            packet[ORDERED_DATAGRAM_OCTETS..ORDERED_DATAGRAM_OCTETS + datagram.len()]
+                .copy_from_slice(datagram);
 
-            packet[0..4].copy_from_slice(stream.octets_ref());
-            packet[4..4 + datagram.len()].copy_from_slice(datagram);
-
-            let complete_datagram = packet[0..4 + datagram.len()].to_vec();
+            let complete_datagram = packet[0..ORDERED_DATAGRAM_OCTETS + datagram.len()].to_vec();
             out_datagrams.push(complete_datagram);
             self.ordered_datagram_out.commit();
         }
@@ -154,22 +79,17 @@ impl NimbleLayer {
         Ok(out_datagrams)
     }
 
-    pub fn receive<'a>(
-        &mut self,
-        datagram: &'a [u8],
-    ) -> Result<(&'a [u8], ClientTime), NimbleLayerError> {
+    pub fn receive<'a>(&mut self, datagram: &'a [u8]) -> Result<&'a [u8], NimbleLayerError> {
         let mut in_stream = InOctetStream::new(datagram);
         let dropped_packets = self.ordered_in.read_and_verify(&mut in_stream)?;
         self.datagram_drops.add(dropped_packets.inner());
 
-        let client_time = ClientTime::deserialize(&mut in_stream)?;
-
-        let slice = &datagram[4..];
+        let slice = &datagram[ORDERED_DATAGRAM_OCTETS..];
         trace!(
             "nimble-layer host received without header\n{}",
             format_hex(slice)
         );
-        Ok((slice, client_time))
+        Ok(slice)
     }
 
     pub fn datagram_drops(&self) -> Option<MinMaxAvg<u16>> {

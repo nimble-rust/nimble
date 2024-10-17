@@ -35,7 +35,7 @@ use monotonic_time_rs::{Millis, MillisDuration};
 use network_metrics::{CombinedMetrics, NetworkMetrics};
 use nimble_client_logic::LocalIndex;
 use nimble_client_logic::{ClientLogic, ClientLogicPhase, LocalPlayer};
-use nimble_layer::NimbleLayerClient;
+use nimble_layer::NimbleLayer;
 use nimble_protocol::prelude::HostToClientCommands;
 use nimble_rectify::{Rectify, RectifyCallbacks};
 use nimble_step::Step;
@@ -104,7 +104,7 @@ pub struct Client<
     GameT: GameCallbacks<StepT> + Debug,
     StepT: Clone + Deserialize + Serialize + Debug + std::fmt::Display,
 > {
-    nimble_layer: NimbleLayerClient,
+    nimble_layer: NimbleLayer,
     logic: ClientLogic<GameT, StepT>,
     metrics: NetworkMetrics,
     rectify: Rectify<GameT, StepMap<Step<StepT>>>,
@@ -131,7 +131,7 @@ impl<
     pub fn new(now: Millis) -> Self {
         let deterministic_app_version = GameT::version();
         Self {
-            nimble_layer: NimbleLayerClient::new(now),
+            nimble_layer: NimbleLayer::new(),
             logic: ClientLogic::<GameT, StepT>::new(deterministic_app_version),
             metrics: NetworkMetrics::new(now),
 
@@ -173,12 +173,12 @@ impl<
     ///
     /// Returns `ClientError` if serialization or sending fails.
     pub fn send(&mut self, now: Millis) -> Result<Vec<Vec<u8>>, ClientError> {
-        let messages = self.logic.send();
+        let messages = self.logic.send(now);
         let datagrams =
             datagram_chunker::serialize_to_datagrams(messages, Self::MAX_DATAGRAM_SIZE)?;
         self.metrics.sent_datagrams(&datagrams);
 
-        let datagrams_with_header = self.nimble_layer.send(now, datagrams)?;
+        let datagrams_with_header = self.nimble_layer.send(datagrams)?;
 
         Ok(datagrams_with_header)
     }
@@ -200,14 +200,14 @@ impl<
     /// # Errors
     ///
     /// Returns `ClientError` if deserialization or processing fails.
-    pub fn receive(&mut self, millis: Millis, datagram: &[u8]) -> Result<(), ClientError> {
+    pub fn receive(&mut self, now: Millis, datagram: &[u8]) -> Result<(), ClientError> {
         self.metrics.received_datagram(datagram);
-        let datagram_without_header = self.nimble_layer.receive(millis, datagram)?;
+        let datagram_without_header = self.nimble_layer.receive(datagram)?;
         let commands = datagram_chunker::deserialize_datagram::<HostToClientCommands<Step<StepT>>>(
             datagram_without_header,
         )?;
         for command in commands {
-            self.logic.receive(&command)?;
+            self.logic.receive(now, &command)?;
         }
 
         Ok(())
@@ -235,7 +235,6 @@ impl<
     /// Returns `ClientError` if any internal operations fail.
     pub fn update(&mut self, now: Millis) -> Result<(), ClientError> {
         trace!("client: update {now}");
-        self.nimble_layer.update(now);
         self.metrics.update_metrics(now);
 
         let factor = self
@@ -444,7 +443,7 @@ impl<
     ///
     /// An `Option` containing `MinMaxAvg<u16>` representing latency metrics, or `None` if unavailable.
     pub fn latency(&self) -> Option<MinMaxAvg<u16>> {
-        self.nimble_layer.latency()
+        self.logic.latency()
     }
 
     /// Retrieves the combined network metrics.

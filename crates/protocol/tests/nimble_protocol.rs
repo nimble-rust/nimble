@@ -15,9 +15,9 @@ use nimble_protocol::{ClientRequestId, Version};
 
 use nimble_protocol::client_to_host::ConnectRequest;
 use nimble_sample_step::SampleStep;
+use nimble_step_map::StepMap;
 use std::io;
 use tick_id::TickId;
-use nimble_step_map::StepMap;
 
 #[test_log::test]
 fn check_version() {
@@ -171,9 +171,7 @@ fn create_authoritative_step_range() -> CombinedSteps<SampleStep> {
                 .insert(ParticipantId(participant_index as u8), sample_step.clone())
                 .expect("should be unique participants ids");
         }
-        authoritative_steps.push(
-            authoritative_participants
-        );
+        authoritative_steps.push(authoritative_participants);
     }
 
     CombinedSteps {

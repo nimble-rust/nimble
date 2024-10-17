@@ -34,7 +34,6 @@ fn create_and_connect<
     let connect_datagram: &[u8] = &[
         // Header
         0x00, 0x00,
-        0xF0, 0x0D,
 
         // Commands
         0x05,               // Connect Request: ClientToHostOobCommand::ConnectType = 0x05
@@ -76,8 +75,7 @@ fn join_game() -> Result<(), HostError> {
     let join_datagram: &[u8] = &[
         // Header
         0x00, 0x01, // Datagram Sequence
-        0xF0, 0x0D, // Client Time
-    
+
         // Commands
         0x01, // Join Game Command
         0x00, // RequestID
@@ -110,8 +108,7 @@ fn join_game() -> Result<(), HostError> {
     let expected_join_response: &[u8] = &[
         // Header
         0x00, 0x01, // Datagram Sequence
-        0xF0, 0x0D, // Client Time
-    
+
         // Commands
         0x09, // Join Game Response
         0x00, // Client Request ID
@@ -136,7 +133,6 @@ fn game_step() -> Result<(), HostError> {
     let feed_predicted_steps = &[
         // Header
         0x00, 0x01, // Datagram Sequence
-        0xF0, 0x0D, // Client Time
 
         // Commands
         0x02, // Send Predicted steps Command
@@ -154,7 +150,6 @@ fn game_step() -> Result<(), HostError> {
     let expected_game_step_response = &[
         // Header
         0x00, 0x01, // Datagram Sequence
-        0xF0, 0x0D, // Client Time
     
         // Commands
         0x08, // Game Step Response

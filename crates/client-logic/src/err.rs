@@ -25,6 +25,8 @@ pub enum ClientLogicError {
     QueueError(QueueError),
     ReceivedConnectResponseWhenNotConnecting,
     CanNotPushEmptyPredictedSteps,
+    MillisFromLowerError,
+    AbsoluteTimeError,
 }
 
 impl From<BlobError> for ClientLogicError {
@@ -65,6 +67,7 @@ impl ErrorLevelProvider for ClientLogicError {
             Self::BlobError(_) => ErrorLevel::Warning,
             Self::WrongJoinResponseRequestId { .. } => ErrorLevel::Info,
             Self::CanNotPushEmptyPredictedSteps => ErrorLevel::Critical,
+            Self::MillisFromLowerError | Self::AbsoluteTimeError => ErrorLevel::Warning,
         }
     }
 }
@@ -99,6 +102,8 @@ impl fmt::Display for ClientLogicError {
                 "wrong join response, expected {expected:?}, encountered: {encountered:?}"
             ),
             Self::CanNotPushEmptyPredictedSteps => write!(f, "CanNotPushEmptyPredictedSteps"),
+            Self::MillisFromLowerError => write!(f, "millisfromlower"),
+            Self::AbsoluteTimeError => write!(f, "absolute time"),
         }
     }
 }
