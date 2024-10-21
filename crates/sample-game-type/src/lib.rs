@@ -65,7 +65,7 @@ impl SampleGameState {
 impl BufferDeserializer for SampleGameState {
     fn deserialize(buf: &[u8]) -> io::Result<(Self, usize)> {
         let mut in_stream = InOctetStream::new(buf);
-        let s = <SampleGameState as Deserialize>::deserialize(&mut in_stream)?;
+        let s = <Self as Deserialize>::deserialize(&mut in_stream)?;
         Ok((s, in_stream.cursor.position() as usize))
     }
 }

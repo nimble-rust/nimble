@@ -27,6 +27,9 @@ pub enum ClientLogicError {
     CanNotPushEmptyPredictedSteps,
     MillisFromLowerError,
     AbsoluteTimeError,
+    TooManyAuthoritativeSteps,
+    LatencyIsTooBig,
+    TooManyStepsInRange,
 }
 
 impl From<BlobError> for ClientLogicError {
@@ -56,18 +59,22 @@ impl From<io::Error> for ClientLogicError {
 impl ErrorLevelProvider for ClientLogicError {
     fn error_level(&self) -> ErrorLevel {
         match self {
-            Self::IoErr(_) => ErrorLevel::Critical,
-            Self::WrongConnectResponseRequestId(_) => ErrorLevel::Info,
-            Self::WrongDownloadRequestId => ErrorLevel::Warning,
-            Self::DownloadResponseWasUnexpected => ErrorLevel::Info,
-            Self::UnexpectedBlobChannelCommand => ErrorLevel::Info,
+            Self::IoErr(_)
+            | Self::QueueError(_)
+            | Self::CanNotPushEmptyPredictedSteps
+            | Self::TooManyAuthoritativeSteps
+            | Self::TooManyStepsInRange => ErrorLevel::Critical,
+            Self::WrongConnectResponseRequestId(_)
+            | Self::DownloadResponseWasUnexpected
+            | Self::UnexpectedBlobChannelCommand
+            | Self::ReceivedConnectResponseWhenNotConnecting
+            | Self::WrongJoinResponseRequestId { .. } => ErrorLevel::Info,
+            Self::WrongDownloadRequestId
+            | Self::BlobError(_)
+            | Self::MillisFromLowerError
+            | Self::AbsoluteTimeError
+            | Self::LatencyIsTooBig => ErrorLevel::Warning,
             Self::FrontLogicErr(err) => err.error_level(),
-            Self::QueueError(_) => ErrorLevel::Critical,
-            Self::ReceivedConnectResponseWhenNotConnecting => ErrorLevel::Info,
-            Self::BlobError(_) => ErrorLevel::Warning,
-            Self::WrongJoinResponseRequestId { .. } => ErrorLevel::Info,
-            Self::CanNotPushEmptyPredictedSteps => ErrorLevel::Critical,
-            Self::MillisFromLowerError | Self::AbsoluteTimeError => ErrorLevel::Warning,
         }
     }
 }
@@ -76,10 +83,10 @@ impl fmt::Display for ClientLogicError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::IoErr(io_err) => {
-                write!(f, "io:err {:?}", io_err)
+                write!(f, "io:err {io_err:?}")
             }
             Self::WrongConnectResponseRequestId(nonce) => {
-                write!(f, "wrong nonce in reply to connect {:?}", nonce)
+                write!(f, "wrong nonce in reply to connect {nonce:?}")
             }
             Self::WrongDownloadRequestId => {
                 write!(f, "WrongDownloadRequestId")
@@ -102,8 +109,11 @@ impl fmt::Display for ClientLogicError {
                 "wrong join response, expected {expected:?}, encountered: {encountered:?}"
             ),
             Self::CanNotPushEmptyPredictedSteps => write!(f, "CanNotPushEmptyPredictedSteps"),
-            Self::MillisFromLowerError => write!(f, "millisfromlower"),
+            Self::MillisFromLowerError => write!(f, "millis from lower"),
             Self::AbsoluteTimeError => write!(f, "absolute time"),
+            Self::TooManyAuthoritativeSteps => write!(f, "TooManyAuthoritativeSteps"),
+            Self::LatencyIsTooBig => write!(f, "Latency Is Too Big"),
+            Self::TooManyStepsInRange => write!(f, "Too ManySteps"),
         }
     }
 }

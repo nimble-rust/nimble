@@ -3,7 +3,6 @@
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
 use std::fmt;
-use std::fmt::{Debug, Formatter};
 use std::io::Result;
 
 use flood_rs::{Deserialize, ReadOctetStream, Serialize, WriteOctetStream};
@@ -23,7 +22,9 @@ impl fmt::Display for ClientRequestId {
 }
 
 impl ClientRequestId {
-    pub fn new(value: u8) -> ClientRequestId {
+    #[must_use]
+
+    pub const fn new(value: u8) -> Self {
         Self(value)
     }
 }
@@ -46,7 +47,7 @@ impl Deserialize for ClientRequestId {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct Version {
     pub major: u16,
     pub minor: u16,
@@ -54,6 +55,8 @@ pub struct Version {
 }
 
 impl Version {
+    #[must_use]
+
     pub const fn new(major: u16, minor: u16, patch: u16) -> Self {
         Self {
             major,
@@ -61,6 +64,10 @@ impl Version {
             patch,
         }
     }
+
+    /// # Errors
+    ///
+    /// `io::Error` // TODO:
     pub fn to_stream(&self, stream: &mut impl WriteOctetStream) -> Result<()> {
         stream.write_u16(self.major)?;
         stream.write_u16(self.minor)?;
@@ -69,6 +76,9 @@ impl Version {
         Ok(())
     }
 
+    /// # Errors
+    ///
+    /// `io::Error` // TODO:
     pub fn from_stream(stream: &mut impl ReadOctetStream) -> Result<Self> {
         Ok(Self {
             major: stream.read_u16()?,
@@ -86,9 +96,15 @@ pub struct SessionConnectionSecret {
 }
 
 impl SessionConnectionSecret {
+    /// # Errors
+    ///
+    /// `io::Error` // TODO:
     pub fn to_stream(&self, stream: &mut impl WriteOctetStream) -> Result<()> {
         stream.write_u64(self.value)
     }
+    /// # Errors
+    ///
+    /// `io::Error` // TODO:
     pub fn from_stream(stream: &mut impl ReadOctetStream) -> Result<Self> {
         Ok(Self {
             value: stream.read_u64()?,
@@ -97,13 +113,13 @@ impl SessionConnectionSecret {
 }
 
 impl fmt::Display for SessionConnectionSecret {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "session_secret: {:X}", self.value)
     }
 }
 
 impl fmt::Debug for SessionConnectionSecret {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "session_secret: {:X}", self.value)
     }
 }

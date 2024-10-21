@@ -11,7 +11,7 @@ use bit_array_rs::BitArray;
 #[derive(Debug)]
 pub struct BlobStreamIn {
     pub(crate) bit_array: BitArray,
-    pub(crate) fixed_chunk_size: usize,
+    pub(crate) fixed_chunk_size: u16,
     pub(crate) octet_count: usize,
     blob: Vec<u8>,
 }
@@ -30,13 +30,13 @@ impl BlobStreamIn {
     /// A new `BlobStreamIn` instance.
     #[allow(unused)]
     #[must_use]
-    pub fn new(octet_count: usize, fixed_chunk_size: usize) -> Self {
+    pub fn new(octet_count: usize, fixed_chunk_size: u16) -> Self {
         assert!(
             fixed_chunk_size > 0,
             "fixed_chunk_size must be greater than zero"
         );
 
-        let chunk_count = octet_count.div_ceil(fixed_chunk_size);
+        let chunk_count = octet_count.div_ceil(fixed_chunk_size as usize);
         Self {
             bit_array: BitArray::new(chunk_count),
             fixed_chunk_size,
@@ -98,13 +98,13 @@ impl BlobStreamIn {
 
         let expected_size = if chunk_index == chunk_count - 1 {
             // It was the last chunk
-            if self.octet_count % self.fixed_chunk_size == 0 {
-                self.fixed_chunk_size
+            if self.octet_count % self.fixed_chunk_size as usize == 0 {
+                self.fixed_chunk_size as usize
             } else {
-                self.octet_count % self.fixed_chunk_size
+                self.octet_count % self.fixed_chunk_size as usize
             }
         } else {
-            self.fixed_chunk_size
+            self.fixed_chunk_size as usize
         };
 
         if payload.len() != expected_size {
@@ -114,7 +114,7 @@ impl BlobStreamIn {
                 chunk_index,
             ));
         }
-        let octet_offset = chunk_index * self.fixed_chunk_size;
+        let octet_offset = chunk_index * self.fixed_chunk_size as usize;
         if octet_offset + expected_size > self.blob.len() {
             return Err(BlobError::OutOfBounds);
         }

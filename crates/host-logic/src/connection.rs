@@ -47,9 +47,10 @@ pub struct Connection<StepT: Clone + Eq + Debug + Deserialize + Serialize> {
 
 #[allow(clippy::new_without_default)]
 impl<StepT: Clone + Eq + Debug + Deserialize + Serialize + std::fmt::Display> Connection<StepT> {
+    #[must_use]
     pub fn new() -> Self {
         Self {
-            participant_lookup: Default::default(),
+            participant_lookup: HashMap::default(),
             out_blob_stream: None,
             blob_stream_for_client_request: None,
             last_transfer_id: 0,
@@ -59,10 +60,14 @@ impl<StepT: Clone + Eq + Debug + Deserialize + Serialize + std::fmt::Display> Co
         }
     }
 
-    pub fn phase(&self) -> &Phase {
+    #[must_use]
+    pub const fn phase(&self) -> &Phase {
         &self.phase
     }
 
+    /// # Errors
+    ///
+    /// `HostLogicError` // TODO:
     pub fn on_connect(
         &mut self,
         connect_request: &ConnectRequest,
@@ -91,10 +96,11 @@ impl<StepT: Clone + Eq + Debug + Deserialize + Serialize + std::fmt::Display> Co
         Ok([HostToClientCommands::ConnectType(response)].into())
     }
 
+    #[must_use]
     pub fn is_state_received_by_remote(&self) -> bool {
         self.out_blob_stream
             .as_ref()
-            .map_or(false, |stream| stream.is_received_by_remote())
+            .map_or(false, OutLogicFront::is_received_by_remote)
     }
 
     pub(crate) fn on_blob_stream(
@@ -172,17 +178,15 @@ impl<StepT: Clone + Eq + Debug + Deserialize + Serialize + std::fmt::Display> Co
         request: &DownloadGameStateRequest,
         state_provider: &impl GameStateProvider,
     ) -> Result<Vec<HostToClientCommands<Step<StepT>>>, HostLogicError> {
+        const FIXED_CHUNK_SIZE: u16 = 1024;
+        const RESEND_DURATION: Duration = Duration::from_millis(32 * 3);
+
         debug!("client requested download {:?}", request);
         let (state_tick_id, state_vec) = state_provider.state(tick_id_to_be_produced);
 
-        const FIXED_CHUNK_SIZE: usize = 1024;
-        const RESEND_DURATION: Duration = Duration::from_millis(32 * 3);
-
-        let is_new_request = if let Some(x) = self.blob_stream_for_client_request {
-            x == request.request_id
-        } else {
-            true
-        };
+        let is_new_request = self
+            .blob_stream_for_client_request
+            .map_or(true, |x| x == request.request_id);
         if is_new_request {
             self.last_transfer_id += 1;
             let transfer_id = TransferId(self.last_transfer_id);
@@ -191,7 +195,7 @@ impl<StepT: Clone + Eq + Debug + Deserialize + Serialize + std::fmt::Display> Co
                 FIXED_CHUNK_SIZE,
                 RESEND_DURATION,
                 state_vec.as_slice(),
-            ));
+            )?);
         }
 
         let response = DownloadGameStateResponse {
@@ -216,7 +220,7 @@ impl<StepT: Clone + Eq + Debug + Deserialize + Serialize + std::fmt::Display> Co
     }
 
     pub(crate) fn on_steps(
-        &mut self,
+        &self,
         combinator: &mut HostCombinator<StepT>,
         request: &StepsRequest<StepT>,
     ) -> Result<HostToClientCommands<Step<StepT>>, HostLogicError> {
@@ -245,7 +249,7 @@ impl<StepT: Clone + Eq + Debug + Deserialize + Serialize + std::fmt::Display> Co
                     let part = combined_predicted_step.get(participant_id).unwrap();
 
                     let buffer = combinator
-                        .get_mut(participant_id)
+                        .get_mut(*participant_id)
                         .expect("since the participant lookup worked, there should be a buffer");
                     if buffer.expected_write_tick_id() != current_tick {
                         continue;
@@ -261,15 +265,15 @@ impl<StepT: Clone + Eq + Debug + Deserialize + Serialize + std::fmt::Display> Co
         let authoritative_steps = combinator.authoritative_steps();
 
         let combined_steps_vec =
-            if let Some(found_first_tick_id) = authoritative_steps.front_tick_id() {
-                let combined_steps = CombinedSteps::<Step<StepT>> {
-                    tick_id: found_first_tick_id,
-                    steps: authoritative_steps.to_vec(),
-                };
-                vec![combined_steps]
-            } else {
-                vec![]
-            };
+            authoritative_steps
+                .front_tick_id()
+                .map_or(Vec::new(), |found_first_tick_id| {
+                    let combined_steps = CombinedSteps::<Step<StepT>> {
+                        tick_id: found_first_tick_id,
+                        steps: authoritative_steps.to_vec(),
+                    };
+                    vec![combined_steps]
+                });
 
         let game_step_response = GameStepResponse {
             response_header: GameStepResponseHeader {

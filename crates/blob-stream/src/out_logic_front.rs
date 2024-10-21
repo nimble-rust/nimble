@@ -26,21 +26,24 @@ pub struct OutLogicFront {
 }
 
 impl OutLogicFront {
+    /// # Errors
+    /// returns `OutStreamError` if the blob is too large
     #[allow(unused)]
-    #[must_use]
     pub fn new(
         transfer_id: TransferId,
-        fixed_chunk_size: usize,
+        fixed_chunk_size: u16,
         resend_duration: Duration,
         blob: &[u8],
-    ) -> Self {
-        Self {
-            out_stream: Logic::new(transfer_id, fixed_chunk_size, resend_duration, blob),
+    ) -> Result<Self, OutStreamError> {
+        Ok(Self {
+            out_stream: Logic::new(transfer_id, fixed_chunk_size, resend_duration, blob)?,
             phase: Phase::StartTransfer,
             transfer_id,
-        }
+        })
     }
 
+    /// # Errors
+    /// can return `OutStreamError`
     pub fn receive(
         &mut self,
         command: &ReceiverToSenderFrontCommands,
@@ -74,6 +77,8 @@ impl OutLogicFront {
         Ok(())
     }
 
+    /// # Errors
+    /// can return `OutStreamError`
     #[allow(unused)]
     pub fn send(
         &mut self,
@@ -85,8 +90,8 @@ impl OutLogicFront {
                 Ok(vec![SenderToReceiverFrontCommands::StartTransfer(
                     StartTransferData {
                         transfer_id: self.transfer_id.0,
-                        total_octet_size: self.out_stream.octet_size() as u32,
-                        chunk_size: self.out_stream.chunk_size() as u16,
+                        total_octet_size: self.out_stream.octet_size(),
+                        chunk_size: self.out_stream.chunk_size(),
                     },
                 )])
             }
@@ -108,7 +113,9 @@ impl OutLogicFront {
                                 front_data.transfer_id.0
                             );
                         }
-                        _ => panic!("Unexpected enum variant: {:?}", set_chunk),
+                        SenderToReceiverFrontCommands::StartTransfer(_) => {
+                            Err(OutStreamError::UnexpectedStartTransfer)?
+                        }
                     }
                 }
                 Ok(set_chunks)

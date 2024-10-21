@@ -77,15 +77,17 @@ where
     Callback: SeerCallback<CombinedStepT>,
     CombinedStepT: Clone + Debug + Display,
 {
+    #[must_use]
     pub fn new(settings: Settings) -> Self {
-        Seer {
+        Self {
             predicted_steps: Queue::default(),
             phantom: PhantomData,
             settings,
         }
     }
 
-    pub fn predicted_steps(&self) -> &Queue<CombinedStepT> {
+    #[must_use]
+    pub const fn predicted_steps(&self) -> &Queue<CombinedStepT> {
         &self.predicted_steps
     }
 
@@ -115,6 +117,9 @@ where
         trace!("predicted steps remaining {}", self.predicted_steps.len());
     }
 
+    /// # Errors
+    ///
+    /// `SeerError`
     pub fn push(
         &mut self,
         tick_id: TickId,

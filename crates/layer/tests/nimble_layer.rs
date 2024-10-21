@@ -28,7 +28,7 @@ fn send(
             .expect("TODO: panic message");
     }
 
-    let datagrams = layer.send(chunker.finalize())?;
+    let datagrams = layer.send(&chunker.finalize())?;
     Ok(datagrams)
 }
 

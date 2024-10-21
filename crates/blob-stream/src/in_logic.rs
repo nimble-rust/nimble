@@ -10,9 +10,9 @@ use crate::ChunkIndex;
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub struct Info {
     pub total_octet_size: usize,
-    pub chunk_octet_size: usize,
-    pub chunk_count: usize,
-    pub chunk_count_received: usize,
+    pub chunk_octet_size: u16,
+    pub chunk_count: u32,
+    pub chunk_count_received: u32,
     pub waiting_for_chunk_index: ChunkIndex,
 }
 
@@ -43,7 +43,7 @@ impl Logic {
     /// let in_logic = Logic::new(1024, 64);
     /// ```
     #[must_use]
-    pub fn new(octet_count: usize, chunk_size: usize) -> Self {
+    pub fn new(octet_count: usize, chunk_size: u16) -> Self {
         Self {
             in_stream: BlobStreamIn::new(octet_count, chunk_size),
         }
@@ -54,8 +54,8 @@ impl Logic {
         Info {
             total_octet_size: self.in_stream.octet_count,
             chunk_octet_size: self.in_stream.fixed_chunk_size,
-            chunk_count: self.in_stream.bit_array.bit_count(),
-            chunk_count_received: self.in_stream.bit_array.count_set_bits(),
+            chunk_count: self.in_stream.bit_array.bit_count() as u32,
+            chunk_count_received: self.in_stream.bit_array.count_set_bits() as u32,
             waiting_for_chunk_index: self
                 .in_stream
                 .bit_array
@@ -109,7 +109,7 @@ impl Logic {
             .atom_from_index(waiting_for_chunk_index + 1);
 
         AckChunkData {
-            waiting_for_chunk_index: waiting_for_chunk_index as u32,
+            waiting_for_chunk_index: u32::try_from(waiting_for_chunk_index).expect("should work"),
             receive_mask_after_last: receive_mask,
         }
     }

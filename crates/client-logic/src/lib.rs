@@ -141,9 +141,9 @@ impl<
     > ClientLogic<StateT, StepT>
 {
     /// Creates a new `ClientLogic` instance, initializing all fields.
-    pub fn new(
-        deterministic_simulation_version: app_version::Version,
-    ) -> ClientLogic<StateT, StepT> {
+    #[must_use]
+    #[allow(clippy::missing_panics_doc)]
+    pub fn new(deterministic_simulation_version: app_version::Version) -> Self {
         Self {
             joining_player: None,
             joining_request_id: ClientRequestId(0),
@@ -162,11 +162,11 @@ impl<
     }
 
     /// Returns a reference to the incoming authoritative steps.
-    pub fn debug_authoritative_steps(&self) -> &Queue<StepMap<Step<StepT>>> {
+    pub const fn debug_authoritative_steps(&self) -> &Queue<StepMap<Step<StepT>>> {
         &self.incoming_authoritative_steps
     }
 
-    pub fn phase(&self) -> &ClientLogicPhase {
+    pub const fn phase(&self) -> &ClientLogicPhase {
         &self.phase
     }
 
@@ -210,7 +210,7 @@ impl<
         vec.push(ClientToHostCommands::DownloadGameState(download_request));
 
         if let Some(cmd) = self.blob_stream_client.send() {
-            vec.push(ClientToHostCommands::BlobStreamChannel(cmd))
+            vec.push(ClientToHostCommands::BlobStreamChannel(cmd));
         }
 
         vec
@@ -239,7 +239,7 @@ impl<
     ///
     /// # Returns
     /// A `ClientToHostCommands` representing the predicted steps.
-    fn send_steps_request(&mut self) -> ClientToHostCommands<StepT> {
+    fn send_steps_request(&self) -> ClientToHostCommands<StepT> {
         let steps_request = StepsRequest {
             ack: StepsAck {
                 waiting_for_tick_id: self.incoming_authoritative_steps.expected_write_tick_id(),
@@ -256,7 +256,7 @@ impl<
         ClientToHostCommands::Steps(steps_request)
     }
 
-    pub fn debug_connect_request_id(&self) -> Option<ClientRequestId> {
+    pub const fn debug_connect_request_id(&self) -> Option<ClientRequestId> {
         self.connect_request_id
     }
 
@@ -300,11 +300,9 @@ impl<
             } => self.download_state_request(download_state_request_id),
             ClientLogicPhase::SendPredictedSteps => [self.send_steps_request()].to_vec(),
             ClientLogicPhase::DownloadingState(_) => {
-                if let Some(x) = self.blob_stream_client.send() {
+                self.blob_stream_client.send().map_or_else(Vec::new, |x| {
                     [ClientToHostCommands::BlobStreamChannel(x)].to_vec()
-                } else {
-                    vec![]
-                }
+                })
             }
             ClientLogicPhase::RequestConnect => [self.send_connect_request()].to_vec(),
         };
@@ -355,7 +353,10 @@ impl<
             .checked_duration_since_ms(earlier)
             .ok_or_else(|| ClientLogicError::AbsoluteTimeError)?;
 
-        self.latency.add(duration_ms.as_millis() as u16);
+        self.latency.add(
+            u16::try_from(duration_ms.as_millis())
+                .map_err(|_| ClientLogicError::LatencyIsTooBig)?,
+        );
 
         Ok(())
     }
@@ -385,7 +386,7 @@ impl<
             self.local_players.push(LocalPlayer {
                 index: participant.local_index,
                 participant_id: participant.participant_id,
-            })
+            });
         }
 
         Ok(())
@@ -395,7 +396,7 @@ impl<
     ///
     /// # Returns
     /// An `Option` containing a reference to the received game state, if available.
-    pub fn game(&self) -> Option<&StateT> {
+    pub const fn game(&self) -> Option<&StateT> {
         self.state.as_ref()
     }
 
@@ -410,7 +411,7 @@ impl<
     fn handle_game_step_header(&mut self, header: &GameStepResponseHeader) {
         let host_expected_tick_id = header.next_expected_tick_id;
         self.server_buffer_delta_tick_id
-            .add(header.delta_buffer as i16);
+            .add(i16::from(header.delta_buffer));
         //self.server_buffer_count.add(header.connection_buffer_count);
         trace!("removing every predicted step before {host_expected_tick_id}");
         self.outgoing_predicted_steps
@@ -423,7 +424,7 @@ impl<
 
     fn on_connect(&mut self, cmd: &ConnectionAccepted) -> Result<(), ClientLogicError> {
         if self.phase != ClientLogicPhase::RequestConnect {
-            Err(ClientLogicError::ReceivedConnectResponseWhenNotConnecting)?
+            Err(ClientLogicError::ReceivedConnectResponseWhenNotConnecting)?;
         }
 
         if self.connect_request_id.is_none() {
@@ -433,7 +434,7 @@ impl<
         if cmd.response_to_request != self.connect_request_id.unwrap() {
             Err(ClientLogicError::WrongConnectResponseRequestId(
                 cmd.response_to_request,
-            ))?
+            ))?;
         }
         self.phase = ClientLogicPhase::RequestDownloadState {
             download_state_request_id: 0x99,
@@ -464,6 +465,8 @@ impl<
         let mut accepted_count = 0;
 
         for range in &cmd.authoritative_steps.ranges {
+            let range_len = u32::try_from(range.steps.len())
+                .map_err(|_| ClientLogicError::TooManyStepsInRange)?;
             let mut current_authoritative_tick_id = range.tick_id;
             for combined_auth_step in &range.steps {
                 if current_authoritative_tick_id
@@ -476,7 +479,7 @@ impl<
                 current_authoritative_tick_id += 1;
             }
 
-            current_authoritative_tick_id += range.steps.len() as u32;
+            current_authoritative_tick_id += range_len;
         }
 
         if accepted_count > 0 {
@@ -557,23 +560,22 @@ impl<
     ) -> Result<(), ClientLogicError> {
         match command {
             HostToClientCommands::JoinGame(ref join_game_response) => {
-                self.on_join_game(join_game_response)?
+                self.on_join_game(join_game_response)
             }
             HostToClientCommands::GameStep(ref game_step_response) => {
-                self.on_game_step(game_step_response)?
+                self.on_game_step(game_step_response)
             }
             HostToClientCommands::DownloadGameState(ref download_response) => {
-                self.on_download_state_response(download_response)?
+                self.on_download_state_response(download_response)
             }
             HostToClientCommands::BlobStreamChannel(ref blob_stream_command) => {
-                self.on_blob_stream(blob_stream_command)?
+                self.on_blob_stream(blob_stream_command)
             }
             HostToClientCommands::ConnectType(ref connect_accepted) => {
-                self.on_connect(connect_accepted)?
+                self.on_connect(connect_accepted)
             }
-            HostToClientCommands::Pong(pong_info) => self.on_pong(now, pong_info)?,
+            HostToClientCommands::Pong(pong_info) => self.on_pong(now, pong_info),
         }
-        Ok(())
     }
 
     /// Returns the average server buffer delta tick, if available.

@@ -8,6 +8,7 @@ use err_rs::{ErrorLevel, ErrorLevelProvider};
 use nimble_client_logic::err::ClientLogicError;
 use nimble_layer::NimbleLayerError;
 use nimble_rectify::RectifyError;
+use seq_map::SeqMapError;
 use tick_queue::QueueError;
 
 #[derive(Debug)]
@@ -19,6 +20,13 @@ pub enum ClientError {
     DatagramChunkerError(DatagramChunkerError),
     NimbleLayerError(NimbleLayerError),
     PredictionQueueOverflow,
+    SeqMapError(SeqMapError),
+}
+
+impl From<SeqMapError> for ClientError {
+    fn from(err: SeqMapError) -> Self {
+        Self::SeqMapError(err)
+    }
 }
 
 impl From<DatagramChunkerError> for ClientError {
@@ -36,20 +44,20 @@ impl From<NimbleLayerError> for ClientError {
 impl ErrorLevelProvider for ClientError {
     fn error_level(&self) -> ErrorLevel {
         match self {
-            Self::IoError(_) => ErrorLevel::Info,
+            Self::IoError(_)
+            | Self::ClientLogicErrorKind(_)
+            | Self::QueueError(_)
+            | Self::DatagramChunkerError(_)
+            | Self::NimbleLayerError(_) => ErrorLevel::Info,
             Self::RectifyError(err) => err.error_level(),
-            Self::ClientLogicErrorKind(_) => ErrorLevel::Info,
-            Self::QueueError(_) => ErrorLevel::Info,
-            Self::DatagramChunkerError(_) => ErrorLevel::Info,
-            Self::NimbleLayerError(_) => ErrorLevel::Info,
-            Self::PredictionQueueOverflow => ErrorLevel::Critical,
+            Self::PredictionQueueOverflow | Self::SeqMapError(_) => ErrorLevel::Critical,
         }
     }
 }
 
 impl From<RectifyError> for ClientError {
     fn from(err: RectifyError) -> Self {
-        ClientError::RectifyError(err)
+        Self::RectifyError(err)
     }
 }
 

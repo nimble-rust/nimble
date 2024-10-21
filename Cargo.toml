@@ -14,7 +14,6 @@ members = [
     "crates/step-map",
     "crates/sample-game-type",
     "crates/layer",
-    "crates/protocol-header",
     "crates/client",
     "crates/host",
     "crates/step",

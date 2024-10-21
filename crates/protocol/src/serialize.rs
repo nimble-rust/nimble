@@ -14,29 +14,25 @@ use std::io;
 use tick_id::TickId;
 
 #[derive(Debug, Clone, Eq, PartialEq)]
-pub struct CombinedSteps<StepT: Deserialize + Serialize + Debug + Clone + std::fmt::Display> {
+pub struct CombinedSteps<StepT: Deserialize + Serialize + Debug + Clone + Display> {
     pub tick_id: TickId,
     pub steps: Vec<StepMap<StepT>>,
 }
 
-impl<StepT: Deserialize + Serialize + Debug + Clone + std::fmt::Display> Display
-    for CombinedSteps<StepT>
-{
+impl<StepT: Deserialize + Serialize + Debug + Clone + Display> Display for CombinedSteps<StepT> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "[{} step_count:{}]", self.tick_id, self.steps.len())
     }
 }
 
-impl<StepT: Deserialize + Serialize + Debug + Clone + std::fmt::Display> Serialize
-    for CombinedSteps<StepT>
-{
+impl<StepT: Deserialize + Serialize + Debug + Clone + Display> Serialize for CombinedSteps<StepT> {
     fn serialize(&self, stream: &mut impl WriteOctetStream) -> io::Result<()> {
         TickIdUtil::to_stream(self.tick_id, stream)?;
         self.to_internal().serialize(stream)
     }
 }
 
-impl<StepT: Deserialize + Serialize + Debug + Clone + std::fmt::Display> Deserialize
+impl<StepT: Deserialize + Serialize + Debug + Clone + Display> Deserialize
     for CombinedSteps<StepT>
 {
     fn deserialize(stream: &mut impl ReadOctetStream) -> io::Result<Self> {
@@ -46,7 +42,8 @@ impl<StepT: Deserialize + Serialize + Debug + Clone + std::fmt::Display> Deseria
     }
 }
 
-impl<StepT: Deserialize + Serialize + Debug + Clone + std::fmt::Display> CombinedSteps<StepT> {
+impl<StepT: Deserialize + Serialize + Debug + Clone + Display> CombinedSteps<StepT> {
+    #[must_use]
     pub fn to_internal(&self) -> InternalAllParticipantVectors<StepT> {
         let mut hash_map = StepMap::<InternalStepVectorForOneParticipant<StepT>>::new();
 
@@ -82,7 +79,7 @@ impl<StepT: Deserialize + Serialize + Debug + Clone + std::fmt::Display> Combine
                 }
                 vector_for_one_person
                     .steps
-                    .push(auth_step_for_one_player.clone())
+                    .push(auth_step_for_one_player.clone());
             }
         }
 
@@ -91,6 +88,7 @@ impl<StepT: Deserialize + Serialize + Debug + Clone + std::fmt::Display> Combine
         }
     }
 
+    #[must_use]
     pub fn from_internal(
         separate_vectors: &InternalAllParticipantVectors<StepT>,
         start_tick_id: TickId,
@@ -105,30 +103,27 @@ impl<StepT: Deserialize + Serialize + Debug + Clone + std::fmt::Display> Combine
 
         let mut auth_step_range_vec = Vec::<StepMap<StepT>>::new();
         for _ in 0..max_vector_length {
-            auth_step_range_vec.push(SeqMap::new())
+            auth_step_range_vec.push(SeqMap::new());
         }
 
         for (participant_id, serialized_step_vector) in &separate_vectors.participant_step_vectors {
             for (index, serialized_step) in serialized_step_vector.steps.iter().enumerate() {
-                let hash_map_for_auth_step = &mut auth_step_range_vec.get_mut(index).unwrap();
+                let hash_map_for_auth_step = auth_step_range_vec.get_mut(index).unwrap();
                 hash_map_for_auth_step
                     .insert(*participant_id, serialized_step.clone())
                     .expect("expect unique participant_id");
             }
         }
 
-        CombinedSteps::<StepT> {
+        Self {
             tick_id: start_tick_id,
             steps: auth_step_range_vec,
         }
     }
 }
 
-#[derive(Debug, PartialEq, Clone)]
-pub struct InternalStepVectorForOneParticipant<StepT: Serialize + Deserialize>
-where
-    StepT: std::fmt::Display,
-{
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub struct InternalStepVectorForOneParticipant<StepT: Serialize + Deserialize> {
     pub delta_tick_id: u8, // enables one vector to start at a later tick_id than the others
     pub steps: Vec<StepT>,
 }
@@ -146,14 +141,12 @@ impl<StepT: Serialize + Deserialize + Display> Display
     }
 }
 
-#[derive(Debug, PartialEq, Clone)]
-pub struct InternalAllParticipantVectors<StepT: Serialize + Deserialize + std::fmt::Display> {
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub struct InternalAllParticipantVectors<StepT: Serialize + Deserialize + Display> {
     pub participant_step_vectors: SeqMap<ParticipantId, InternalStepVectorForOneParticipant<StepT>>,
 }
 
-impl<StepT: Serialize + Deserialize + Debug + std::fmt::Display>
-    InternalAllParticipantVectors<StepT>
-{
+impl<StepT: Serialize + Deserialize + Debug + Display> InternalAllParticipantVectors<StepT> {
     pub fn serialize(&self, stream: &mut impl WriteOctetStream) -> io::Result<()>
     where
         Self: Sized,
@@ -213,9 +206,8 @@ impl<StepT: Serialize + Deserialize + Debug + std::fmt::Display>
 // ----
 
 #[derive(Debug)]
-pub struct InternalAuthoritativeStepRange<
-    StepT: Deserialize + Serialize + Debug + Clone + std::fmt::Display,
-> {
+pub struct InternalAuthoritativeStepRange<StepT: Deserialize + Serialize + Debug + Clone + Display>
+{
     pub delta_tick_id_from_previous: u8,
     pub authoritative_steps: InternalAllParticipantVectors<StepT>,
 }

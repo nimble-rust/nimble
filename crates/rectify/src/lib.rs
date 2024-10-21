@@ -8,7 +8,7 @@ use err_rs::{ErrorLevel, ErrorLevelProvider};
 use log::trace;
 use nimble_assent::{Assent, AssentCallback, UpdateState};
 use nimble_seer::{Seer, SeerCallback, SeerError};
-use std::fmt::Debug;
+use std::fmt::{Debug, Display};
 use tick_id::TickId;
 use tick_queue::QueueError;
 
@@ -24,7 +24,7 @@ pub enum RectifyError {
 
 impl From<SeerError> for RectifyError {
     fn from(value: SeerError) -> Self {
-        RectifyError::SeerError(value)
+        Self::SeerError(value)
     }
 }
 
@@ -37,9 +37,8 @@ impl From<QueueError> for RectifyError {
 impl ErrorLevelProvider for RectifyError {
     fn error_level(&self) -> ErrorLevel {
         match self {
-            Self::WrongTickId { .. } => ErrorLevel::Critical,
+            Self::WrongTickId { .. } | Self::QueueError(_) => ErrorLevel::Critical,
             Self::SeerError(err) => err.error_level(),
-            Self::QueueError(_) => ErrorLevel::Critical,
         }
     }
 }
@@ -68,7 +67,7 @@ pub struct Rectify<Game: RectifyCallbacks<StepT>, StepT: Clone + Debug> {
     settings: Settings,
 }
 
-impl<Game: RectifyCallbacks<StepT>, StepT: Clone + Debug + std::fmt::Display> Default
+impl<Game: RectifyCallbacks<StepT>, StepT: Clone + Debug + Display> Default
     for Rectify<Game, StepT>
 {
     fn default() -> Self {
@@ -82,34 +81,36 @@ pub struct Settings {
     pub seer: nimble_seer::Settings,
 }
 
-impl<Game: RectifyCallbacks<StepT>, StepT: Clone + std::fmt::Debug + std::fmt::Display>
-    Rectify<Game, StepT>
-{
+impl<Game: RectifyCallbacks<StepT>, StepT: Clone + Debug + Display> Rectify<Game, StepT> {
     /// Creates a new `Rectify` instance, initializing both [`Assent`] and [`Seer`] components.
     ///
     /// # Returns
     ///
     /// A new `Rectify` instance.
+    #[must_use]
     pub fn new(settings: Settings) -> Self {
         let assent = Assent::new(settings.assent);
         let seer = Seer::new(settings.seer);
 
         Self {
-            settings,
             assent,
             seer,
+            settings,
         }
     }
 
-    pub fn seer(&self) -> &Seer<Game, StepT> {
+    #[must_use]
+    pub const fn seer(&self) -> &Seer<Game, StepT> {
         &self.seer
     }
 
-    pub fn settings(&self) -> Settings {
+    #[must_use]
+    pub const fn settings(&self) -> Settings {
         self.settings
     }
 
-    pub fn assent(&self) -> &Assent<Game, StepT> {
+    #[must_use]
+    pub const fn assent(&self) -> &Assent<Game, StepT> {
         &self.assent
     }
 
@@ -118,6 +119,10 @@ impl<Game: RectifyCallbacks<StepT>, StepT: Clone + std::fmt::Debug + std::fmt::D
     /// # Arguments
     ///
     /// * `step` - The predicted step to be pushed.
+    ///
+    /// # Errors
+    ///
+    /// `RectifyError` on error // TODO:
     pub fn push_predicted(&mut self, tick_id: TickId, step: StepT) -> Result<(), RectifyError> {
         if let Some(end_tick_id) = self.assent.end_tick_id() {
             self.seer.received_authoritative(end_tick_id);
@@ -127,10 +132,15 @@ impl<Game: RectifyCallbacks<StepT>, StepT: Clone + std::fmt::Debug + std::fmt::D
         Ok(())
     }
 
-    pub fn waiting_for_authoritative_tick_id(&self) -> TickId {
+    #[must_use]
+    pub const fn waiting_for_authoritative_tick_id(&self) -> TickId {
         self.assent.next_expected_tick_id()
     }
 
+    ///
+    /// # Errors
+    ///
+    /// `RectifyError` on error // TODO:
     pub fn push_authoritatives_with_check(
         &mut self,
         step_for_tick_id: TickId,
@@ -150,6 +160,12 @@ impl<Game: RectifyCallbacks<StepT>, StepT: Clone + std::fmt::Debug + std::fmt::D
     /// # Arguments
     ///
     /// * `step` - The authoritative step to be pushed.
+    ///
+    /// # Errors
+    ///
+    /// `RectifyError` on error // TODO:
+
+    #[allow(clippy::missing_panics_doc)]
     pub fn push_authoritative_with_check(
         &mut self,
         step_for_tick_id: TickId,
@@ -164,8 +180,11 @@ impl<Game: RectifyCallbacks<StepT>, StepT: Clone + std::fmt::Debug + std::fmt::D
             }
         }
         self.assent.push(step_for_tick_id, step)?;
-        self.seer
-            .received_authoritative(self.assent.end_tick_id().unwrap());
+        self.seer.received_authoritative(
+            self.assent
+                .end_tick_id()
+                .expect("we know that there is an end tick, since we pushed to it previously"),
+        );
 
         Ok(())
     }

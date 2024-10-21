@@ -7,9 +7,13 @@ pub mod helper;
 
 #[test_log::test]
 fn chunks_out_of_order() {
-    const CHUNK_SIZE: usize = 4;
-    const CHUNK_COUNT: usize = 3;
-    let mut stream = BlobStreamIn::new((CHUNK_COUNT - 1) * CHUNK_SIZE + 1, CHUNK_SIZE);
+    const CHUNK_SIZE: u16 = 4;
+    const CHUNK_COUNT: u32 = 3;
+
+    let mut stream = BlobStreamIn::new(
+        (CHUNK_COUNT - 1) as usize * CHUNK_SIZE as usize + 1,
+        CHUNK_SIZE,
+    );
 
     assert!(
         !stream.is_complete(),
@@ -37,5 +41,5 @@ fn chunks_out_of_order() {
     assert_eq!(
         stream.blob().expect("Blob slice should be complete"),
         &[0x31, 0x32, 0x33, 0x34, 0xff, 0xfe, 0xfd, 0xfc, 0x42]
-    )
+    );
 }

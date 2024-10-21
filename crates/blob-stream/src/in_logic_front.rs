@@ -24,25 +24,25 @@ pub enum FrontLogicError {
 impl ErrorLevelProvider for FrontLogicError {
     fn error_level(&self) -> ErrorLevel {
         match self {
-            Self::IoError(_) => ErrorLevel::Info,
-            Self::BlobError(_) => ErrorLevel::Info,
-            Self::UnknownTransferId(_) => ErrorLevel::Info,
-            Self::ChunkSizeCanNotBeZero => ErrorLevel::Info,
+            Self::IoError(_)
+            | Self::ChunkSizeCanNotBeZero
+            | Self::BlobError(_)
+            | Self::UnknownTransferId(_) => ErrorLevel::Info,
         }
     }
 }
 
 impl From<BlobError> for FrontLogicError {
-    fn from(err: BlobError) -> FrontLogicError {
-        FrontLogicError::BlobError(err)
+    fn from(err: BlobError) -> Self {
+        Self::BlobError(err)
     }
 }
 
 pub struct Info {
     pub transfer_id: TransferId,
-    pub fixed_chunk_size: usize,
+    pub fixed_chunk_size: u16,
     pub octet_count: usize,
-    pub chunk_count_received: usize,
+    pub chunk_count_received: u32,
     pub waiting_for_chunk_index: ChunkIndex,
 }
 
@@ -152,7 +152,7 @@ impl FrontLogic {
                         transfer_id: TransferId(start_transfer_data.transfer_id),
                         logic: Logic::new(
                             start_transfer_data.total_octet_size as usize,
-                            start_transfer_data.chunk_size as usize,
+                            start_transfer_data.chunk_size,
                         ),
                     });
                     self.should_reply_ack = true;
@@ -168,7 +168,7 @@ impl FrontLogic {
                     );
                     state.logic.receive(&chunk_data.data)?;
                     if state.logic.is_complete() {
-                        trace!("received all chunks!")
+                        trace!("received all chunks!");
                     }
                     Ok(())
                 } else {
@@ -181,7 +181,7 @@ impl FrontLogic {
     pub fn send(&mut self) -> Option<ReceiverToSenderFrontCommands> {
         if self.should_reply_ack {
             self.should_reply_ack = false;
-            let transfer_id = self.state.as_ref().unwrap().transfer_id.0;
+            let transfer_id = self.state.as_ref()?.transfer_id.0;
             Some(ReceiverToSenderFrontCommands::AckStart(transfer_id))
         } else if let Some(state) = self.state.as_mut() {
             let ack = &state.logic.send();

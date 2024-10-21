@@ -17,6 +17,7 @@ pub struct Participant {
     pub client_local_index: u8,
 }
 
+#[allow(clippy::module_name_repetitions)] // TODO: Rename GameSession or module
 pub struct GameSession<StepT: Clone + std::fmt::Display> {
     pub participants: HashMap<ParticipantId, Rc<RefCell<Participant>>>,
     pub participant_ids: FreeList<u8>,
@@ -30,6 +31,7 @@ impl<StepT: Clone + std::fmt::Display> Default for GameSession<StepT> {
 }
 
 impl<StepT: Clone + std::fmt::Display> GameSession<StepT> {
+    #[must_use]
     pub fn new(tick_id: TickId) -> Self {
         Self {
             participants: HashMap::new(),

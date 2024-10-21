@@ -6,7 +6,6 @@ use crate::host_to_client::TickIdUtil;
 use crate::serialize::CombinedSteps;
 use crate::{ClientRequestId, SessionConnectionSecret, Version};
 use flood_rs::{Deserialize, ReadOctetStream, Serialize, WriteOctetStream};
-use io::ErrorKind;
 use nimble_blob_stream::prelude::ReceiverToSenderFrontCommands;
 use nimble_participant::ParticipantId;
 use std::fmt::{Debug, Display};
@@ -35,14 +34,14 @@ impl TryFrom<u8> for ClientToHostCommand {
             0x05 => Self::Connect,
             0x06 => Self::Ping,
             _ => Err(io::Error::new(
-                ErrorKind::InvalidData,
-                format!("Unknown ClientToHostCommand {}", value),
+                io::ErrorKind::InvalidData,
+                format!("Unknown ClientToHostCommand {value}"),
             ))?,
         })
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct ConnectRequest {
     pub nimble_version: Version,
     pub use_debug_stream: bool,
@@ -50,14 +49,20 @@ pub struct ConnectRequest {
     pub client_request_id: ClientRequestId,
 }
 impl ConnectRequest {
+    /// # Errors
+    ///
+    /// `io::Error` // TODO:
     pub fn to_stream(&self, stream: &mut impl WriteOctetStream) -> io::Result<()> {
         self.nimble_version.to_stream(stream)?;
-        stream.write_u8(if self.use_debug_stream { 0x01 } else { 0x00 })?;
+        stream.write_u8(u8::from(self.use_debug_stream))?;
         self.application_version.to_stream(stream)?;
         self.client_request_id.serialize(stream)?;
         Ok(())
     }
 
+    /// # Errors
+    ///
+    /// `io::Error` // TODO:
     pub fn from_stream(stream: &mut impl ReadOctetStream) -> io::Result<Self> {
         Ok(Self {
             nimble_version: Version::from_stream(stream)?,
@@ -74,10 +79,16 @@ pub struct DownloadGameStateRequest {
 }
 
 impl DownloadGameStateRequest {
+    /// # Errors
+    ///
+    /// `io::Error` // TODO:
     pub fn to_stream(&self, stream: &mut impl WriteOctetStream) -> io::Result<()> {
         stream.write_u8(self.request_id)
     }
 
+    /// # Errors
+    ///
+    /// `io::Error` // TODO:
     pub fn from_stream(stream: &mut impl ReadOctetStream) -> io::Result<Self> {
         Ok(Self {
             request_id: stream.read_u8()?,
@@ -86,6 +97,7 @@ impl DownloadGameStateRequest {
 }
 
 #[derive(Debug, Clone)]
+#[allow(clippy::module_name_repetitions)] // TODO:
 pub enum ClientToHostCommands<StepT: Clone + Debug + Serialize + Deserialize + Display> {
     JoinGameType(JoinGameRequest),
     Steps(StepsRequest<StepT>),
@@ -111,7 +123,7 @@ impl<StepT: Clone + Debug + Serialize + Deserialize + Display> Serialize
     }
 }
 
-impl<StepT: Clone + Debug + Serialize + Deserialize + std::fmt::Display> Deserialize
+impl<StepT: Clone + Debug + Serialize + Deserialize + Display> Deserialize
     for ClientToHostCommands<StepT>
 {
     fn deserialize(stream: &mut impl ReadOctetStream) -> io::Result<Self> {
@@ -140,16 +152,16 @@ impl<StepT: Deserialize + Serialize + Debug + Display + Clone> From<&ClientToHos
 {
     fn from(command: &ClientToHostCommands<StepT>) -> Self {
         match command {
-            ClientToHostCommands::Steps(_) => ClientToHostCommand::Steps as u8,
-            ClientToHostCommands::JoinGameType(_) => ClientToHostCommand::JoinGame as u8,
+            ClientToHostCommands::Steps(_) => ClientToHostCommand::Steps as Self,
+            ClientToHostCommands::JoinGameType(_) => ClientToHostCommand::JoinGame as Self,
             ClientToHostCommands::DownloadGameState(_) => {
-                ClientToHostCommand::DownloadGameState as u8
+                ClientToHostCommand::DownloadGameState as Self
             }
             ClientToHostCommands::BlobStreamChannel(_) => {
-                ClientToHostCommand::BlobStreamChannel as u8
+                ClientToHostCommand::BlobStreamChannel as Self
             }
-            ClientToHostCommands::ConnectType(_) => ClientToHostCommand::Connect as u8,
-            ClientToHostCommands::Ping(_) => ClientToHostCommand::Ping as u8,
+            ClientToHostCommands::ConnectType(_) => ClientToHostCommand::Connect as Self,
+            ClientToHostCommands::Ping(_) => ClientToHostCommand::Ping as Self,
         }
     }
 }
@@ -159,17 +171,17 @@ impl<StepT: Clone + Debug + Eq + PartialEq + Serialize + Deserialize + Display> 
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::JoinGameType(join) => write!(f, "join {:?}", join),
+            Self::JoinGameType(join) => write!(f, "join {join:?}"),
             Self::Steps(predicted_steps_and_ack) => {
                 write!(f, "steps {predicted_steps_and_ack}")
             }
             Self::DownloadGameState(download_game_state) => {
-                write!(f, "download game state {:?}", download_game_state)
+                write!(f, "download game state {download_game_state:?}")
             }
             Self::BlobStreamChannel(blob_command) => {
-                write!(f, "blob stream channel {:?}", blob_command)
+                write!(f, "blob stream channel {blob_command:?}")
             }
-            &Self::ConnectType(connect_request) => write!(f, "connect {:?}", connect_request),
+            &Self::ConnectType(connect_request) => write!(f, "connect {connect_request:?}"),
             Self::Ping(_) => write!(f, "ping"),
         }
     }
@@ -185,25 +197,32 @@ pub enum JoinGameTypeValue {
 }
 
 impl JoinGameTypeValue {
-    pub fn to_octet(&self) -> u8 {
+    #[must_use]
+    pub const fn to_octet(&self) -> u8 {
         match self {
             Self::NoSecret => Self::NoSecret as u8,
             Self::SessionSecret => Self::SessionSecret as u8,
             Self::HostMigrationParticipantId => Self::HostMigrationParticipantId as u8,
         }
     }
+    /// # Errors
+    ///
+    /// `io::Error` // TODO:
     pub fn to_stream(self, stream: &mut impl WriteOctetStream) -> io::Result<()> {
         stream.write_u8(self.to_octet())?;
         Ok(())
     }
 
+    /// # Errors
+    ///
+    /// `io::Error` // TODO:
     pub fn from_stream(stream: &mut impl ReadOctetStream) -> io::Result<Self> {
         let join_game_type_value_raw = stream.read_u8()?;
-        JoinGameTypeValue::try_from(join_game_type_value_raw)
+        Self::try_from(join_game_type_value_raw)
     }
 }
 
-#[derive(Debug, PartialEq, Clone, Copy)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum JoinGameType {
     NoSecret,
     UseSessionSecret(SessionConnectionSecret),
@@ -219,15 +238,16 @@ impl TryFrom<u8> for JoinGameTypeValue {
             0x01 => Self::SessionSecret,
             0x02 => Self::HostMigrationParticipantId,
             _ => Err(io::Error::new(
-                ErrorKind::InvalidData,
-                format!("Unknown join game type {}", value),
+                io::ErrorKind::InvalidData,
+                format!("Unknown join game type {value}"),
             ))?,
         })
     }
 }
 
 impl JoinGameType {
-    pub fn to_octet(&self) -> u8 {
+    #[must_use]
+    pub const fn to_octet(&self) -> u8 {
         match self {
             Self::NoSecret => JoinGameTypeValue::NoSecret as u8,
             Self::UseSessionSecret(_) => JoinGameTypeValue::SessionSecret as u8,
@@ -237,6 +257,9 @@ impl JoinGameType {
         }
     }
 
+    /// # Errors
+    ///
+    /// `io::Error` // TODO:
     pub fn to_stream(&self, stream: &mut impl WriteOctetStream) -> io::Result<()> {
         stream.write_u8(self.to_octet())?;
         match self {
@@ -247,6 +270,9 @@ impl JoinGameType {
         Ok(())
     }
 
+    /// # Errors
+    ///
+    /// `io::Error` // TODO:
     pub fn from_stream(stream: &mut impl ReadOctetStream) -> io::Result<Self> {
         let join_game_type_value_raw = stream.read_u8()?;
         let value = JoinGameTypeValue::try_from(join_game_type_value_raw)?;
@@ -263,16 +289,22 @@ impl JoinGameType {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct JoinPlayerRequest {
     pub local_index: u8,
 }
 
 impl JoinPlayerRequest {
+    /// # Errors
+    ///
+    /// `io::Error` // TODO:
     pub fn to_stream(&self, stream: &mut impl WriteOctetStream) -> io::Result<()> {
         stream.write_u8(self.local_index)
     }
 
+    /// # Errors
+    ///
+    /// `io::Error` // TODO:
     pub fn from_stream(stream: &mut impl ReadOctetStream) -> io::Result<Self> {
         Ok(Self {
             local_index: stream.read_u8()?,
@@ -280,20 +312,31 @@ impl JoinPlayerRequest {
     }
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct JoinPlayerRequests {
     pub players: Vec<JoinPlayerRequest>,
 }
 
 impl JoinPlayerRequests {
+    /// # Errors
+    ///
+    /// `io::Error` // TODO:
     pub fn to_stream(&self, stream: &mut impl WriteOctetStream) -> io::Result<()> {
-        stream.write_u8(self.players.len() as u8)?;
-        for player in self.players.iter() {
+        stream.write_u8(u8::try_from(self.players.len()).map_err(|err| {
+            io::Error::new(
+                io::ErrorKind::InvalidData,
+                format!("too many players {err}"),
+            )
+        })?)?;
+        for player in &self.players {
             player.to_stream(stream)?;
         }
         Ok(())
     }
 
+    /// # Errors
+    ///
+    /// `io::Error` // TODO:
     pub fn from_stream(stream: &mut impl ReadOctetStream) -> io::Result<Self> {
         let count = stream.read_u8()?;
         let mut vec = Vec::<JoinPlayerRequest>::with_capacity(count as usize);
@@ -305,7 +348,7 @@ impl JoinPlayerRequests {
     }
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct JoinGameRequest {
     pub client_request_id: ClientRequestId,
     pub join_game_type: JoinGameType,
@@ -313,6 +356,9 @@ pub struct JoinGameRequest {
 }
 
 impl JoinGameRequest {
+    /// # Errors
+    ///
+    /// `io::Error` // TODO:
     pub fn to_stream(&self, stream: &mut impl WriteOctetStream) -> io::Result<()> {
         self.client_request_id.serialize(stream)?;
         self.join_game_type.to_stream(stream)?;
@@ -321,6 +367,9 @@ impl JoinGameRequest {
         Ok(())
     }
 
+    /// # Errors
+    ///
+    /// `io::Error` // TODO:
     pub fn from_stream(stream: &mut impl ReadOctetStream) -> io::Result<Self> {
         Ok(Self {
             client_request_id: ClientRequestId::deserialize(stream)?,
@@ -330,7 +379,7 @@ impl JoinGameRequest {
     }
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct StepsAck {
     pub waiting_for_tick_id: TickId,
 }
@@ -342,11 +391,17 @@ impl Display for StepsAck {
 }
 
 impl StepsAck {
+    /// # Errors
+    ///
+    /// `io::Error` // TODO:
     pub fn to_stream(&self, stream: &mut impl WriteOctetStream) -> io::Result<()> {
         TickIdUtil::to_stream(self.waiting_for_tick_id, stream)?;
         Ok(())
     }
 
+    /// # Errors
+    ///
+    /// `io::Error` // TODO:
     pub fn from_stream(stream: &mut impl ReadOctetStream) -> io::Result<Self> {
         Ok(Self {
             waiting_for_tick_id: TickIdUtil::from_stream(stream)?,
@@ -355,14 +410,12 @@ impl StepsAck {
 }
 
 #[derive(Debug, Clone)]
-pub struct StepsRequest<StepT: Clone + Serialize + Deserialize + Debug + std::fmt::Display> {
+pub struct StepsRequest<StepT: Clone + Serialize + Deserialize + Debug + Display> {
     pub ack: StepsAck,
     pub combined_predicted_steps: CombinedSteps<StepT>,
 }
 
-impl<StepT: Clone + Serialize + Deserialize + Debug + std::fmt::Display> Display
-    for StepsRequest<StepT>
-{
+impl<StepT: Clone + Serialize + Deserialize + Debug + Display> Display for StepsRequest<StepT> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
@@ -372,7 +425,10 @@ impl<StepT: Clone + Serialize + Deserialize + Debug + std::fmt::Display> Display
     }
 }
 
-impl<StepT: Clone + Serialize + Deserialize + Debug + std::fmt::Display> StepsRequest<StepT> {
+impl<StepT: Clone + Serialize + Deserialize + Debug + Display> StepsRequest<StepT> {
+    /// # Errors
+    ///
+    /// `io::Error` // TODO:
     pub fn to_stream(&self, stream: &mut impl WriteOctetStream) -> io::Result<()> {
         self.ack.to_stream(stream)?;
 
@@ -380,6 +436,9 @@ impl<StepT: Clone + Serialize + Deserialize + Debug + std::fmt::Display> StepsRe
         Ok(())
     }
 
+    /// # Errors
+    ///
+    /// `io::Error` // TODO:
     pub fn from_stream(stream: &mut impl ReadOctetStream) -> io::Result<Self> {
         Ok(Self {
             ack: StepsAck::from_stream(stream)?,

@@ -68,6 +68,7 @@ impl<StepT: Clone + Eq + Debug + Deserialize + Serialize + Display> HostLogic<St
     /// # Returns
     ///
     /// A new `HostLogic` instance.
+    #[must_use]
     pub fn new(tick_id: TickId, deterministic_simulation_version: Version) -> Self {
         Self {
             connections: HashMap::new(),
@@ -103,6 +104,7 @@ impl<StepT: Clone + Eq + Debug + Deserialize + Serialize + Display> HostLogic<St
     /// # Returns
     ///
     /// An `Option` containing a reference to the `Connection` if found, or `None` otherwise.
+    #[must_use]
     pub fn get(&self, connection_id: HostConnectionId) -> Option<&Connection<StepT>> {
         self.connections.get(&connection_id.0)
     }
@@ -116,6 +118,10 @@ impl<StepT: Clone + Eq + Debug + Deserialize + Serialize + Display> HostLogic<St
     /// # Returns
     ///
     /// A `Result` indicating success or a `HostLogicError` if the connection ID is invalid.
+    ///
+    /// # Errors
+    ///
+    /// `HostLogicError` // TODO:
     pub fn destroy_connection(
         &mut self,
         connection_id: HostConnectionId,
@@ -139,7 +145,8 @@ impl<StepT: Clone + Eq + Debug + Deserialize + Serialize + Display> HostLogic<St
     /// # Returns
     ///
     /// A reference to the `GameSession`.
-    pub fn session(&self) -> &GameSession<StepT> {
+    #[must_use]
+    pub const fn session(&self) -> &GameSession<StepT> {
         &self.session
     }
 
@@ -147,7 +154,7 @@ impl<StepT: Clone + Eq + Debug + Deserialize + Serialize + Display> HostLogic<St
     ///
     /// Specifically, it triggers the production of authoritative steps within the session's combinator.
     pub fn post_update(&mut self) {
-        self.session.combinator.produce_authoritative_steps()
+        self.session.combinator.produce_authoritative_steps();
     }
 
     /// Processes an update from a client connection.
@@ -165,6 +172,10 @@ impl<StepT: Clone + Eq + Debug + Deserialize + Serialize + Display> HostLogic<St
     ///
     /// A `Result` containing a vector of `HostToClientCommands` to be sent back to the client,
     /// or a `HostLogicError` if processing fails.
+    ///
+    /// # Errors
+    ///
+    /// `HostLogicError` // TODO:
     pub fn update(
         &mut self,
         connection_id: HostConnectionId,
@@ -202,7 +213,7 @@ impl<StepT: Clone + Eq + Debug + Deserialize + Serialize + Display> HostLogic<St
                             connection
                                 .on_connect(connect_request, &self.deterministic_simulation_version)
                         }
-                        ClientToHostCommands::Ping(ping_info) => self.on_ping(*ping_info),
+                        ClientToHostCommands::Ping(ping_info) => Ok(Self::on_ping(*ping_info)),
                     }
                 }
                 Phase::WaitingForValidConnectRequest => match request {
@@ -216,10 +227,7 @@ impl<StepT: Clone + Eq + Debug + Deserialize + Serialize + Display> HostLogic<St
         }
     }
 
-    fn on_ping(
-        &self,
-        lower_millis: u16,
-    ) -> Result<Vec<HostToClientCommands<Step<StepT>>>, HostLogicError> {
-        Ok(vec![HostToClientCommands::Pong(PongInfo { lower_millis })])
+    fn on_ping(lower_millis: u16) -> Vec<HostToClientCommands<Step<StepT>>> {
+        vec![HostToClientCommands::Pong(PongInfo { lower_millis })]
     }
 }

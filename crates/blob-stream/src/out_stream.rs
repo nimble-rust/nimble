@@ -4,12 +4,17 @@
  */
 use monotonic_time_rs::Millis;
 use std::cmp::min;
+use std::num::TryFromIntError;
 use std::time::Duration;
 
 #[derive(Debug)]
+#[allow(clippy::module_name_repetitions)]
 pub enum OutStreamError {
     ChunkPreviouslyReceivedMarkedAsNotReceived,
     IndexOutOfBounds,
+    BlobIsTooLarge(TryFromIntError),
+    UnexpectedStartTransfer,
+    FixedChunkSizeIsTooLarge,
 }
 
 /// Represents an individual chunk of the blob data being streamed out.
@@ -20,7 +25,7 @@ pub enum OutStreamError {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct BlobStreamOutEntry {
     pub last_sent_at: Option<Millis>,
-    pub index: usize,
+    pub index: u32,
     pub is_received_by_remote: bool,
 }
 
@@ -35,7 +40,7 @@ impl BlobStreamOutEntry {
     ///
     /// A new `BlobStreamOutEntry` with a `None` timer.
     #[must_use]
-    pub const fn new(index: usize) -> Self {
+    pub const fn new(index: u32) -> Self {
         Self {
             last_sent_at: None,
             index,
@@ -53,7 +58,9 @@ impl BlobStreamOutEntry {
     }
 }
 
-/// Manages the streaming out of binary blob data, split into fixed-size chunks.
+/// Manages the streaming out of binary blob data
+///
+/// It splits into fixed-size chunks.
 /// `BlobStreamOut` keeps track of which chunks have been sent, the time they were sent,
 /// and controls resending based on elapsed time since the last send.
 #[allow(unused)]
@@ -83,12 +90,12 @@ impl BlobStreamOut {
     ///
     /// This function will panic if `fixed_chunk_size` is zero.
     #[must_use]
-    pub fn new(chunk_count: usize, resend_duration: Duration) -> Self {
+    pub fn new(chunk_count: u32, resend_duration: Duration) -> Self {
         assert_ne!(chunk_count, 0, "chunk_count cannot be zero");
 
         // Initialize the entries vector by chunking the blob data
         let entries: Vec<BlobStreamOutEntry> =
-            (0..chunk_count).map(BlobStreamOutEntry::new).collect();
+            (0u32..chunk_count).map(BlobStreamOutEntry::new).collect();
 
         Self {
             entries,
@@ -100,8 +107,9 @@ impl BlobStreamOut {
     }
 
     #[must_use]
-    pub fn chunk_count(&self) -> usize {
-        self.entries.len()
+    #[allow(clippy::cast_possible_truncation)]
+    pub fn chunk_count(&self) -> u32 {
+        self.entries.len() as u32
     }
 
     /// Sets the starting index from which to send the next chunk.
@@ -109,6 +117,10 @@ impl BlobStreamOut {
     /// # Arguments
     ///
     /// * `index` - The starting index of the next chunk to be sent.
+    ///
+    /// # Errors
+    /// Can return error `OutStreamError` // TODO:
+    #[allow(clippy::missing_panics_doc)]
     pub fn set_waiting_for_chunk_index(
         &mut self,
         index: usize,
@@ -179,9 +191,10 @@ impl BlobStreamOut {
     ///
     /// A vector containing up to `max_count` `BlobStreamOutEntry` items, representing the chunks to be sent.
     #[must_use]
-    pub fn send(&mut self, now: Millis, max_count: usize) -> Vec<usize> {
+    #[allow(clippy::missing_panics_doc)]
+    pub fn send(&mut self, now: Millis, max_count: usize) -> Vec<u32> {
         // Filter by index range, timer expiration, and limit the number of results
-        let mut filtered_out_indices: Vec<usize> = self
+        let mut filtered_out_indices: Vec<u32> = self
             .entries
             .iter()
             .skip(self.start_index_to_send)
@@ -190,8 +203,8 @@ impl BlobStreamOut {
                 // Check if enough time has passed since the timer was set
                 !entry.is_received_by_remote
                     && entry
-                        .last_sent_at
-                        .map_or(true, |t| now.duration_since(t) >= self.resend_duration)
+                    .last_sent_at
+                    .map_or(true, |t| now.duration_since(t) >= self.resend_duration)
             })
             .map(|entry| entry.index)
             .collect(); // Collect into a Vec
@@ -209,7 +222,7 @@ impl BlobStreamOut {
             }
 
             // Get additional entries starting from `index_to_start_from_if_not_filled_up`
-            let additional_indicies: Vec<usize> = self
+            let additional_indicies: Vec<u32> = self
                 .entries
                 .iter()
                 .skip(self.index_to_start_from_if_not_filled_up) // Start from the alternate index
@@ -231,7 +244,7 @@ impl BlobStreamOut {
             #[allow(clippy::missing_panics_doc)]
             let ent = self
                 .entries
-                .get_mut(*entry_index)
+                .get_mut(*entry_index as usize)
                 .expect("should always be there");
             ent.sent_at_time(now);
         }

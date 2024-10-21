@@ -89,7 +89,7 @@ fn communicate<
                 .insert(ParticipantId(0), SampleStep::MoveLeft(-1))
                 .expect("should insert map");
             client
-                .push_predicted_step(tick_id, predicted_step)
+                .push_predicted_step(tick_id, &predicted_step)
                 .expect("should push predicted step");
             tick_id += 1;
         }

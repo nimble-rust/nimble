@@ -15,13 +15,14 @@ pub mod helper;
 
 #[test_log::test]
 fn blob_stream() {
-    let seed = 12345678;
-    let blob_to_transfer = generate_deterministic_blob_array(OCTET_COUNT, seed);
-    const CHUNK_SIZE: usize = 4;
-    const CHUNK_COUNT: usize = 30;
-    const OCTET_COUNT: usize = (CHUNK_SIZE * (CHUNK_COUNT - 1)) + 1;
+    const CHUNK_SIZE: u16 = 4;
+    const CHUNK_COUNT: u16 = 30;
+    const OCTET_COUNT: u32 = ((CHUNK_SIZE * (CHUNK_COUNT - 1)) + 1) as u32;
     const ITERATION_COUNT: usize = 9;
     const MAX_CHUNK_COUNT_EACH_SEND: usize = 10;
+
+    let seed = 12_345_678;
+    let blob_to_transfer = generate_deterministic_blob_array(OCTET_COUNT as usize, seed);
 
     let mut in_logic = nimble_blob_stream::in_logic::Logic::new(blob_to_transfer.len(), CHUNK_SIZE);
     let mut out_logic = Logic::new(
@@ -29,7 +30,8 @@ fn blob_stream() {
         CHUNK_SIZE,
         Duration::from_millis(31 * 3),
         blob_to_transfer.as_slice(),
-    );
+    )
+    .expect("should work to create logic");
 
     let mut now = Millis::new(0);
 

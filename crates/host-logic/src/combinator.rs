@@ -13,6 +13,7 @@ use tick_id::TickId;
 use tick_queue::{Queue, QueueError};
 
 #[derive(Debug)]
+#[allow(clippy::module_name_repetitions)] // TODO: rename CombinatorError
 pub enum CombinatorError {
     NotReadyToProduceStep {
         can_provide: usize,
@@ -33,10 +34,10 @@ impl From<QueueError> for CombinatorError {
 impl ErrorLevelProvider for CombinatorError {
     fn error_level(&self) -> ErrorLevel {
         match self {
-            Self::NotReadyToProduceStep { .. } => ErrorLevel::Info,
-            Self::OtherError => ErrorLevel::Info,
-            Self::SeqMapError(_) => ErrorLevel::Info,
-            Self::NoBufferForParticipant => ErrorLevel::Info,
+            Self::NotReadyToProduceStep { .. }
+            | Self::OtherError
+            | Self::SeqMapError(_)
+            | Self::NoBufferForParticipant => ErrorLevel::Info,
             Self::QueueError(_) => ErrorLevel::Critical,
         }
     }
@@ -55,8 +56,9 @@ pub struct Combinator<T: Clone> {
 }
 
 impl<T: Clone + std::fmt::Display> Combinator<T> {
+    #[must_use]
     pub fn new(tick_id_to_produce: TickId) -> Self {
-        Combinator {
+        Self {
             in_buffers: HashMap::new(),
             tick_id_to_produce,
         }
@@ -66,6 +68,9 @@ impl<T: Clone + std::fmt::Display> Combinator<T> {
         self.in_buffers.insert(id, Queue::default());
     }
 
+    /// # Errors
+    ///
+    /// `CombinatorError` // TODO:
     pub fn add(
         &mut self,
         id: ParticipantId,
@@ -84,16 +89,16 @@ impl<T: Clone + std::fmt::Display> Combinator<T> {
         self.in_buffers.get_mut(id)
     }
 
+    #[must_use]
     pub fn participants_that_can_provide(&self) -> (usize, usize) {
         let mut participant_count_that_can_not_give_step = 0;
         let mut participant_count_that_can_provide_step = 0;
-        for (_, steps) in self.in_buffers.iter() {
+        for steps in self.in_buffers.values() {
             if let Some(first_tick) = steps.front_tick_id() {
-                if first_tick != self.tick_id_to_produce {
-                    participant_count_that_can_not_give_step += 1;
-                    continue;
-                } else {
+                if first_tick == self.tick_id_to_produce {
                     participant_count_that_can_provide_step += 1;
+                } else {
+                    participant_count_that_can_not_give_step += 1;
                 }
             } else {
                 participant_count_that_can_not_give_step += 1;
@@ -106,6 +111,10 @@ impl<T: Clone + std::fmt::Display> Combinator<T> {
         )
     }
 
+    /// # Errors
+    ///
+    /// `CombinatorError` // TODO:
+    #[allow(clippy::missing_panics_doc)]
     pub fn produce(&mut self) -> Result<(TickId, StepMap<Step<T>>), CombinatorError> {
         let (can_provide, can_not_provide) = self.participants_that_can_provide();
         if can_provide == 0 {
@@ -125,7 +134,7 @@ impl<T: Clone + std::fmt::Display> Combinator<T> {
         );
 
         let mut combined_step = StepMap::<Step<T>>::new();
-        for (participant_id, steps) in self.in_buffers.iter_mut() {
+        for (participant_id, steps) in &mut self.in_buffers {
             if let Some(first_tick) = steps.front_tick_id() {
                 if first_tick == self.tick_id_to_produce {
                     trace!(

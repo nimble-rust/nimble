@@ -38,7 +38,7 @@ pub enum Step<T> {
 
 impl<T> Step<T> {
     #[must_use]
-    pub fn to_octet(&self) -> u8 {
+    pub const fn to_octet(&self) -> u8 {
         match self {
             Self::Forced => 0x01,
             Self::WaitingForReconnect => 0x02,

@@ -43,9 +43,10 @@ pub struct HostConnection {
 }
 
 impl HostConnection {
+    #[must_use]
     pub fn new() -> Self {
         Self {
-            layer: Default::default(),
+            layer: NimbleLayer::default(),
         }
     }
 }
@@ -54,8 +55,9 @@ impl HostConnection {
 pub struct ConnectionId(u8);
 
 impl ConnectionId {
-    /// Retrieves the inner u8 value of the ConnectionId.
-    pub fn inner(&self) -> u8 {
+    /// Retrieves the inner u8 value of the `ConnectionId`.
+    #[must_use]
+    pub const fn inner(&self) -> u8 {
         self.0
     }
 }
@@ -66,7 +68,7 @@ impl ConnectionId {
 ///
 /// # Type Parameters
 ///
-/// - StepT: The type representing a step in the game logic. Must implement Clone, Debug, Eq, Deserialize, Serialize, and Display.
+/// - `StepT`: The type representing a step in the game logic. Must implement Clone, Debug, Eq, Deserialize, Serialize, and Display.
 pub struct Host<StepT: Clone + Debug + Eq + Deserialize + Serialize + Display> {
     logic: HostLogic<StepT>,
     connections: HashMap<u8, HostConnection>,
@@ -77,8 +79,9 @@ impl<StepT: Clone + Deserialize + Serialize + Eq + Debug + Display> Host<StepT> 
     ///
     /// # Arguments
     ///
-    /// * app_version - The version of the application.
-    /// * tick_id - The initial tick identifier.
+    /// * `app_version` - The version of the application.
+    /// * `tick_id` - The initial tick identifier.
+    #[must_use]
     pub fn new(app_version: app_version::Version, tick_id: TickId) -> Self {
         Self {
             logic: HostLogic::<StepT>::new(tick_id, app_version),
@@ -87,11 +90,13 @@ impl<StepT: Clone + Deserialize + Serialize + Eq + Debug + Display> Host<StepT> 
     }
 
     /// Returns a reference to the internal `HostLogic` for debugging purposes.
-    pub fn debug_logic(&self) -> &HostLogic<StepT> {
+    #[must_use]
+    pub const fn debug_logic(&self) -> &HostLogic<StepT> {
         &self.logic
     }
 
     /// Retrieves a specific connection's logic by its connection ID for debugging purposes.
+    #[must_use]
     pub fn debug_get_logic(
         &self,
         connection_id: nimble_host_logic::HostConnectionId,
@@ -100,7 +105,8 @@ impl<StepT: Clone + Deserialize + Serialize + Eq + Debug + Display> Host<StepT> 
     }
 
     /// Returns a reference to the current game session.
-    pub fn session(&self) -> &GameSession<StepT> {
+    #[must_use]
+    pub const fn session(&self) -> &GameSession<StepT> {
         self.logic.session()
     }
 
@@ -118,6 +124,10 @@ impl<StepT: Clone + Deserialize + Serialize + Eq + Debug + Display> Host<StepT> 
     /// # Returns
     ///
     /// A `Result` containing a vector of outgoing datagrams or a `HostError` on failure.
+    ///
+    /// # Errors
+    ///
+    /// `HostError` TODO:
     pub fn update(
         &mut self,
         connection_id: nimble_host_logic::HostConnectionId,
@@ -162,7 +172,7 @@ impl<StepT: Clone + Deserialize + Serialize + Eq + Debug + Display> Host<StepT> 
 
         let outgoing_datagrams = datagram_chunker.finalize();
 
-        let out_datagrams = found_connection.layer.send(outgoing_datagrams)?;
+        let out_datagrams = found_connection.layer.send(&outgoing_datagrams)?;
 
         for (index, datagram) in out_datagrams.iter().enumerate() {
             trace!(
@@ -180,6 +190,7 @@ impl<StepT: Clone + Deserialize + Serialize + Eq + Debug + Display> Host<StepT> 
     /// # Arguments
     ///
     /// * `connection_id` - The ID of the connection to retrieve.
+    #[must_use]
     pub fn get(
         &self,
         connection_id: nimble_host_logic::HostConnectionId,

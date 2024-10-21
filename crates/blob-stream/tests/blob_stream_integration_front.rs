@@ -16,13 +16,14 @@ pub mod helper;
 
 #[test_log::test]
 fn blob_stream_front() {
+    const CHUNK_SIZE: u16 = 4;
+    const CHUNK_COUNT: u32 = 30;
+    const OCTET_COUNT: usize = (CHUNK_SIZE as usize * (CHUNK_COUNT as usize - 1)) + 1;
+    const ITERATION_COUNT: usize = 5;
+
     let seed = 12345678;
     let blob_to_transfer = generate_deterministic_blob_array(OCTET_COUNT, seed);
     let mut drop_rng = StdRng::seed_from_u64(seed);
-    const CHUNK_SIZE: usize = 4;
-    const CHUNK_COUNT: usize = 30;
-    const OCTET_COUNT: usize = (CHUNK_SIZE * (CHUNK_COUNT - 1)) + 1;
-    const ITERATION_COUNT: usize = 5;
 
     let mut in_logic = nimble_blob_stream::in_logic_front::FrontLogic::new();
     let mut out_logic = OutLogicFront::new(
@@ -30,7 +31,8 @@ fn blob_stream_front() {
         CHUNK_SIZE,
         Duration::from_millis(31 * 3),
         blob_to_transfer.as_slice(),
-    );
+    )
+    .expect("should work to create logic");
 
     let mut now = Millis::new(0);
 

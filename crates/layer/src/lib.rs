@@ -20,8 +20,8 @@ pub struct NimbleLayer {
 impl Default for NimbleLayer {
     fn default() -> Self {
         Self {
-            ordered_datagram_out: Default::default(),
-            ordered_in: Default::default(),
+            ordered_datagram_out: OrderedOut::default(),
+            ordered_in: OrderedIn::default(),
             datagram_drops: AggregateMetric::new(16).expect("threshold should be ok"),
         }
     }
@@ -50,19 +50,24 @@ impl From<io::Error> for NimbleLayerError {
 const ORDERED_DATAGRAM_OCTETS: usize = 2;
 
 impl NimbleLayer {
+    #[must_use]
+    #[allow(clippy::missing_panics_doc)]
     pub fn new() -> Self {
         Self {
-            ordered_datagram_out: Default::default(),
-            ordered_in: Default::default(),
+            ordered_datagram_out: OrderedOut::default(),
+            ordered_in: OrderedIn::default(),
             datagram_drops: AggregateMetric::<u16>::new(10).unwrap(),
         }
     }
 
-    pub fn send(&mut self, datagrams: Vec<Vec<u8>>) -> Result<Vec<Vec<u8>>, io::Error> {
+    /// # Errors
+    ///
+    /// `io::Error` // TODO:
+    pub fn send(&mut self, datagrams: &Vec<Vec<u8>>) -> Result<Vec<Vec<u8>>, io::Error> {
         let mut packet = [0u8; 1200];
         let mut out_datagrams: Vec<Vec<u8>> = vec![];
 
-        for datagram in &datagrams {
+        for datagram in datagrams {
             let mut stream = OutOctetStream::new();
 
             self.ordered_datagram_out.to_stream(&mut stream)?;
@@ -79,6 +84,9 @@ impl NimbleLayer {
         Ok(out_datagrams)
     }
 
+    /// # Errors
+    ///
+    /// `io::Error` // TODO:
     pub fn receive<'a>(&mut self, datagram: &'a [u8]) -> Result<&'a [u8], NimbleLayerError> {
         let mut in_stream = InOctetStream::new(datagram);
         let dropped_packets = self.ordered_in.read_and_verify(&mut in_stream)?;
@@ -92,6 +100,7 @@ impl NimbleLayer {
         Ok(slice)
     }
 
+    #[must_use]
     pub fn datagram_drops(&self) -> Option<MinMaxAvg<u16>> {
         self.datagram_drops.values()
     }

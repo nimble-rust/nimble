@@ -33,6 +33,7 @@ use log::trace;
 use metricator::MinMaxAvg;
 use monotonic_time_rs::{Millis, MillisDuration};
 use network_metrics::{CombinedMetrics, NetworkMetrics};
+use nimble_client_logic::err::ClientLogicError;
 use nimble_client_logic::LocalIndex;
 use nimble_client_logic::{ClientLogic, ClientLogicPhase, LocalPlayer};
 use nimble_layer::NimbleLayer;
@@ -67,10 +68,10 @@ impl<V: PartialOrd, F> RangeToFactor<V, F> {
     }
 
     #[inline]
-    pub fn get_factor(&self, input: V) -> &F {
-        if input < self.range_min {
+    pub fn get_factor(&self, input: &V) -> &F {
+        if input < &self.range_min {
             &self.min_factor
-        } else if input > self.range_max {
+        } else if input > &self.range_max {
             &self.max_factor
         } else {
             &self.factor
@@ -90,7 +91,7 @@ where
 {
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum ClientPhase {
     Normal,
     CanSendPredicted,
@@ -102,7 +103,7 @@ pub enum ClientPhase {
 /// provided through the `GameCallbacks` trait.
 pub struct Client<
     GameT: GameCallbacks<StepT> + Debug,
-    StepT: Clone + Deserialize + Serialize + Debug + std::fmt::Display,
+    StepT: Clone + Deserialize + Serialize + Debug + Display,
 > {
     nimble_layer: NimbleLayer,
     logic: ClientLogic<GameT, StepT>,
@@ -119,7 +120,7 @@ pub struct Client<
 }
 
 impl<
-        StepT: Clone + Deserialize + Serialize + Debug + std::fmt::Display + Eq,
+        StepT: Clone + Deserialize + Serialize + Debug + Display + Eq,
         GameT: GameCallbacks<StepT> + Debug,
     > Client<GameT, StepT>
 {
@@ -128,6 +129,7 @@ impl<
     /// # Arguments
     ///
     /// * `now` - The current time in milliseconds.
+    #[must_use]
     pub fn new(now: Millis) -> Self {
         let deterministic_app_version = GameT::version();
         Self {
@@ -149,7 +151,8 @@ impl<
         }
     }
 
-    pub fn with_tick_duration(mut self, tick_duration: MillisDuration) -> Self {
+    #[must_use]
+    pub const fn with_tick_duration(mut self, tick_duration: MillisDuration) -> Self {
         self.tick_duration_ms = tick_duration;
         self
     }
@@ -178,7 +181,7 @@ impl<
             datagram_chunker::serialize_to_datagrams(messages, Self::MAX_DATAGRAM_SIZE)?;
         self.metrics.sent_datagrams(&datagrams);
 
-        let datagrams_with_header = self.nimble_layer.send(datagrams)?;
+        let datagrams_with_header = self.nimble_layer.send(&datagrams)?;
 
         Ok(datagrams_with_header)
     }
@@ -213,7 +216,7 @@ impl<
         Ok(())
     }
 
-    pub fn debug_rectify(&self) -> &Rectify<GameT, StepMap<Step<StepT>>> {
+    pub const fn debug_rectify(&self) -> &Rectify<GameT, StepMap<Step<StepT>>> {
         &self.rectify
     }
 
@@ -237,9 +240,10 @@ impl<
         trace!("client: update {now}");
         self.metrics.update_metrics(now);
 
-        let factor = self
-            .authoritative_range_to_tick_duration_ms
-            .get_factor(self.logic.debug_authoritative_steps().len() as u8);
+        let factor = self.authoritative_range_to_tick_duration_ms.get_factor(
+            &u8::try_from(self.logic.debug_authoritative_steps().len())
+                .map_err(|_| ClientLogicError::TooManyAuthoritativeSteps)?,
+        );
         self.authoritative_time_tick
             .set_tick_duration(*factor * self.tick_duration_ms);
         self.authoritative_time_tick.calculate_ticks(now);
@@ -254,16 +258,11 @@ impl<
             current_tick_id = TickId(current_tick_id.0 + 1);
         }
 
-        match self.logic.phase() {
-            ClientLogicPhase::RequestConnect => {}
-            ClientLogicPhase::RequestDownloadState { .. } => {}
-            ClientLogicPhase::DownloadingState(_) => {}
-            ClientLogicPhase::SendPredictedSteps => {
-                if self.phase != ClientPhase::CanSendPredicted {
-                    self.prediction_time_tick.reset(now);
-                    self.phase = ClientPhase::CanSendPredicted;
-                }
-            }
+        if self.logic.phase() == &ClientLogicPhase::SendPredictedSteps
+            && self.phase != ClientPhase::CanSendPredicted
+        {
+            self.prediction_time_tick.reset(now);
+            self.phase = ClientPhase::CanSendPredicted;
         }
 
         match self.phase {
@@ -313,14 +312,14 @@ impl<
         let delta_prediction = self.delta_prediction_count();
         let factor = self
             .prediction_range_to_tick_duration_ms
-            .get_factor(delta_prediction);
+            .get_factor(&delta_prediction);
         trace!(
             "delta-prediction: {delta_prediction} resulted in factor: {factor} for latency {}",
             self.latency().unwrap_or(MinMaxAvg::new(0, 0.0, 0))
         );
 
         self.prediction_time_tick
-            .set_tick_duration(*factor * self.tick_duration_ms)
+            .set_tick_duration(*factor * self.tick_duration_ms);
     }
 
     /// Determines the optimal number of prediction ticks based on current average latency.
@@ -333,24 +332,23 @@ impl<
     ///
     /// This function ensures that the prediction count does not exceed a predefined maximum.
     fn optimal_prediction_tick_count(&self) -> usize {
-        if let Some(latency_ms) = self.latency() {
+        const MAXIMUM_PREDICTION_COUNT: usize = 10; // TODO: Setting
+        const MINIMUM_DELTA_TICK: u32 = 2;
+
+        self.latency().map_or(2, |latency_ms| {
             let latency_in_ticks =
                 (latency_ms.avg as u16 / self.tick_duration_ms.as_millis() as u16) + 1;
             let tick_delta = self.server_buffer_delta_ticks().unwrap_or(0);
-            const MINIMUM_DELTA_TICK: u32 = 2;
             let buffer_add = if (tick_delta as u32) < MINIMUM_DELTA_TICK {
-                ((MINIMUM_DELTA_TICK as i32) - tick_delta as i32) as u32
+                ((MINIMUM_DELTA_TICK as i32) - i32::from(tick_delta)) as u32
             } else {
                 0
             };
 
-            let count = (latency_in_ticks as u32 + buffer_add) as usize;
+            let count = (u32::from(latency_in_ticks) + buffer_add) as usize;
 
-            const MAXIMUM_PREDICTION_COUNT: usize = 10; // TODO: Setting
             min(count, MAXIMUM_PREDICTION_COUNT)
-        } else {
-            2
-        }
+        })
     }
 
     /// Retrieves a reference to the current game instance, if available.
@@ -361,7 +359,7 @@ impl<
     /// # Returns
     ///
     /// An `Option` containing a reference to `CallbacksT` or `None` if no game is active.
-    pub fn game(&self) -> Option<&GameT> {
+    pub const fn game(&self) -> Option<&GameT> {
         self.logic.game()
     }
 
@@ -371,10 +369,10 @@ impl<
     ///
     /// The number of predictions needed as a `usize`.
     pub fn required_prediction_count(&self) -> usize {
-        if !self.logic.can_push_predicted_step() {
-            0
-        } else {
+        if self.logic.can_push_predicted_step() {
             self.last_need_prediction_count as usize
+        } else {
+            0
         }
     }
 
@@ -383,7 +381,7 @@ impl<
     /// # Returns
     ///
     /// `true` if a player can join, `false` otherwise.
-    pub fn can_join_player(&self) -> bool {
+    pub const fn can_join_player(&self) -> bool {
         self.game().is_some()
     }
 
@@ -398,7 +396,7 @@ impl<
 
     /// Adds a predicted input (step) to the client's logic and rectification system.
     ///
-    /// This method serializes predicted steps into datagrams (in the future) in upcoming send() function calls.
+    /// This method serializes predicted steps into datagrams (in the future) in upcoming `send()` function calls.
     ///
     /// # Arguments
     ///
@@ -415,7 +413,7 @@ impl<
     pub fn push_predicted_step(
         &mut self,
         tick_id: TickId,
-        step: StepMap<StepT>,
+        step: &StepMap<StepT>,
     ) -> Result<(), ClientError> {
         let count = step.len();
         if count > self.required_prediction_count() {
@@ -427,10 +425,8 @@ impl<
 
         let mut seq_map = StepMap::<Step<StepT>>::new();
 
-        for (participant_id, step) in &step {
-            seq_map
-                .insert(*participant_id, Step::Custom(step.clone()))
-                .expect("can't insert step");
+        for (participant_id, step) in step {
+            seq_map.insert(*participant_id, Step::Custom(step.clone()))?;
         }
         self.rectify.push_predicted(tick_id, seq_map)?;
 
@@ -477,6 +473,9 @@ impl<
     /// # Returns
     ///
     /// A `Result` indicating success or containing a `ClientError`.
+    /// # Errors
+    ///
+    /// `ClientError` // TODO:
     pub fn request_join_player(
         &mut self,
         local_players: Vec<LocalIndex>,

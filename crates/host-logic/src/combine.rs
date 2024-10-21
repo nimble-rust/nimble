@@ -47,19 +47,19 @@ impl<T: Clone + std::fmt::Display> HostCombinator<T> {
         }
     }
 
-    pub fn tick_id_to_produce(&self) -> TickId {
+    pub const fn tick_id_to_produce(&self) -> TickId {
         self.combinator.tick_id_to_produce
     }
 
     pub fn create_buffer(&mut self, participant_id: ParticipantId) {
-        self.combinator.create_buffer(participant_id)
+        self.combinator.create_buffer(participant_id);
     }
 
-    pub fn get_mut(&mut self, participant_id: &ParticipantId) -> Option<&mut Queue<T>> {
-        self.combinator.in_buffers.get_mut(participant_id)
+    pub fn get_mut(&mut self, participant_id: ParticipantId) -> Option<&mut Queue<T>> {
+        self.combinator.in_buffers.get_mut(&participant_id)
     }
 
-    pub fn authoritative_steps(&self) -> &Queue<StepMap<Step<T>>> {
+    pub const fn authoritative_steps(&self) -> &Queue<StepMap<Step<T>>> {
         &self.authoritative_steps
     }
 
