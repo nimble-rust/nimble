@@ -1,6 +1,6 @@
 [package]
 name = "nimble-rectify"
-version = "0.0.14-dev"
+version = "0.0.15-dev"
 edition = "2021"
 license = "MIT"
 description = "Integration between assent and seer"
@@ -15,13 +15,13 @@ log = "0.4.22"
 flood-rs = "0.0.12"
 tick-id = "0.0.9"
 
-nimble-participant = { path = "../participant", version = "0.0.14-dev" }
+nimble-participant = { path = "../participant", version = "0.0.15-dev" }
 
-nimble-assent = { path = "../assent", version = "0.0.14-dev" }
-nimble-seer = { path = "../seer", version = "0.0.14-dev" }
+nimble-assent = { path = "../assent", version = "0.0.15-dev" }
+nimble-seer = { path = "../seer", version = "0.0.15-dev" }
 
 
 [dev-dependencies]
 test-log = "0.2.16"
-nimble-step-map = { path = "../step-map", version = "0.0.14-dev" }
-nimble-step = { path = "../step", version = "0.0.14-dev" }
+nimble-step-map = { path = "../step-map", version = "0.0.15-dev" }
+nimble-step = { path = "../step", version = "0.0.15-dev" }
