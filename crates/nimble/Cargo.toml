@@ -1,6 +1,6 @@
 [package]
 name = "nimble-rust"
-version = "0.0.15-dev"
+version = "0.0.15-dev2"
 edition = "2021"
 license = "MIT"
 description = "Nimble"
