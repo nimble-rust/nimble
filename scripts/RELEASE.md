@@ -2,40 +2,20 @@
 
 ## Release example
 
+### Bump version of all local crates
+
 ```console
 cargo release "0.0.0-dev" -v --workspace --no-publish --no-tag --no-push --execute
 ```
 
+### Publish
+
 ```console
-cargo release "0.0.13-dev" -v --workspace --no-tag --no-push --execute
+cargo deps-order --workspace-only --exec "cargo publish" --wait 5
 ```
-
-Publish order:
-
-nimble-steps
-nimble-assent
-nimble-blob-stream
-nimble-participant
-seq-map
-nimble-step-types
-nimble-sample-step
-nimble-protocol
-nimble-client-logic
-nimble-host-logic
-nimble-ordered-datagram
-nimble-protocol-header
-nimble-layer
-nimble-host
-nimble-seer
-nimble-rectify
-nimble-sample-game
-time-tick
-nimble-client
-nimble-wrapped-step
-nimble-rust
 
 ## Check line counts
 
 ```console
-tokei crates/ --files --sort lines --type rust
+tokei crates/ --files --sort code --type rust
 ```

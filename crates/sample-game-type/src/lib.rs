@@ -8,12 +8,11 @@ use flood_rs::{BufferDeserializer, Deserialize, ReadOctetStream, Serialize, Writ
 use log::info;
 use nimble_assent::AssentCallback;
 use nimble_rectify::RectifyCallback;
-use nimble_seer::SeerCallback;
-use std::io;
-
 pub use nimble_sample_step::SampleStep;
+use nimble_seer::SeerCallback;
 use nimble_step::Step;
 use nimble_step_map::StepMap;
+use std::io;
 
 #[derive(Default, Clone, Debug, Eq, PartialEq)]
 pub struct SampleGameState {
