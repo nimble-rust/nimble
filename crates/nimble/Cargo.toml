@@ -13,7 +13,7 @@ flood-rs = "0.0.12"
 tick-id = "0.0.9"
 monotonic-time-rs = "0.0.5"
 
-nimble-client = { path = "../client", version = "0.0.15-dev" }
+nimble-client = { path = "../client", version = "0.0.15-dev2" }
 nimble-host = { path = "../host", version = "0.0.15-dev" }
 
 nimble-step = { path = "../step", version = "0.0.15-dev" }
