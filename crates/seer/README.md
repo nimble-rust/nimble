@@ -21,7 +21,7 @@ Add the following to your `Cargo.toml` file:
 
 ```toml
 [dependencies]
-nimble-seer = "0.0.16-dev"
+nimble-seer = "0.0.16"
 ```
 
 ## License

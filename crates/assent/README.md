@@ -24,7 +24,7 @@ Add this to your Cargo.toml:
 
 ```toml
 [dependencies]
-nimble-assent = "0.0.14-dev"
+nimble-assent = "0.0.16"
 ```
 
 ## License

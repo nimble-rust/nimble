@@ -21,7 +21,7 @@ Add `nimble-protocol` to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-nimble-protocol = "0.0.14-dev"
+nimble-protocol = "0.0.16"
 ```
 
 ## License

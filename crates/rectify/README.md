@@ -20,7 +20,7 @@ Add the following to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-nimble-rectify = "0.0.14-dev"
+nimble-rectify = "0.0.16"
 ```
 
 ## License

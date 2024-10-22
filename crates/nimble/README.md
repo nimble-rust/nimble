@@ -34,7 +34,7 @@ To include nimble-rust in your project, add the following to your Cargo.toml:
 
 ```toml
 [dependencies]
-nimble-rust = "0.0.15-dev"
+nimble-rust = "0.0.16"
 ```
 
 ## License

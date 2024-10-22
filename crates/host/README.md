@@ -20,7 +20,7 @@ Add `nimble-host` to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-nimble-host = "0.0.14-dev"
+nimble-host = "0.0.16"
 ```
 
 ## License

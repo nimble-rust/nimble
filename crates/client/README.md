@@ -36,7 +36,7 @@ Add `nimble-client` to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-nimble-client = "0.0.14-dev"
+nimble-client = "0.0.16"
 ```
 
 ## License

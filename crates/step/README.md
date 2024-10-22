@@ -20,7 +20,7 @@ Add the following to your `Cargo.toml` file:
 
 ```toml
 [dependencies]
-nimble-step = "0.0.14-dev"
+nimble-step = "0.0.16"
 ```
 
 ## License

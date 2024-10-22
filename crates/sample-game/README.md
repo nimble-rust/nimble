@@ -20,7 +20,7 @@ To use this crate, add the following to your Cargo.toml:
 
 ```toml
 [dependencies]
-nimble-sample-game = "0.0.15-dev"
+nimble-sample-game = "0.0.16"
 ```
 
 ## License
