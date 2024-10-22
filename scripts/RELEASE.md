@@ -5,7 +5,7 @@
 ### Bump version of all local crates
 
 ```console
-cargo release "0.0.0-dev" -v --workspace --no-publish --no-tag --no-push --execute
+cargo release "0.0.0-dev" -v --workspace --no-publish --no-tag --no-push --no-confirm --execute
 ```
 
 ### Publish
