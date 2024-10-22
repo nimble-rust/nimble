@@ -5,6 +5,8 @@ edition = "2021"
 license = "MIT"
 description = "Nimble Client"
 repository = "https://github.com/nimble-rust/nimble"
+categories = ["game-development"]
+keywords = ["game", "network"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -48,7 +50,7 @@ nimble-participant = { path = "../participant", version = "0.0.15-dev" }
 
 # Sample game and step types
 nimble-sample-step = { path = "../sample-step", version = "0.0.15-dev" }
-nimble-sample-game = { path = "../sample-game-type", version = "0.0.15-dev" }
+nimble-sample-game = { path = "../sample-game", version = "0.0.15-dev" }
 
 # Host
 nimble-host = { path = "../host", version = "0.0.15-dev" }

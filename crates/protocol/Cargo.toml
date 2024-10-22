@@ -5,6 +5,9 @@ edition = "2021"
 license = "MIT"
 description = "Nimble Protocol"
 repository = "https://github.com/nimble-rust/protocol"
+categories = ["game-development"]
+keywords = ["game", "network"]
+
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]

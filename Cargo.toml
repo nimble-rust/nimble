@@ -12,7 +12,7 @@ members = [
     "crates/sample-step",
     "crates/nimble",
     "crates/step-map",
-    "crates/sample-game-type",
+    "crates/sample-game",
     "crates/layer",
     "crates/client",
     "crates/host",
