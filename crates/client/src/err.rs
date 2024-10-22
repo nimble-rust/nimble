@@ -2,7 +2,7 @@
  * Copyright (c) Peter Bjorklund. All rights reserved. https://github.com/nimble-rust/nimble
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
-
+use std::fmt::Display;
 use datagram_chunker::DatagramChunkerError;
 use err_rs::{ErrorLevel, ErrorLevelProvider};
 use nimble_client_logic::err::ClientLogicError;
@@ -21,6 +21,12 @@ pub enum ClientError {
     NimbleLayerError(NimbleLayerError),
     PredictionQueueOverflow,
     SeqMapError(SeqMapError),
+}
+
+impl Display for ClientError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+       write!(f, "{self:?}") // TODO: Provide proper display for each error
+    }
 }
 
 impl From<SeqMapError> for ClientError {
