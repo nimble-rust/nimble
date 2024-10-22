@@ -7,6 +7,8 @@
 deterministic simulations. It efficiently manages predicted game state steps and syncs them
 with authoritative steps, ensuring a smooth and predictable simulation experience.
 
+> Seer: one that predicts future events or developments
+
 ## ✨ Features
 
 - **Predicted Steps Queue**: Manages a queue of predicted steps, allowing for simulation without immediate authoritative feedback.
@@ -19,7 +21,7 @@ Add the following to your `Cargo.toml` file:
 
 ```toml
 [dependencies]
-nimble-seer = "0.0.14-dev"
+nimble-seer = "0.0.16-dev"
 ```
 
 ## License
