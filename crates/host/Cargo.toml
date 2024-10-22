@@ -1,6 +1,6 @@
 [package]
 name = "nimble-host"
-version = "0.0.15-dev"
+version = "0.0.16-dev"
 edition = "2021"
 license = "MIT"
 description = "Nimble Host"
@@ -21,11 +21,11 @@ err-rs = "0.0.4"
 
 datagram-chunker = "0.0.2"
 
-nimble-layer = { path = "../layer", version = "0.0.15-dev" }
-nimble-protocol = { path = "../protocol", version = "0.0.15-dev" }
-nimble-host-logic = { path = "../host-logic", version = "0.0.15-dev" }
+nimble-layer = { path = "../layer", version = "0.0.16-dev" }
+nimble-protocol = { path = "../protocol", version = "0.0.16-dev" }
+nimble-host-logic = { path = "../host-logic", version = "0.0.16-dev" }
 
 [dev-dependencies]
 test-log = "0.2.16"
-nimble-sample-step = { path = "../sample-step", version = "0.0.15-dev" }
-nimble-participant = { path = "../participant", version = "0.0.15-dev" }
+nimble-sample-step = { path = "../sample-step", version = "0.0.16-dev" }
+nimble-participant = { path = "../participant", version = "0.0.16-dev" }

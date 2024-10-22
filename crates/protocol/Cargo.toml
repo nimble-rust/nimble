@@ -1,6 +1,6 @@
 [package]
 name = "nimble-protocol"
-version = "0.0.15-dev"
+version = "0.0.16-dev"
 edition = "2021"
 license = "MIT"
 description = "Nimble Protocol"
@@ -12,13 +12,13 @@ keywords = ["game", "network"]
 
 [dependencies]
 flood-rs = "0.0.12"
-nimble-blob-stream = { path = "../blob-stream", version = "0.0.15-dev" }
-nimble-participant = { path = "../participant", version = "0.0.15-dev" }
+nimble-blob-stream = { path = "../blob-stream", version = "0.0.16-dev" }
+nimble-participant = { path = "../participant", version = "0.0.16-dev" }
 tick-id = "0.0.9"
 log = "0.4.22"
-nimble-step-map = { path = "../step-map", version = "0.0.15-dev" }
+nimble-step-map = { path = "../step-map", version = "0.0.16-dev" }
 seq-map = "0.0.2"
 
 [dev-dependencies]
 test-log = "0.2.16"
-nimble-sample-step = { path = "../sample-step", version = "0.0.15-dev" }
+nimble-sample-step = { path = "../sample-step", version = "0.0.16-dev" }

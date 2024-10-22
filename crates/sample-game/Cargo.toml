@@ -1,6 +1,6 @@
 [package]
 name = "nimble-sample-game"
-version = "0.0.15-dev"
+version = "0.0.16-dev"
 edition = "2021"
 license = "MIT"
 description = "Nimble Sample Game Types"
@@ -15,11 +15,11 @@ flood-rs = "0.0.12"
 log = "0.4.22"
 app-version = "0.0.2"
 
-nimble-step = { path = "../step", version = "0.0.15-dev" }
+nimble-step = { path = "../step", version = "0.0.16-dev" }
 
-nimble-step-map = { path = "../step-map", version = "0.0.15-dev" }
-nimble-sample-step = { path = "../sample-step", version = "0.0.15-dev" }
+nimble-step-map = { path = "../step-map", version = "0.0.16-dev" }
+nimble-sample-step = { path = "../sample-step", version = "0.0.16-dev" }
 
-nimble-assent = { path = "../assent", version = "0.0.15-dev" }
-nimble-seer = { path = "../seer", version = "0.0.15-dev" }
-nimble-rectify = { path = "../rectify", version = "0.0.15-dev" }
+nimble-assent = { path = "../assent", version = "0.0.16-dev" }
+nimble-seer = { path = "../seer", version = "0.0.16-dev" }
+nimble-rectify = { path = "../rectify", version = "0.0.16-dev" }

@@ -1,6 +1,6 @@
 [package]
 name = "nimble-host-logic"
-version = "0.0.15-dev"
+version = "0.0.16-dev"
 edition = "2021"
 license = "MIT"
 description = "Nimble Host"
@@ -21,13 +21,13 @@ seq-map = "0.0.2"
 app-version = "0.0.2"
 err-rs = "0.0.4"
 
-nimble-step = { path = "../step", version = "0.0.15-dev" }
-nimble-participant = { path = "../participant", version = "0.0.15-dev" }
-nimble-step-map = { path = "../step-map", version = "0.0.15-dev" }
+nimble-step = { path = "../step", version = "0.0.16-dev" }
+nimble-participant = { path = "../participant", version = "0.0.16-dev" }
+nimble-step-map = { path = "../step-map", version = "0.0.16-dev" }
 
-nimble-blob-stream = { path = "../blob-stream", version = "0.0.15-dev" }
-nimble-protocol = { path = "../protocol", version = "0.0.15-dev" }
+nimble-blob-stream = { path = "../blob-stream", version = "0.0.16-dev" }
+nimble-protocol = { path = "../protocol", version = "0.0.16-dev" }
 
 [dev-dependencies]
 test-log = "0.2.16"
-nimble-sample-step = { path = "../sample-step", version = "0.0.15-dev" }
+nimble-sample-step = { path = "../sample-step", version = "0.0.16-dev" }

@@ -1,6 +1,6 @@
 [package]
 name = "nimble-rust"
-version = "0.0.15-dev2"
+version = "0.0.16-dev"
 edition = "2021"
 license = "MIT"
 description = "Nimble"
@@ -15,16 +15,16 @@ flood-rs = "0.0.12"
 tick-id = "0.0.9"
 monotonic-time-rs = "0.0.5"
 
-nimble-client = { path = "../client", version = "0.0.15-dev2" }
-nimble-host = { path = "../host", version = "0.0.15-dev" }
+nimble-client = { path = "../client", version = "0.0.16-dev" }
+nimble-host = { path = "../host", version = "0.0.16-dev" }
 
-nimble-step = { path = "../step", version = "0.0.15-dev" }
-nimble-step-map = { path = "../step-map", version = "0.0.15-dev" }
+nimble-step = { path = "../step", version = "0.0.16-dev" }
+nimble-step-map = { path = "../step-map", version = "0.0.16-dev" }
 
-nimble-sample-game = { path = "../sample-game", version = "0.0.15-dev" }
-nimble-sample-step = { path = "../sample-step", version = "0.0.15-dev" }
+nimble-sample-game = { path = "../sample-game", version = "0.0.16-dev" }
+nimble-sample-step = { path = "../sample-step", version = "0.0.16-dev" }
 
-nimble-wrapped-step = { path = "../wrapped-step", version = "0.0.15-dev" }
+nimble-wrapped-step = { path = "../wrapped-step", version = "0.0.16-dev" }
 
 # nimble-layer = { path = "../layer", version = "0.0.14-dev" }
 # nimble-host-logic = { path = "../host-logic", version = "0.0.14-dev" }

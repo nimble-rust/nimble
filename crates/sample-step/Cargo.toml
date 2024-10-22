@@ -1,6 +1,6 @@
 [package]
 name = "nimble-sample-step"
-version = "0.0.15-dev"
+version = "0.0.16-dev"
 edition = "2021"
 license = "MIT"
 description = "Nimble Sample Step Type"
@@ -13,4 +13,4 @@ keywords = ["game", "network"]
 [dependencies]
 flood-rs = "0.0.12"
 log = "0.4.22"
-nimble-step-map = { path = "../step-map", version = "0.0.15-dev" }
+nimble-step-map = { path = "../step-map", version = "0.0.16-dev" }
