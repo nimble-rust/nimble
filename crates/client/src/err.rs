@@ -2,13 +2,13 @@
  * Copyright (c) Peter Bjorklund. All rights reserved. https://github.com/nimble-rust/nimble
  * Licensed under the MIT License. See LICENSE in the project root for license information.
  */
-use std::fmt::Display;
 use datagram_chunker::DatagramChunkerError;
 use err_rs::{ErrorLevel, ErrorLevelProvider};
 use nimble_client_logic::err::ClientLogicError;
 use nimble_layer::NimbleLayerError;
 use nimble_rectify::RectifyError;
 use seq_map::SeqMapError;
+use std::fmt::Display;
 use tick_queue::QueueError;
 
 #[derive(Debug)]
@@ -25,7 +25,7 @@ pub enum ClientError {
 
 impl Display for ClientError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-       write!(f, "{self:?}") // TODO: Provide proper display for each error
+        write!(f, "{self:?}") // TODO: Provide proper display for each error
     }
 }
 
