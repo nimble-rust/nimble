@@ -16,7 +16,7 @@ Nimble Client is a lightweight library that manages:
 
 **Note:** Nimble Client **does not** handle game logic directly. Instead, it interfaces with your game logic through callbacks, ensuring a clean separation of concerns.
 
-## 🌟 Features
+## ✨ Features
 
 - **Efficient Network Communication:** Handles sending and receiving data with optimized performance.
 - **Participant Management:** Easily add or remove players from your game sessions.
@@ -38,3 +38,7 @@ Add `nimble-client` to your `Cargo.toml`:
 [dependencies]
 nimble-client = "0.0.14-dev"
 ```
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.

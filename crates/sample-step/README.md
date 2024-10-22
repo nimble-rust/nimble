@@ -1,8 +1,11 @@
 # 🎮 nimble-sample-step
 
+[![Crates.io](https://img.shields.io/crates/v/nimble-sample-step)](https://crates.io/crates/nimble-sample-step)
+[![Documentation](https://docs.rs/nimble-sample-step/badge.svg)](https://docs.rs/nimble-sample-step)
+
 This crate provides an example `Step` implementation to use in tests or for other similar purposes.
- It's built with flexibility and simplicity in mind, giving you basic game-pad-like
- inputs such as moving left, right, jumping, or doing nothing.
+It's built with flexibility and simplicity in mind, giving you basic game-pad-like
+inputs such as moving left, right, jumping, or doing nothing.
 
 ## ✨ Features
 
@@ -14,11 +17,15 @@ This crate provides an example `Step` implementation to use in tests or for othe
 
 These actions are ready for you to plug into your test cases!
 
-## 🔧 Usage
+## 📦 Installation
 
-Include the `nimble-sample-step` crate in your `Cargo.toml` to start using it for your test scenarios.
+Add the following to your `Cargo.toml` file:
 
 ```toml
 [dependencies]
-nimble-sample-step = "0.0.14-dev"
+nimble-sample-step = "0.0.15-dev"
 ```
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.

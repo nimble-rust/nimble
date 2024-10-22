@@ -6,7 +6,7 @@
 Welcome to **Nimble Host**! 🕹️✨ The core server-side component of the Nimble multiplayer framework, designed
 to manage game sessions, handle client connections, and ensure smooth communication between clients and the host.
 
-## 🌟 Features
+## ✨ Features
 
 - **🔗 Connection Management**: Easily create, manage, and destroy client connections.
 - **🧠 Host Logic Integration**: Seamlessly integrates with `nimble_host_logic` to handle game state and client commands.
@@ -22,3 +22,7 @@ Add `nimble-host` to your `Cargo.toml`:
 [dependencies]
 nimble-host = "0.0.14-dev"
 ```
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.

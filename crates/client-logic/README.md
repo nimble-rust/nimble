@@ -4,17 +4,17 @@
 [![Documentation](https://docs.rs/nimble-client-logic/badge.svg)](https://docs.rs/nimble-client-logic)
 
 `nimble-client-logic` is a robust Rust crate designed to manage client-side logic for multiplayer game
-sessions using the Nimble protocol messages. It facilitates seamless communication between the client and host, 
+sessions using the Nimble protocol messages. It facilitates seamless communication between the client and host,
 ensuring synchronized game states and smooth gameplay experiences.
 
-## 🚀 Features
+## ✨ Features
 
-- **🔗 Connection Management**: Establish and manage connections with the host, ensuring protocol compatibility 
+- **🔗 Connection Management**: Establish and manage connections with the host, ensuring protocol compatibility
  and handling connection states.
 - **🕹️ Game State Handling**: Download and maintain the complete game state from the host, ensuring consistency across
  all clients.
 - **👥 Participant Management**: Dynamically add and remove players from the game session.
-- **⚡ Step Prediction & Reconciliation**: Send predicted player steps to the host and reconcile them with 
+- **⚡ Step Prediction & Reconciliation**: Send predicted player steps to the host and reconcile them with
  authoritative steps received, ensuring responsive gameplay.
 - **📦 Blob Streaming**: Efficiently handle large game state transfers using blob streaming.
 - **📈 Metrics Tracking**: Monitor server buffer delta ticks to optimize performance and synchronization.
@@ -27,3 +27,7 @@ Add `nimble-client-logic` to your project's `Cargo.toml`:
 [dependencies]
 nimble-client-logic = "0.0.14-dev"
 ```
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
