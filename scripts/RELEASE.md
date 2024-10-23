@@ -2,15 +2,18 @@
 
 ## Release example
 
-### Bump version of all local crates
+- update version
 
-```console
-cargo release "0.0.0-dev" -v --workspace --no-publish --no-tag --no-push --no-confirm --execute
+```bash
+cargo set-version "0.0.0"
+cargo deps-order --workspace-only --exec "cargo readme-update"
 ```
 
-### Publish
+- git commit and tag
 
-```console
+- publish
+
+```bash
 cargo deps-order --workspace-only --exec "cargo publish" --wait 5
 ```
 
