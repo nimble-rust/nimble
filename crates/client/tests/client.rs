@@ -19,6 +19,7 @@ use rand::prelude::StdRng;
 use rand::SeedableRng;
 use std::fmt::Debug;
 use tick_id::TickId;
+use nimble_client_logic::LocalIndex;
 
 pub struct TestStateProvider {
     pub tick_id: TickId,
@@ -97,7 +98,7 @@ fn communicate<
         if client.can_join_player() && client.local_players().is_empty() {
             debug!("join player {tick_id}");
             client
-                .request_join_player([0].into())
+                .request_join_player(&[0 as LocalIndex])
                 .expect("should request join player");
         }
 
