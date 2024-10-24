@@ -155,6 +155,13 @@ impl RectifyCallback for GenericOctetGame {
 
 pub type Handle = u64;
 
+pub type ErrorCode = c_int;
+
+pub const ERR_SUCCESS: ErrorCode = 0;
+pub const ERR_GENERIC: ErrorCode = -1;
+pub const ERR_HANDLE_NOT_FOUND: ErrorCode = -2;
+
+
 // -------------------------------------------------------------------------------------------------
 // FFI Interface
 // -------------------------------------------------------------------------------------------------
@@ -176,33 +183,33 @@ pub extern "C" fn client_new(now: u64) -> Handle {
 
 /// Destroys a Client instance using its handle
 #[no_mangle]
-pub extern "C" fn client_free(handle: Handle) -> c_int {
+pub extern "C" fn client_free(handle: Handle) -> ErrorCode {
     let removed = {
         let mut registry = CLIENT_REGISTRY.lock().unwrap();
         registry.remove(&handle)
     };
 
     match removed {
-        Some(_) => 0, // Success
-        None => -1,   // Handle not found
+        Some(_) => ERR_SUCCESS,
+        None => ERR_HANDLE_NOT_FOUND,
     }
 }
 
 /// Updates a Client instance with the specified absolute time
 #[no_mangle]
-pub extern "C" fn client_update(handle: Handle, now: u64) -> c_int {
+pub extern "C" fn client_update(handle: Handle, now: u64) -> ErrorCode {
     let result = {
         let mut registry = CLIENT_REGISTRY.lock().unwrap();
         if let Some(client) = registry.get_mut(&handle) {
             client.client.update(Millis::new(now))
         } else {
-            return -1; // Handle not found
+            return ERR_HANDLE_NOT_FOUND;
         }
     };
 
     if result.is_ok() {
-        0
+        ERR_SUCCESS
     } else {
-        -1
+        ERR_GENERIC
     }
 }

@@ -1,0 +1,1 @@
+cargo bloat --release --crates
