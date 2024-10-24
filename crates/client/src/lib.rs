@@ -80,16 +80,14 @@ impl<V: PartialOrd, F> RangeToFactor<V, F> {
 }
 
 pub trait GameCallbacks<StepT: Display>:
-    RectifyCallbacks<StepMap<Step<StepT>>> + VersionProvider + BufferDeserializer
-{
-}
+RectifyCallbacks<StepMap<Step<StepT>>> + VersionProvider + BufferDeserializer
+{}
 
 impl<T, StepT> GameCallbacks<StepT> for T
 where
     T: RectifyCallbacks<StepMap<Step<StepT>>> + VersionProvider + BufferDeserializer,
     StepT: Display,
-{
-}
+{}
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum ClientPhase {
@@ -120,9 +118,9 @@ pub struct Client<
 }
 
 impl<
-        StepT: Clone + Deserialize + Serialize + Debug + Display + Eq,
-        GameT: GameCallbacks<StepT> + Debug,
-    > Client<GameT, StepT>
+    StepT: Clone + Deserialize + Serialize + Debug + Display + Eq,
+    GameT: GameCallbacks<StepT> + Debug,
+> Client<GameT, StepT>
 {
     /// Creates a new `Client` instance with the given current time.
     ///
@@ -363,6 +361,10 @@ impl<
         self.logic.game()
     }
 
+    pub const fn phase(&self) -> &ClientPhase {
+        &self.phase
+    }
+
     /// Determines the number of predictions needed based on the current state.
     ///
     /// # Returns
@@ -478,7 +480,7 @@ impl<
     /// `ClientError` // TODO:
     pub fn request_join_player(
         &mut self,
-        local_players: Vec<LocalIndex>,
+        local_players: &[LocalIndex],
     ) -> Result<(), ClientError> {
         self.logic.set_joining_player(local_players);
         Ok(())

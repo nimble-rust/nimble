@@ -4,8 +4,9 @@
  */
 
 pub use {
-    crate::{err::ClientError, Client, GameCallbacks},
+    crate::{err::ClientError, Client, GameCallbacks, ClientPhase},
     nimble_assent::AssentCallback,
     nimble_rectify::{RectifyCallback, RectifyCallbacks},
     nimble_seer::SeerCallback,
+    nimble_client_logic::{LocalIndex},
 };

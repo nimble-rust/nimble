@@ -188,8 +188,8 @@ impl<
     ///
     /// # Arguments
     /// * `join_game_request`: The join game request to send to the host.
-    pub fn set_joining_player(&mut self, local_players: Vec<LocalIndex>) {
-        self.joining_player = Some(local_players);
+    pub fn set_joining_player(&mut self, local_players: &[LocalIndex]) {
+        self.joining_player = Some(local_players.to_vec());
     }
 
     /// Generates a download state request command to send to the host.
