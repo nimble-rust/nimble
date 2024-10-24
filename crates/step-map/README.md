@@ -11,7 +11,7 @@ Add the following to your `Cargo.toml` file:
 
 ```toml
 [dependencies]
-nimble-step-map = "0.0.16"
+nimble-step-map = "0.0.17-dev"
 ```
 
 ## License

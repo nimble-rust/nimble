@@ -1,6 +1,6 @@
 [package]
 name = "nimble-step-map"
-version = "0.0.16"
+version = "0.0.17-dev"
 edition = "2021"
 license = "MIT"
 description = "Nimble Step Map"
@@ -9,5 +9,5 @@ categories = ["game-development"]
 keywords = ["game", "network"]
 
 [dependencies]
-nimble-participant = { path = "../participant", version = "0.0.16" }
+nimble-participant = { path = "../participant", version = "0.0.17-dev" }
 seq-map = "0.0.2"

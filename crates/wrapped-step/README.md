@@ -14,7 +14,7 @@ Add the following to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-nimble-wrapped-step = "0.0.16"
+nimble-wrapped-step = "0.0.17-dev"
 ```
 
 ## License

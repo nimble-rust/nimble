@@ -24,7 +24,7 @@ To include `nimble-ordered-datagram` in your project, add the following to your 
 
 ```toml
 [dependencies]
-nimble-ordered-datagram = "0.0.16"
+nimble-ordered-datagram = "0.0.17-dev"
 ```
 
 ## License

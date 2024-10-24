@@ -1,6 +1,6 @@
 [package]
 name = "nimble-layer"
-version = "0.0.16"
+version = "0.0.17-dev"
 edition = "2021"
 license = "MIT"
 description = "Nimble Layer"
@@ -18,12 +18,12 @@ app-version = "0.0.2"
 tick-id = "0.0.9"
 hexify = { version = "0.0.3", features = ["log_equal"] }
 
-nimble-ordered-datagram = { path = "../ordered-datagram", version = "0.0.16" }
+nimble-ordered-datagram = { path = "../ordered-datagram", version = "0.0.17-dev" }
 
 
 [dev-dependencies]
 test-log = "0.2.16"
-nimble-sample-step = { path = "../sample-step", version = "0.0.16" }
-nimble-client-logic = { path = "../client-logic", version = "0.0.16" }
+nimble-sample-step = { path = "../sample-step", version = "0.0.17-dev" }
+nimble-client-logic = { path = "../client-logic", version = "0.0.17-dev" }
 datagram-chunker = "0.0.2"
 monotonic-time-rs = "0.0.5"

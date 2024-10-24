@@ -25,7 +25,7 @@ Add `nimble-client-logic` to your project's `Cargo.toml`:
 
 ```toml
 [dependencies]
-nimble-client-logic = "0.0.16"
+nimble-client-logic = "0.0.17-dev"
 ```
 
 ## License

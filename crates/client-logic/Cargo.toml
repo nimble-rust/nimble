@@ -1,6 +1,6 @@
 [package]
 name = "nimble-client-logic"
-version = "0.0.16"
+version = "0.0.17-dev"
 edition = "2021"
 license = "MIT"
 description = "Nimble Client Logic"
@@ -19,13 +19,13 @@ metricator = "0.0.6"
 app-version = "0.0.2"
 tick-queue = "0.0.2"
 
-nimble-step = { path = "../step", version = "0.0.16" }
-nimble-participant = { path = "../participant", version = "0.0.16" }
-nimble-step-map = { path = "../step-map", version = "0.0.16" }
-nimble-blob-stream = { path = "../blob-stream", version = "0.0.16" }
-nimble-protocol = { path = "../protocol", version = "0.0.16" }
+nimble-step = { path = "../step", version = "0.0.17-dev" }
+nimble-participant = { path = "../participant", version = "0.0.17-dev" }
+nimble-step-map = { path = "../step-map", version = "0.0.17-dev" }
+nimble-blob-stream = { path = "../blob-stream", version = "0.0.17-dev" }
+nimble-protocol = { path = "../protocol", version = "0.0.17-dev" }
 monotonic-time-rs = "0.0.5"
 
 [dev-dependencies]
 test-log = "0.2.16"
-nimble-sample-step = { path = "../sample-step", version = "0.0.16" }
+nimble-sample-step = { path = "../sample-step", version = "0.0.17-dev" }

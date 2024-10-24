@@ -12,7 +12,7 @@ Add this to your Cargo.toml:
 
 ```toml
 [dependencies]
-nimble-blob-stream = "0.0.16"
+nimble-blob-stream = "0.0.17-dev"
 ```
 
 ## License

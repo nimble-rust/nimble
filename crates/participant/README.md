@@ -17,7 +17,7 @@ Add `nimble-participant` to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-nimble-participant = "0.0.16"
+nimble-participant = "0.0.17-dev"
 ```
 
 ## License

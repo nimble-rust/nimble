@@ -23,7 +23,7 @@ Add the following to your `Cargo.toml` file:
 
 ```toml
 [dependencies]
-nimble-sample-step = "0.0.16"
+nimble-sample-step = "0.0.17-dev"
 ```
 
 ## License
