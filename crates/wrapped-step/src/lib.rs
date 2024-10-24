@@ -7,9 +7,15 @@ use flood_rs::prelude::*;
 use std::fmt::{Debug, Display};
 use std::io;
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GenericOctetStep {
     pub payload: Vec<u8>,
+}
+
+impl Display for GenericOctetStep {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "generic octet step {}", self.payload.len())
+    }
 }
 
 impl Serialize for GenericOctetStep {
