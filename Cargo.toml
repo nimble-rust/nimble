@@ -18,5 +18,6 @@ members = [
     "crates/host",
     "crates/step",
     "crates/wrapped-step",
+    "crates/nimble-ffi",
 ]
 resolver = "2"

@@ -1,0 +1,11 @@
+# cbindgen.toml
+
+[language]
+language = "C"
+
+[parse]
+# Exclude dependencies for simplicity
+parse_deps = false
+
+[output]
+header = "nimble.h"
